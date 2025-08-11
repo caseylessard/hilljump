@@ -1,3 +1,4 @@
+
 // deno-lint-ignore-file no-explicit-any
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -30,9 +31,52 @@ serve(async (req: Request) => {
 
     const results: Record<string, PriceResult> = {};
 
+    // Preferred: Polygon snapshot endpoint (with upgraded plan)
+    if (POLYGON_API_KEY) {
+      try {
+        const chunks = chunk(symbols, 50);
+        for (const group of chunks) {
+          const url = new URL("https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers");
+          url.searchParams.set("tickers", group.join(","));
+          url.searchParams.set("apiKey", POLYGON_API_KEY);
+
+          const res = await fetch(url.toString());
+          if (!res.ok) {
+            const text = await res.text();
+            console.error(`Polygon error ${res.status}: ${text}`);
+            throw new Error(`Polygon error ${res.status}: ${text}`);
+          }
+          const data = await res.json();
+          const list = Array.isArray((data as any)?.tickers) ? (data as any).tickers : [];
+
+          for (const item of list) {
+            const sym = item?.ticker as string;
+            const lastPrice = Number(item?.lastTrade?.p ?? item?.day?.c ?? item?.min?.c);
+            const prevClose = Number(item?.prevDay?.c ?? item?.day?.o);
+            const price = Number.isFinite(lastPrice) ? lastPrice : undefined;
+            if (!sym || !Number.isFinite(price)) continue;
+            const change = Number.isFinite(prevClose) ? price - prevClose : undefined;
+            const changePercent = Number.isFinite(prevClose) && prevClose !== 0 ? (change! / prevClose) * 100 : undefined;
+            results[sym] = {
+              price: price!,
+              prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
+              change: Number.isFinite(change) ? change : undefined,
+              changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
+            };
+          }
+        }
+
+        console.log(`Polygon API returned data for ${Object.keys(results).length} symbols`);
+        return json({ prices: results });
+      } catch (polygonError) {
+        console.error("Polygon API failed, falling back to Twelve Data:", polygonError);
+        // Clear results and continue to Twelve Data fallback
+        Object.keys(results).forEach(key => delete results[key]);
+      }
+    }
+
+    // Fallback: Twelve Data multi-quote endpoint
     if (TWELVEDATA_API_KEY) {
-      // Preferred: Twelve Data multi-quote endpoint
-      // Docs: https://twelvedata.com/docs#quote (supports comma-separated symbols)
       const chunks = chunk(symbols, 30); // keep URLs reasonable
       for (const group of chunks) {
         const url = new URL("https://api.twelvedata.com/quote");
@@ -90,46 +134,12 @@ serve(async (req: Request) => {
         }
       }
 
+      console.log(`Twelve Data fallback returned data for ${Object.keys(results).length} symbols`);
       return json({ prices: results });
     }
 
-    // Fallback: Polygon snapshot endpoint (requires entitlements)
-    if (!POLYGON_API_KEY) {
-      throw new Error("Missing data provider API key. Set TWELVEDATA_API_KEY or POLYGON_API_KEY.");
-    }
-
-    const chunks = chunk(symbols, 50);
-    for (const group of chunks) {
-      const url = new URL("https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers");
-      url.searchParams.set("tickers", group.join(","));
-      url.searchParams.set("apiKey", POLYGON_API_KEY);
-
-      const res = await fetch(url.toString());
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Polygon error ${res.status}: ${text}`);
-      }
-      const data = await res.json();
-      const list = Array.isArray((data as any)?.tickers) ? (data as any).tickers : [];
-
-      for (const item of list) {
-        const sym = item?.ticker as string;
-        const lastPrice = Number(item?.lastTrade?.p ?? item?.day?.c ?? item?.min?.c);
-        const prevClose = Number(item?.prevDay?.c ?? item?.day?.o);
-        const price = Number.isFinite(lastPrice) ? lastPrice : undefined;
-        if (!sym || !Number.isFinite(price)) continue;
-        const change = Number.isFinite(prevClose) ? price - prevClose : undefined;
-        const changePercent = Number.isFinite(prevClose) && prevClose !== 0 ? (change! / prevClose) * 100 : undefined;
-        results[sym] = {
-          price: price!,
-          prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
-          change: Number.isFinite(change) ? change : undefined,
-          changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
-        };
-      }
-    }
-
-    return json({ prices: results });
+    // No API keys available
+    throw new Error("Missing data provider API key. Set POLYGON_API_KEY or TWELVEDATA_API_KEY.");
   } catch (e: any) {
     console.error("polygon-quotes error", e?.message || e);
     return json({ error: String(e?.message || e) }, 500);
