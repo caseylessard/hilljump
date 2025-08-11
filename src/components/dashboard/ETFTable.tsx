@@ -34,7 +34,7 @@ export const ETFTable = ({ items, live = {} }: Props) => {
             <TableHead>Ticker</TableHead>
             <TableHead className="text-right">Price</TableHead>
             <TableHead className="text-right">Change</TableHead>
-            <TableHead className="text-right">1M Total Return</TableHead>
+            <TableHead className="text-right">28D Total Return</TableHead>
             <TableHead className="text-right">1Y Total Return</TableHead>
             <TableHead className="text-right">Yield (TTM)</TableHead>
             <TableHead className="text-right">Risk</TableHead>
@@ -44,12 +44,14 @@ export const ETFTable = ({ items, live = {} }: Props) => {
         </TableHeader>
         <TableBody>
           {items.map((etf, idx) => {
+            const liveItem = live[etf.ticker];
             const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
-            const ret1m = (Math.pow(1 + daily, 30) - 1) * 100;
+            const ret28dFallback = (Math.pow(1 + daily, 28) - 1) * 100;
             const ret3m = (Math.pow(1 + daily, 90) - 1) * 100;
             const ret1w = (Math.pow(1 + daily, 7) - 1) * 100;
+            const ret28d = liveItem?.totalReturn28dPercent ?? ret28dFallback;
             const upWeek = ret1w > 0;
-            const buy = ret1m > 0 && ret3m > 0;
+            const buy = ret28d > 0 && ret3m > 0;
             return (
               <TableRow
                 key={etf.ticker}
@@ -82,7 +84,7 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                     );
                   })()}
                 </TableCell>
-                <TableCell className="text-right">{ret1m.toFixed(1)}%</TableCell>
+                <TableCell className="text-right">{ret28d.toFixed(1)}%</TableCell>
                 
                 <TableCell className="text-right">{etf.totalReturn1Y.toFixed(1)}%</TableCell>
                 <TableCell className="text-right">{etf.yieldTTM.toFixed(1)}%</TableCell>
@@ -122,9 +124,10 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                   <div className="mt-1">
                     {(() => {
                       const d = Math.pow(1 + selected.totalReturn1Y / 100, 1 / 365) - 1;
-                      const r1m = (Math.pow(1 + d, 30) - 1) * 100;
+                      const r28dFallback = (Math.pow(1 + d, 28) - 1) * 100;
                       const r3m = (Math.pow(1 + d, 90) - 1) * 100;
-                      const buy = r1m > 0 && r3m > 0;
+                      const r28d = live[selected.ticker]?.totalReturn28dPercent ?? r28dFallback;
+                      const buy = r28d > 0 && r3m > 0;
                       return buy ? (
                         <Badge className="bg-emerald-500 text-white">BUY</Badge>
                       ) : (
