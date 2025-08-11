@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
-
+import { Badge } from "@/components/ui/badge";
 type Props = { items: ScoredETF[] };
 
 export const ETFTable = ({ items }: Props) => {
@@ -37,6 +37,7 @@ export const ETFTable = ({ items }: Props) => {
             <TableHead className="text-right">Yield (TTM)</TableHead>
             <TableHead className="text-right">Risk</TableHead>
             <TableHead className="text-right">Score</TableHead>
+            <TableHead className="text-right">Signal</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -46,6 +47,7 @@ export const ETFTable = ({ items }: Props) => {
             const ret3m = (Math.pow(1 + daily, 90) - 1) * 100;
             const ret1w = (Math.pow(1 + daily, 7) - 1) * 100;
             const upWeek = ret1w > 0;
+            const buy = ret1m > 0 && ret3m > 0;
             return (
               <TableRow
                 key={etf.ticker}
@@ -69,6 +71,13 @@ export const ETFTable = ({ items }: Props) => {
                 <TableCell className="text-right">{etf.yieldTTM.toFixed(1)}%</TableCell>
                 <TableCell className="text-right">{Math.round(etf.riskScore * 100)}%</TableCell>
                 <TableCell className="text-right font-semibold">{(etf.compositeScore * 100).toFixed(0)}</TableCell>
+                <TableCell className="text-right">
+                  {buy ? (
+                    <Badge className="bg-emerald-500 text-white">BUY</Badge>
+                  ) : (
+                    <Badge variant="destructive" className="bg-red-500 text-white">SELL</Badge>
+                  )}
+                </TableCell>
               </TableRow>
             );
           })}
@@ -93,6 +102,19 @@ export const ETFTable = ({ items }: Props) => {
                 <div className="text-right">
                   {selectedRank != null && <div className="text-4xl font-extrabold">#{selectedRank}</div>}
                   <div className="text-xs text-muted-foreground">Score: {(selected.compositeScore * 100).toFixed(0)}</div>
+                  <div className="mt-1">
+                    {(() => {
+                      const d = Math.pow(1 + selected.totalReturn1Y / 100, 1 / 365) - 1;
+                      const r1m = (Math.pow(1 + d, 30) - 1) * 100;
+                      const r3m = (Math.pow(1 + d, 90) - 1) * 100;
+                      const buy = r1m > 0 && r3m > 0;
+                      return buy ? (
+                        <Badge className="bg-emerald-500 text-white">BUY</Badge>
+                      ) : (
+                        <Badge className="bg-red-500 text-white">SELL</Badge>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
               <div className="p-4">
