@@ -5,7 +5,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScoredETF } from "@/lib/scoring";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import heroInvesting from "@/assets/hero-investing.jpg";
+
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
 
 type Props = { items: ScoredETF[] };
@@ -59,23 +59,21 @@ export const ETFTable = ({ items }: Props) => {
         <DialogContent className="p-0 overflow-hidden">
           {selected && (
             <div className="w-full overflow-hidden">
-              <div className="relative">
-                <img src={heroInvesting} alt={`${selected.ticker} dividend reinvestment background`} className="h-36 w-full object-cover" loading="lazy" />
-                <div className="absolute inset-0 bg-gradient-to-r from-background/80 to-background/20" />
-                <div className="absolute inset-0 flex items-end justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-16 w-16 ring-2 ring-border">
+              <div className="flex items-center justify-between p-4 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full border-2 border-foreground p-1">
+                    <Avatar className="h-16 w-16">
                       <AvatarFallback className="text-xl font-bold">{selected.ticker.slice(0, 2)}</AvatarFallback>
                     </Avatar>
-                    <div>
-                      <div className="text-2xl font-semibold">{selected.ticker}</div>
-                      <div className="text-sm text-muted-foreground">{selected.name}</div>
-                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-4xl font-extrabold">{(selected.compositeScore * 100).toFixed(0)}</div>
-                    {selectedRank != null && <div className="text-xs text-muted-foreground">Rank #{selectedRank}</div>}
+                  <div>
+                    <div className="text-2xl font-semibold">{selected.ticker}</div>
+                    <div className="text-sm text-muted-foreground">{selected.name}</div>
                   </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-4xl font-extrabold">{(selected.compositeScore * 100).toFixed(0)}</div>
+                  {selectedRank != null && <div className="text-xs text-muted-foreground">Rank #{selectedRank}</div>}
                 </div>
               </div>
               <div className="p-4">
