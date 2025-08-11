@@ -14,12 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      dividends: {
+        Row: {
+          amount: number
+          cash_currency: string
+          created_at: string
+          etf_id: string
+          ex_date: string
+          id: string
+          pay_date: string | null
+          ticker: string
+        }
+        Insert: {
+          amount: number
+          cash_currency?: string
+          created_at?: string
+          etf_id: string
+          ex_date: string
+          id?: string
+          pay_date?: string | null
+          ticker: string
+        }
+        Update: {
+          amount?: number
+          cash_currency?: string
+          created_at?: string
+          etf_id?: string
+          ex_date?: string
+          id?: string
+          pay_date?: string | null
+          ticker?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dividends_etf_id_fkey"
+            columns: ["etf_id"]
+            isOneToOne: false
+            referencedRelation: "etfs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       etfs: {
         Row: {
           aum: number
           avg_volume: number
           category: string | null
           created_at: string
+          distribution_frequency: string | null
           exchange: string
           expense_ratio: number
           id: string
@@ -36,6 +78,7 @@ export type Database = {
           avg_volume: number
           category?: string | null
           created_at?: string
+          distribution_frequency?: string | null
           exchange: string
           expense_ratio: number
           id?: string
@@ -52,6 +95,7 @@ export type Database = {
           avg_volume?: number
           category?: string | null
           created_at?: string
+          distribution_frequency?: string | null
           exchange?: string
           expense_ratio?: number
           id?: string

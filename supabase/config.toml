@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.polygon-quotes]
 verify_jwt = false
+
+[functions.dividend-updater]
+verify_jwt = false
