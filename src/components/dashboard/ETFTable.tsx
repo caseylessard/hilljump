@@ -32,7 +32,7 @@ export const ETFTable = ({ items }: Props) => {
             <TableHead className="w-12">#</TableHead>
             <TableHead>Ticker</TableHead>
             <TableHead className="text-right">1M Total Return</TableHead>
-            <TableHead className="text-right">3M Total Return</TableHead>
+            
             <TableHead className="text-right">1Y Total Return</TableHead>
             <TableHead className="text-right">Yield (TTM)</TableHead>
             <TableHead className="text-right">Risk</TableHead>
@@ -57,7 +57,7 @@ export const ETFTable = ({ items }: Props) => {
                 <TableCell>{idx + 1}</TableCell>
                 <TableCell>
                   <span className="inline-flex items-center">
-                    {etf.ticker}
+                    {etf.ticker} <span className="text-muted-foreground ml-1">({etf.exchange})</span>
                     {upWeek ? (
                       <ArrowUpRight className="ml-1 h-4 w-4 text-emerald-500" aria-label="Up last week" />
                     ) : (
@@ -66,7 +66,7 @@ export const ETFTable = ({ items }: Props) => {
                   </span>
                 </TableCell>
                 <TableCell className="text-right">{ret1m.toFixed(1)}%</TableCell>
-                <TableCell className="text-right">{ret3m.toFixed(1)}%</TableCell>
+                
                 <TableCell className="text-right">{etf.totalReturn1Y.toFixed(1)}%</TableCell>
                 <TableCell className="text-right">{etf.yieldTTM.toFixed(1)}%</TableCell>
                 <TableCell className="text-right">{Math.round(etf.riskScore * 100)}%</TableCell>
