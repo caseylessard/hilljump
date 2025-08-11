@@ -4,7 +4,7 @@ import { ScoredETF, scoreETFs } from "@/lib/scoring";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScoringControls } from "@/components/dashboard/ScoringControls";
-import { fetchLivePrices } from "@/lib/live";
+import { fetchLivePrices, type LivePrice } from "@/lib/live";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getETFs } from "@/lib/db";
@@ -12,7 +12,7 @@ const Ranking = () => {
   // Default weights for quick reference
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [scoreOpen, setScoreOpen] = useState(false);
-  const [live, setLive] = useState<Record<string, { price: number }>>({});
+  const [live, setLive] = useState<Record<string, LivePrice>>({});
   const { toast } = useToast();
   const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights), [etfs, weights]);
@@ -44,17 +44,26 @@ const Ranking = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch live prices for visible tickers (top 20)
+    // Fetch live prices for visible tickers (top 20) and refresh every 60s
     const tickers = ranked.slice(0, 20).map(e => e.ticker);
     if (!tickers.length) return;
-    fetchLivePrices(tickers)
-      .then((prices) => {
-        setLive(Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, { price: v.price }])));
-        toast({ title: "Live data", description: `Updated ${Object.keys(prices).length} tickers from Polygon.` });
-      })
-      .catch((e) => {
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const prices = await fetchLivePrices(tickers);
+        if (cancelled) return;
+        setLive(prices);
+        toast({ title: "Live data", description: `Updated ${Object.keys(prices).length} tickers.` });
+      } catch (e) {
         console.error(e);
-      });
+      }
+    };
+
+    run();
+    const id = setInterval(run, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
   }, [ranked, toast]);
 
   return (
@@ -106,7 +115,7 @@ const Ranking = () => {
               </DialogContent>
             </Dialog>
           </div>
-          <ETFTable items={ranked} />
+          <ETFTable items={ranked} live={live} />
         </section>
           <p className="text-muted-foreground text-xs">Not investment advice.</p>
         </main>

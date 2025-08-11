@@ -9,9 +9,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-type Props = { items: ScoredETF[] };
+import type { LivePrice } from "@/lib/live";
+type Props = { items: ScoredETF[]; live?: Record<string, LivePrice> };
 
-export const ETFTable = ({ items }: Props) => {
+export const ETFTable = ({ items, live = {} }: Props) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ScoredETF | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
@@ -31,8 +32,9 @@ export const ETFTable = ({ items }: Props) => {
           <TableRow>
             <TableHead className="w-12">#</TableHead>
             <TableHead>Ticker</TableHead>
+            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-right">Change</TableHead>
             <TableHead className="text-right">1M Total Return</TableHead>
-            
             <TableHead className="text-right">1Y Total Return</TableHead>
             <TableHead className="text-right">Yield (TTM)</TableHead>
             <TableHead className="text-right">Risk</TableHead>
@@ -64,6 +66,21 @@ export const ETFTable = ({ items }: Props) => {
                       <ArrowDownRight className="ml-1 h-4 w-4 text-red-500" aria-label="Down last week" />
                     )}
                   </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  {live[etf.ticker]?.price != null ? `$${(live[etf.ticker]!.price).toFixed(2)}` : "—"}
+                </TableCell>
+                <TableCell className="text-right">
+                  {(() => {
+                    const cp = live[etf.ticker]?.changePercent;
+                    if (cp == null) return "—";
+                    const up = cp >= 0;
+                    return (
+                      <span className={up ? "text-emerald-600" : "text-red-600"}>
+                        {up ? "+" : ""}{cp.toFixed(2)}%
+                      </span>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell className="text-right">{ret1m.toFixed(1)}%</TableCell>
                 
