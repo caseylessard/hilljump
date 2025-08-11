@@ -46,29 +46,46 @@ serve(async (req: Request) => {
           throw new Error(`TwelveData error ${res.status}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
         }
 
-        // Multi-symbol response is an object keyed by symbol
-        // Each item may contain fields: close, previous_close, change, percent_change
-        for (const sym of group) {
-          const item = (data as any)[sym];
-          if (!item || item?.status === "error") {
-            // Skip symbols that errored out individually
-            continue;
+        // Handle both shapes: { data: [ {symbol, close, previous_close, ...}, ... ] }
+        // and { AAPL: {...}, MSFT: {...} }
+        if (Array.isArray((data as any)?.data)) {
+          for (const item of (data as any).data) {
+            if (!item || item?.status === "error") continue;
+            const sym = String(item?.symbol || "").toUpperCase();
+            if (!sym) continue;
+            const price = Number(item?.close);
+            const prevClose = Number(item?.previous_close);
+            const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : Number(item?.change);
+            const changePercent = Number.isFinite(prevClose) && prevClose !== 0
+              ? ((Number.isFinite(change) ? change : price - prevClose) / prevClose) * 100
+              : Number(item?.percent_change);
+            if (Number.isFinite(price)) {
+              results[sym] = {
+                price,
+                prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
+                change: Number.isFinite(change) ? change : undefined,
+                changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
+              };
+            }
           }
-          const price = Number(item?.close);
-          const prevClose = Number(item?.previous_close);
-          const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : Number(item?.change);
-          // percent_change may be a string, e.g., "1.23"
-          const changePercent = Number.isFinite(prevClose) && prevClose !== 0
-            ? ((Number.isFinite(change) ? change : price - prevClose) / prevClose) * 100
-            : Number(item?.percent_change);
-
-          if (Number.isFinite(price)) {
-            results[sym] = {
-              price,
-              prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
-              change: Number.isFinite(change) ? change : undefined,
-              changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
-            };
+        } else {
+          for (const sym of group) {
+            const item = (data as any)[sym];
+            if (!item || item?.status === "error") continue;
+            const price = Number(item?.close);
+            const prevClose = Number(item?.previous_close);
+            const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : Number(item?.change);
+            const changePercent = Number.isFinite(prevClose) && prevClose !== 0
+              ? ((Number.isFinite(change) ? change : price - prevClose) / prevClose) * 100
+              : Number(item?.percent_change);
+            if (Number.isFinite(price)) {
+              results[sym] = {
+                price,
+                prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
+                change: Number.isFinite(change) ? change : undefined,
+                changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
+              };
+            }
           }
         }
       }
