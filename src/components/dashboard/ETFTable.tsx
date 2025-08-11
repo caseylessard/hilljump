@@ -31,6 +31,7 @@ export const ETFTable = ({ items }: Props) => {
           <TableRow>
             <TableHead className="w-12">#</TableHead>
             <TableHead>Ticker</TableHead>
+            <TableHead className="text-right">1M Total Return</TableHead>
             <TableHead className="text-right">3M Total Return</TableHead>
             <TableHead className="text-right">1Y Total Return</TableHead>
             <TableHead className="text-right">Yield (TTM)</TableHead>
@@ -41,6 +42,7 @@ export const ETFTable = ({ items }: Props) => {
         <TableBody>
           {items.map((etf, idx) => {
             const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
+            const ret1m = (Math.pow(1 + daily, 30) - 1) * 100;
             const ret3m = (Math.pow(1 + daily, 90) - 1) * 100;
             const ret1w = (Math.pow(1 + daily, 7) - 1) * 100;
             const upWeek = ret1w > 0;
@@ -55,12 +57,13 @@ export const ETFTable = ({ items }: Props) => {
                   <span className="inline-flex items-center">
                     {etf.ticker}
                     {upWeek ? (
-                      <ArrowUpRight className="ml-1 h-4 w-4 text-primary" aria-label="Up last week" />
+                      <ArrowUpRight className="ml-1 h-4 w-4 text-emerald-500" aria-label="Up last week" />
                     ) : (
-                      <ArrowDownRight className="ml-1 h-4 w-4 text-destructive" aria-label="Down last week" />
+                      <ArrowDownRight className="ml-1 h-4 w-4 text-red-500" aria-label="Down last week" />
                     )}
                   </span>
                 </TableCell>
+                <TableCell className="text-right">{ret1m.toFixed(1)}%</TableCell>
                 <TableCell className="text-right">{ret3m.toFixed(1)}%</TableCell>
                 <TableCell className="text-right">{etf.totalReturn1Y.toFixed(1)}%</TableCell>
                 <TableCell className="text-right">{etf.yieldTTM.toFixed(1)}%</TableCell>

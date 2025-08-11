@@ -1,15 +1,16 @@
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-
 import { useEffect, useMemo, useState } from "react";
 import { SAMPLE_ETFS } from "@/data/etfs";
 import { ScoredETF, scoreETFs } from "@/lib/scoring";
 import { ETFTable } from "@/components/dashboard/ETFTable";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScoringControls } from "@/components/dashboard/ScoringControls";
 
 const Ranking = () => {
   // Default weights for quick reference
-  const [weights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
+  const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
+  const [scoreOpen, setScoreOpen] = useState(false);
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(SAMPLE_ETFS, weights), [weights]);
   const asOf = new Date().toISOString().slice(0, 10);
 
@@ -42,9 +43,6 @@ const Ranking = () => {
               <a href="/">Ranking</a>
             </Button>
             <Button variant="ghost" asChild>
-              <a href="/scoring">Scoring</a>
-            </Button>
-            <Button variant="ghost" asChild>
               <a href="/profile">Profile</a>
             </Button>
           </nav>
@@ -62,9 +60,15 @@ const Ranking = () => {
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <div className="flex items-center justify-between">
             <h2 id="ranking-title" className="text-2xl font-semibold">Top 100 (as of {asOf})</h2>
-            <Button variant="outline" asChild>
-              <a href="/scoring">Adjust Scoring</a>
-            </Button>
+            <Button variant="outline" onClick={() => setScoreOpen(true)}>Adjust Scoring</Button>
+            <Dialog open={scoreOpen} onOpenChange={setScoreOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Adjust Scoring</DialogTitle>
+                </DialogHeader>
+                <ScoringControls onChange={setWeights} />
+              </DialogContent>
+            </Dialog>
           </div>
           <ETFTable items={ranked} />
         </section>
