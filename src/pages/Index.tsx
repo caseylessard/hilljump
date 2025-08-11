@@ -45,6 +45,7 @@ const Index = () => {
   }, [toast]);
 
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(SAMPLE_ETFS, weights), [weights]);
+  const yieldmaxRanked: ScoredETF[] = useMemo(() => ranked.filter(e => e.category === "YieldMax"), [ranked]);
 
   const jsonLd = useMemo(() => ({
     "@context": "https://schema.org",
@@ -119,7 +120,7 @@ const Index = () => {
 
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
-          <ETFTable items={ranked} />
+          <ETFTable items={yieldmaxRanked} />
         </section>
       </main>
 

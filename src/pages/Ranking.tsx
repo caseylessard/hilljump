@@ -16,6 +16,7 @@ const Ranking = () => {
   const { toast } = useToast();
   const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights), [etfs, weights]);
+  const yieldmaxRanked = useMemo(() => ranked.filter(e => e.category === "YieldMax"), [ranked]);
   const asOf = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
@@ -44,8 +45,8 @@ const Ranking = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch live prices for visible tickers (top 20) and refresh every 60s
-    const tickers = ranked.slice(0, 20).map(e => e.ticker);
+    // Fetch live prices for all YieldMax tickers and refresh every 60s
+    const tickers = yieldmaxRanked.map(e => e.ticker);
     if (!tickers.length) return;
 
     let cancelled = false;
@@ -64,7 +65,7 @@ const Ranking = () => {
     run();
     const id = setInterval(run, 60_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [ranked, toast]);
+  }, [yieldmaxRanked, toast]);
 
   return (
     <div>
@@ -115,7 +116,7 @@ const Ranking = () => {
               </DialogContent>
             </Dialog>
           </div>
-          <ETFTable items={ranked} live={live} />
+          <ETFTable items={yieldmaxRanked} live={live} />
         </section>
           <p className="text-muted-foreground text-xs">Not investment advice.</p>
         </main>
