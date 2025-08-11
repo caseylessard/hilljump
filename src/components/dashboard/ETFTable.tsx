@@ -24,6 +24,57 @@ export const ETFTable = ({ items, live = {} }: Props) => {
     APLY: "AAPL",
     AMDY: "AMD",
   };
+
+  // Sorting state and helpers
+  type SortKey = "rank" | "ticker" | "price" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
+  const [sortKey, setSortKey] = useState<SortKey>("score");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
+  const requestSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir(key === "ticker" ? "asc" : "desc"); }
+  };
+
+  const rows = useMemo(() => {
+    const getVal = (etf: ScoredETF): number | string => {
+      const lp = live[etf.ticker];
+      switch (sortKey) {
+        case "ticker": return etf.ticker;
+        case "price": return lp?.price ?? Number.NaN;
+        case "drip4w": return lp?.drip4wPercent ?? Number.NaN;
+        case "drip12w": return lp?.drip12wPercent ?? Number.NaN;
+        case "drip52w": return lp?.drip52wPercent ?? Number.NaN;
+        case "yield": return etf.yieldTTM;
+        case "risk": return etf.riskScore;
+        case "score": return etf.compositeScore;
+        case "signal": {
+          const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
+          const r28d = (Math.pow(1 + daily, 28) - 1) * 100;
+          const r3m = (Math.pow(1 + daily, 90) - 1) * 100;
+          const buy = r28d > 0 && r3m > 0;
+          return buy ? 1 : 0;
+        }
+        case "rank":
+        default:
+          return etf.compositeScore;
+      }
+    };
+    const cmp = (a: ScoredETF, b: ScoredETF) => {
+      const av = getVal(a);
+      const bv = getVal(b);
+      if (typeof av === "string" && typeof bv === "string") {
+        return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      }
+      const an = typeof av === "number" ? av : Number.NaN;
+      const bn = typeof bv === "number" ? bv : Number.NaN;
+      if (Number.isNaN(an) && Number.isNaN(bn)) return 0;
+      if (Number.isNaN(an)) return 1;
+      if (Number.isNaN(bn)) return -1;
+      return sortDir === "asc" ? an - bn : bn - an;
+    };
+    return [...items].sort(cmp);
+  }, [items, sortKey, sortDir, live]);
+
   return (
     <Card className="p-4 overflow-x-auto">
       <Table>

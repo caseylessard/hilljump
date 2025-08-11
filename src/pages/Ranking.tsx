@@ -56,7 +56,15 @@ const Ranking = () => {
 
   useEffect(() => {
     // Fetch live prices for all filtered tickers and refresh every 60s
-    const tickers = filtered.map(e => e.ticker);
+    const base = etfs;
+    let subset = base;
+    if (filter === "YieldMax") subset = base.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
+    else if (filter === "Covered Call") subset = base.filter(e => e.category === "Covered Call");
+    else if (filter === "Income") subset = base.filter(e => e.category === "Income");
+    else if (filter === "Dividend") subset = base.filter(e => e.category === "Dividend");
+    else if (filter === "US Funds") subset = base.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
+    else if (filter === "Canadian Funds") subset = base.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
+    const tickers = (filter === "Top 100" ? base : subset).map(e => e.ticker);
     if (!tickers.length) return;
 
     let cancelled = false;
@@ -75,7 +83,7 @@ const Ranking = () => {
     run();
     const id = setInterval(run, 60_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [filtered, toast]);
+  }, [etfs, filter, toast]);
 
   return (
     <div>
