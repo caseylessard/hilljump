@@ -8,6 +8,8 @@ import Ranking from "./pages/Ranking";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
+import Options from "./pages/Options";
+import Crypto from "./pages/Crypto";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +21,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Ranking />} />
+          <Route path="/options" element={<Options />} />
+          <Route path="/crypto" element={<Crypto />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/auth" element={<Auth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
