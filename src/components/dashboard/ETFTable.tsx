@@ -35,6 +35,11 @@ export const ETFTable = ({ items, live = {} }: Props) => {
     else { setSortKey(key); setSortDir(key === "ticker" ? "asc" : "desc"); }
   };
 
+  // Percent formatter that also handles fractional DB values (e.g., 0.12 -> 12%)
+  const formatPct = (v: number, digits = 1) => {
+    const scaled = Math.abs(v) <= 1 ? v * 100 : v;
+    return `${scaled.toFixed(digits)}%`;
+  };
   const rows = useMemo(() => {
     const getVal = (etf: ScoredETF): number | string => {
       const lp = live[etf.ticker];
@@ -44,7 +49,7 @@ export const ETFTable = ({ items, live = {} }: Props) => {
         case "drip4w": return lp?.drip4wPercent ?? Number.NaN;
         case "drip12w": return lp?.drip12wPercent ?? Number.NaN;
         case "drip52w": return lp?.drip52wPercent ?? Number.NaN;
-        case "yield": return etf.yieldTTM;
+        case "yield": { const y = etf.yieldTTM; return Math.abs(y) <= 1 ? y * 100 : y; }
         case "risk": return etf.riskScore;
         case "score": return etf.compositeScore;
         case "signal": {
@@ -217,7 +222,7 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                     );
                   })()}
                 </TableCell>
-                <TableCell className="text-right">{etf.yieldTTM.toFixed(1)}%</TableCell>
+                <TableCell className="text-right">{formatPct(etf.yieldTTM, 1)}</TableCell>
                 <TableCell className="text-right">{Math.round(etf.riskScore * 100)}%</TableCell>
                 <TableCell className="text-right font-semibold">{(etf.compositeScore * 100).toFixed(0)}</TableCell>
                 <TableCell className="text-right">
@@ -282,11 +287,11 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground">1Y Total Return</div>
-                    <div className="text-lg font-medium">{selected.totalReturn1Y.toFixed(1)}%</div>
+                    <div className="text-lg font-medium">{formatPct(selected.totalReturn1Y, 1)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Yield (TTM)</div>
-                    <div className="text-lg font-medium">{selected.yieldTTM.toFixed(1)}%</div>
+                    <div className="text-lg font-medium">{formatPct(selected.yieldTTM, 1)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">AV</div>
@@ -294,15 +299,15 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Expense Ratio</div>
-                    <div className="text-lg font-medium">{selected.expenseRatio.toFixed(2)}%</div>
+                    <div className="text-lg font-medium">{formatPct(selected.expenseRatio, 2)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Volatility (1Y)</div>
-                    <div className="text-lg font-medium">{selected.volatility1Y.toFixed(1)}%</div>
+                    <div className="text-lg font-medium">{formatPct(selected.volatility1Y, 1)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Max Drawdown (1Y)</div>
-                    <div className="text-lg font-medium">{selected.maxDrawdown1Y.toFixed(1)}%</div>
+                    <div className="text-lg font-medium">{formatPct(selected.maxDrawdown1Y, 1)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">AUM</div>

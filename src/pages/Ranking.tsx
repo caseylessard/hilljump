@@ -17,7 +17,7 @@ const Ranking = () => {
   const { toast } = useToast();
   const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, live), [etfs, weights, live]);
-  const [filter, setFilter] = useState<string>("YieldMax");
+  const [filter, setFilter] = useState<string>("Top 100");
   const filtered: ScoredETF[] = useMemo(() => {
     if (filter === "Top 100") return ranked;
     if (filter === "YieldMax") return ranked.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
