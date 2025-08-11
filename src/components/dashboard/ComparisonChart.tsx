@@ -27,7 +27,11 @@ function generateSeries(days: number, etfReturnPct: number, underlyingReturnPct?
     etfVal = etfVal * (1 + etfDaily);
     if (underlyingReturnPct != null) undVal = undVal * (1 + underlyingDaily);
   }
-  return data.map((p) => ({ ...p, etf: Number(p.etf.toFixed(2)), underlying: p.underlying != null ? Number(p.underlying.toFixed(2)) : undefined }));
+  return data.map((p) => ({
+    ...p,
+    etf: Number((((p.etf / 100) - 1) * 100).toFixed(2)),
+    underlying: p.underlying != null ? Number((((p.underlying / 100) - 1) * 100).toFixed(2)) : undefined,
+  }));
 }
 
 type Props = {
@@ -49,9 +53,9 @@ export const ComparisonChart = ({ etf, underlyingTicker, range }: Props) => {
   return (
     <Card className="p-4">
       <ChartContainer config={config} className="h-72 w-full">
-        <LineChart data={series} margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
-          <XAxis dataKey="d" tickFormatter={(v) => `${v}d`} />
-          <YAxis domain={[80, 'auto']} tickFormatter={(v) => `${v}`}/>
+        <LineChart data={series} margin={{ left: 8, right: 28, top: 8, bottom: 0 }}>
+          <XAxis hide dataKey="d" />
+          <YAxis orientation="right" domain={['auto', 'auto']} tickFormatter={(v) => `${Number(v).toFixed(0)}%`} />
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend content={<ChartLegendContent />} />
           <Line type="monotone" dataKey="etf" name={`${etf.ticker} (DRIP)`} stroke="hsl(var(--sidebar-ring))" dot={false} strokeWidth={2} />
