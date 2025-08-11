@@ -19,7 +19,7 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { tickers, include28d } = await req.json();
+    const { tickers, include28d, includeDRIP } = await req.json();
     if (!Array.isArray(tickers) || tickers.length === 0) {
       return json({ error: "tickers must be a non-empty array" }, 400);
     }
@@ -228,14 +228,284 @@ serve(async (req: Request) => {
         console.error("include28d enrichment failed", err);
       }
     }
+    // Optionally compute DRIP metrics for 4W, 12W, 52W periods
+    if (includeDRIP) {
+      try {
+        const syms = Object.keys(results);
+        // 1) Get EOD bars to determine last EOD and start prices per period
+        const barsBySym: Record<string, any[]> = {};
+        if (POLYGON_API_KEY) {
+          const from = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const to = new Date().toISOString().slice(0, 10);
+          const fetchBars = async (sym: string) => {
+            const u = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(sym)}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=5000&apiKey=${POLYGON_API_KEY}`;
+            const res = await fetch(u);
+            if (!res.ok) return [] as any[];
+            const json = await res.json();
+            const bars = Array.isArray(json?.results) ? json.results : [];
+            return bars;
+          };
+          const concurrency = 8;
+          const queue: Promise<void>[] = [];
+          for (let i = 0; i < syms.length; i += concurrency) {
+            const group = syms.slice(i, i + concurrency);
+            queue.push((async () => {
+              await Promise.all(group.map(async (sym) => {
+                try {
+                  barsBySym[sym] = await fetchBars(sym);
+                } catch (_) {
+                  barsBySym[sym] = [];
+                }
+              }));
+            })());
+          }
+          await Promise.all(queue);
+        }
+
+        const findStartOnOrBefore = (bars: any[], targetTs: number) => {
+          if (!bars?.length) return undefined as number | undefined;
+          // bars are asc sorted
+          let candidate: number | undefined;
+          for (const b of bars) {
+            const t = Number(b?.t);
+            if (!Number.isFinite(t)) continue;
+            if (t <= targetTs) candidate = Number(b?.c);
+            else break;
+          }
+          return candidate;
+        };
+
+        // 2) Fetch dividends once (since earliest possible start)
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+        const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        let rowsByTicker: Record<string, { amount: number; date: string }[]> = {};
+        const todayISO = new Date().toISOString().slice(0, 10);
+        if (SUPABASE_URL && SERVICE_ROLE && syms.length) {
+          const earliestISO = new Date(Date.now() - 370 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+          const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+          const { data: rows } = await sb
+            .from("dividends")
+            .select("ticker, amount, pay_date, ex_date")
+            .in("ticker", syms)
+            .or(`pay_date.gte.${earliestISO},ex_date.gte.${earliestISO}`);
+          rowsByTicker = {};
+          for (const r of rows || []) {
+            const sym = String((r as any).ticker || '').toUpperCase();
+            if (!sym) continue;
+            const amt = Number((r as any).amount) || 0;
+            const date = String((r as any).pay_date || (r as any).ex_date || '') || '';
+            if (!rowsByTicker[sym]) rowsByTicker[sym] = [];
+            if (date) rowsByTicker[sym].push({ amount: amt, date });
+          }
+        }
+
+        // 3) Compute DRIP metrics per symbol
+        for (const sym of syms) {
+          const priceNow = results[sym]?.price;
+          if (!Number.isFinite(priceNow)) continue;
+          const bars = barsBySym[sym] || [];
+          const lastTs = bars.length ? Number(bars[bars.length - 1]?.t) : undefined;
+          if (!Number.isFinite(lastTs)) continue;
+          const DAY = 24 * 60 * 60 * 1000;
+          const targets = {
+            w4: lastTs - 28 * DAY,
+            w12: lastTs - 84 * DAY,
+            w52: lastTs - 364 * DAY,
+          } as const;
+          const start4 = findStartOnOrBefore(bars, targets.w4);
+          const start12 = findStartOnOrBefore(bars, targets.w12);
+          const start52 = findStartOnOrBefore(bars, targets.w52);
+
+          const toISO = (ts?: number) => ts ? new Date(ts).toISOString().slice(0, 10) : undefined;
+          const s4ISO = toISO(targets.w4);
+          const s12ISO = toISO(targets.w12);
+          const s52ISO = toISO(targets.w52);
+
+          const list = rowsByTicker[sym] || [];
+          const sumDivs = (startISO?: string) => {
+            if (!startISO) return 0;
+            let sum = 0;
+            for (const row of list) {
+              const d = row.date?.slice(0, 10);
+              if (!d) continue;
+              if (d > startISO && d <= todayISO) sum += Number(row.amount) || 0; // strictly after start EOD, up to today
+            }
+            return sum;
+          };
+
+          const div4 = sumDivs(s4ISO);
+          const div12 = sumDivs(s12ISO);
+          const div52 = sumDivs(s52ISO);
+
+          if (Number.isFinite(start4)) {
+            const dollar = (priceNow as number) + div4 - (start4 as number);
+            const pct = (dollar / (start4 as number)) * 100;
+            (results[sym] as any).price4wStart = start4;
+            (results[sym] as any).dividends4w = div4;
+            (results[sym] as any).drip4wDollar = dollar;
+            (results[sym] as any).drip4wPercent = pct;
+          }
+          if (Number.isFinite(start12)) {
+            const dollar = (priceNow as number) + div12 - (start12 as number);
+            const pct = (dollar / (start12 as number)) * 100;
+            (results[sym] as any).price12wStart = start12;
+            (results[sym] as any).dividends12w = div12;
+            (results[sym] as any).drip12wDollar = dollar;
+            (results[sym] as any).drip12wPercent = pct;
+          }
+          if (Number.isFinite(start52)) {
+            const dollar = (priceNow as number) + div52 - (start52 as number);
+            const pct = (dollar / (start52 as number)) * 100;
+            (results[sym] as any).price52wStart = start52;
+            (results[sym] as any).dividends52w = div52;
+            (results[sym] as any).drip52wDollar = dollar;
+            (results[sym] as any).drip52wPercent = pct;
+          }
+        }
+      } catch (err) {
+        console.error("includeDRIP enrichment failed", err);
+      }
+    }
+
+    // Optionally compute DRIP metrics for 4W, 12W, 52W periods
+    if (includeDRIP) {
+      try {
+        const syms = Object.keys(results);
+        // 1) Get EOD bars to determine last EOD and start prices per period
+        const barsBySym: Record<string, any[]> = {};
+        if (POLYGON_API_KEY) {
+          const from = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const to = new Date().toISOString().slice(0, 10);
+          const fetchBars = async (sym: string) => {
+            const u = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(sym)}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=5000&apiKey=${POLYGON_API_KEY}`;
+            const res = await fetch(u);
+            if (!res.ok) return [] as any[];
+            const json = await res.json();
+            const bars = Array.isArray(json?.results) ? json.results : [];
+            return bars;
+          };
+          const concurrency = 8;
+          const queue: Promise<void>[] = [];
+          for (let i = 0; i < syms.length; i += concurrency) {
+            const group = syms.slice(i, i + concurrency);
+            queue.push((async () => {
+              await Promise.all(group.map(async (sym) => {
+                try {
+                  barsBySym[sym] = await fetchBars(sym);
+                } catch (_) {
+                  barsBySym[sym] = [];
+                }
+              }));
+            })());
+          }
+          await Promise.all(queue);
+        }
+
+        const findStartOnOrBefore = (bars: any[], targetTs: number) => {
+          if (!bars?.length) return undefined as number | undefined;
+          // bars are asc sorted
+          let candidate: number | undefined;
+          for (const b of bars) {
+            const t = Number(b?.t);
+            if (!Number.isFinite(t)) continue;
+            if (t <= targetTs) candidate = Number(b?.c);
+            else break;
+          }
+          return candidate;
+        };
+
+        // 2) Fetch dividends once (since earliest possible start)
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+        const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        let rowsByTicker: Record<string, { amount: number; date: string }[]> = {};
+        const todayISO = new Date().toISOString().slice(0, 10);
+        if (SUPABASE_URL && SERVICE_ROLE && syms.length) {
+          const earliestISO = new Date(Date.now() - 370 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+          const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+          const { data: rows } = await sb
+            .from("dividends")
+            .select("ticker, amount, pay_date, ex_date")
+            .in("ticker", syms)
+            .or(`pay_date.gte.${earliestISO},ex_date.gte.${earliestISO}`);
+          rowsByTicker = {};
+          for (const r of rows || []) {
+            const sym = String((r as any).ticker || '').toUpperCase();
+            if (!sym) continue;
+            const amt = Number((r as any).amount) || 0;
+            const date = String((r as any).pay_date || (r as any).ex_date || '') || '';
+            if (!rowsByTicker[sym]) rowsByTicker[sym] = [];
+            if (date) rowsByTicker[sym].push({ amount: amt, date });
+          }
+        }
+
+        // 3) Compute DRIP metrics per symbol
+        for (const sym of syms) {
+          const priceNow = results[sym]?.price;
+          if (!Number.isFinite(priceNow)) continue;
+          const bars = barsBySym[sym] || [];
+          const lastTs = bars.length ? Number(bars[bars.length - 1]?.t) : undefined;
+          if (!Number.isFinite(lastTs)) continue;
+          const DAY = 24 * 60 * 60 * 1000;
+          const targets = {
+            w4: lastTs - 28 * DAY,
+            w12: lastTs - 84 * DAY,
+            w52: lastTs - 364 * DAY,
+          } as const;
+          const start4 = findStartOnOrBefore(bars, targets.w4);
+          const start12 = findStartOnOrBefore(bars, targets.w12);
+          const start52 = findStartOnOrBefore(bars, targets.w52);
+
+          const toISO = (ts?: number) => ts ? new Date(ts).toISOString().slice(0, 10) : undefined;
+          const s4ISO = toISO(targets.w4);
+          const s12ISO = toISO(targets.w12);
+          const s52ISO = toISO(targets.w52);
+
+          const list = rowsByTicker[sym] || [];
+          const sumDivs = (startISO?: string) => {
+            if (!startISO) return 0;
+            let sum = 0;
+            for (const row of list) {
+              const d = row.date?.slice(0, 10);
+              if (!d) continue;
+              if (d > startISO && d <= todayISO) sum += Number(row.amount) || 0; // strictly after start EOD, up to today
+            }
+            return sum;
+          };
+
+          const div4 = sumDivs(s4ISO);
+          const div12 = sumDivs(s12ISO);
+          const div52 = sumDivs(s52ISO);
+
+          if (Number.isFinite(start4)) {
+            const dollar = (priceNow as number) + div4 - (start4 as number);
+            const pct = (dollar / (start4 as number)) * 100;
+            (results[sym] as any).price4wStart = start4;
+            (results[sym] as any).dividends4w = div4;
+            (results[sym] as any).drip4wDollar = dollar;
+            (results[sym] as any).drip4wPercent = pct;
+          }
+          if (Number.isFinite(start12)) {
+            const dollar = (priceNow as number) + div12 - (start12 as number);
+            const pct = (dollar / (start12 as number)) * 100;
+            (results[sym] as any).price12wStart = start12;
+            (results[sym] as any).dividends12w = div12;
+            (results[sym] as any).drip12wDollar = dollar;
+            (results[sym] as any).drip12wPercent = pct;
+          }
+          if (Number.isFinite(start52)) {
+            const dollar = (priceNow as number) + div52 - (start52 as number);
+            const pct = (dollar / (start52 as number)) * 100;
+            (results[sym] as any).price52wStart = start52;
+            (results[sym] as any).dividends52w = div52;
+            (results[sym] as any).drip52wDollar = dollar;
+            (results[sym] as any).drip52wPercent = pct;
+          }
+        }
+      } catch (err) {
+        console.error("includeDRIP enrichment failed", err);
+      }
+    }
 
     return json({ prices: results });
-  } catch (e: any) {
-    console.error("polygon-quotes error", e?.message || e);
-    return json({ error: String(e?.message || e) }, 500);
-  }
-});
-
-function json(body: any, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
-}

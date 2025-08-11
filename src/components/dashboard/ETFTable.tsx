@@ -34,8 +34,9 @@ export const ETFTable = ({ items, live = {} }: Props) => {
             <TableHead>Ticker</TableHead>
             <TableHead className="text-right">Price</TableHead>
             <TableHead className="text-right">Change</TableHead>
-            <TableHead className="text-right">28D Total Return</TableHead>
-            <TableHead className="text-right">1Y Total Return</TableHead>
+            <TableHead className="text-right">4W DRIP</TableHead>
+            <TableHead className="text-right">12W DRIP</TableHead>
+            <TableHead className="text-right">52W DRIP</TableHead>
             <TableHead className="text-right">Yield (TTM)</TableHead>
             <TableHead className="text-right">Risk</TableHead>
             <TableHead className="text-right">Score</TableHead>
@@ -84,9 +85,42 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                     );
                   })()}
                 </TableCell>
-                <TableCell className="text-right">{ret28d.toFixed(1)}%</TableCell>
-                
-                <TableCell className="text-right">{etf.totalReturn1Y.toFixed(1)}%</TableCell>
+                <TableCell className="text-right">
+                  {(() => {
+                    const d = liveItem?.drip4wDollar; const p = liveItem?.drip4wPercent;
+                    if (d == null || p == null) return "—";
+                    const up = p >= 0;
+                    return (
+                      <span>
+                        ${`${d.toFixed(2)}`} <span className={up ? "text-emerald-600" : "text-red-600"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                      </span>
+                    );
+                  })()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {(() => {
+                    const d = liveItem?.drip12wDollar; const p = liveItem?.drip12wPercent;
+                    if (d == null || p == null) return "—";
+                    const up = p >= 0;
+                    return (
+                      <span>
+                        ${`${d.toFixed(2)}`} <span className={up ? "text-emerald-600" : "text-red-600"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                      </span>
+                    );
+                  })()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {(() => {
+                    const d = liveItem?.drip52wDollar; const p = liveItem?.drip52wPercent;
+                    if (d == null || p == null) return "—";
+                    const up = p >= 0;
+                    return (
+                      <span>
+                        ${`${d.toFixed(2)}`} <span className={up ? "text-emerald-600" : "text-red-600"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                      </span>
+                    );
+                  })()}
+                </TableCell>
                 <TableCell className="text-right">{etf.yieldTTM.toFixed(1)}%</TableCell>
                 <TableCell className="text-right">{Math.round(etf.riskScore * 100)}%</TableCell>
                 <TableCell className="text-right font-semibold">{(etf.compositeScore * 100).toFixed(0)}</TableCell>
