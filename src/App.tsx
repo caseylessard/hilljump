@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Ranking from "./pages/Ranking";
 import Scoring from "./pages/Scoring";
 import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +20,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Ranking />} />
           <Route path="/scoring" element={<Scoring />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/auth" element={<Auth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

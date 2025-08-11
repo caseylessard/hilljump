@@ -14,7 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      portfolio_positions: {
+        Row: {
+          created_at: string
+          id: string
+          shares: number
+          ticker: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          shares: number
+          ticker: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          shares?: number
+          ticker?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

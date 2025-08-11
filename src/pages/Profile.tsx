@@ -1,0 +1,157 @@
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
+
+const Profile = () => {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [ticker, setTicker] = useState("");
+  const [shares, setShares] = useState<number>(0);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+
+  // SEO
+  useEffect(() => {
+    document.title = "HillJump — Profile & Portfolio";
+    const meta =
+      (document.querySelector('meta[name="description"]') as HTMLMetaElement) ||
+      (() => { const m = document.createElement('meta'); m.setAttribute('name', 'description'); document.head.appendChild(m); return m as HTMLMetaElement; })();
+    meta.setAttribute('content', 'Manage your portfolio tickers and shares. Track estimated current value.');
+  }, []);
+
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user?.id ?? null));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase.from("portfolio_positions").select("*").eq("user_id", userId).order("created_at");
+      if (error) {
+        toast({ title: "Failed to load portfolio", description: error.message, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      setPositions(data as Position[]);
+      setLoading(false);
+    })();
+  }, [userId, toast]);
+
+  useEffect(() => {
+    const uniq = Array.from(new Set(positions.map(p => p.ticker)));
+    if (uniq.length === 0) { setPrices({}); return; }
+    supabase.functions.invoke("quotes", { body: { tickers: uniq } }).then(({ data, error }) => {
+      if (error) {
+        toast({ title: "Price fetch failed", description: error.message, variant: "destructive" });
+        return;
+      }
+      setPrices((data as any)?.prices ?? {});
+    });
+  }, [positions, toast]);
+
+  const total = useMemo(() => positions.reduce((sum, p) => sum + (prices[p.ticker] ?? 0) * (Number(p.shares) || 0), 0), [positions, prices]);
+
+  const addOrUpdate = async () => {
+    if (!userId) return;
+    const t = ticker.trim().toUpperCase();
+    if (!t || shares <= 0) { toast({ title: "Enter ticker and shares" }); return; }
+    const { error } = await supabase.from("portfolio_positions").upsert({ user_id: userId, ticker: t, shares }, { onConflict: "user_id,ticker" });
+    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
+    setTicker(""); setShares(0);
+    const { data } = await supabase.from("portfolio_positions").select("*").eq("user_id", userId).order("created_at");
+    setPositions((data as Position[]) || []);
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("portfolio_positions").delete().eq("id", id);
+    if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); return; }
+    setPositions(prev => prev.filter(p => p.id !== id));
+  };
+
+  return (
+    <div>
+      <header className="border-b">
+        <div className="container flex items-center justify-between py-4">
+          <a href="/" className="font-bold text-lg tracking-tight" aria-label="HillJump home">HillJump</a>
+          <nav className="flex items-center gap-2" aria-label="Primary">
+            <Button variant="ghost" asChild><a href="/">Ranking</a></Button>
+            <Button variant="ghost" asChild><a href="/scoring">Scoring</a></Button>
+            <Button variant="ghost" asChild><a href="/profile">Profile</a></Button>
+          </nav>
+        </div>
+      </header>
+
+      <main className="container py-8 grid gap-6">
+        <h1 className="text-3xl font-bold">Profile</h1>
+        {!userId ? (
+          <Card className="p-6">
+            <p className="mb-4">Please sign in to manage your portfolio.</p>
+            <Button asChild><a href="/auth">Go to Auth</a></Button>
+          </Card>
+        ) : (
+          <>
+            <Card className="p-4 grid gap-3">
+              <div className="grid grid-cols-3 gap-2">
+                <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
+                <Input type="number" placeholder="Shares" value={shares} onChange={(e) => setShares(Number(e.target.value))} />
+                <Button onClick={addOrUpdate}>Add / Update</Button>
+              </div>
+            </Card>
+
+            <Card className="p-4 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ticker</TableHead>
+                    <TableHead className="text-right">Shares</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Value</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow>
+                  ) : positions.length === 0 ? (
+                    <TableRow><TableCell colSpan={5}>No positions yet.</TableCell></TableRow>
+                  ) : (
+                    positions.map((p) => {
+                      const price = (prices[p.ticker] ?? 0) as number;
+                      const value = price * (Number(p.shares) || 0);
+                      return (
+                        <TableRow key={p.id}>
+                          <TableCell>{p.ticker}</TableCell>
+                          <TableCell className="text-right">{Number(p.shares)}</TableCell>
+                          <TableCell className="text-right">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
+                          <TableCell className="text-right">{price ? `$${value.toFixed(2)}` : "-"}</TableCell>
+                          <TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button></TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+              <div className="mt-3 text-right font-semibold">Total: ${total.toFixed(2)}</div>
+            </Card>
+          </>
+        )}
+        <p className="text-xs text-muted-foreground">Not investment advice.</p>
+      </main>
+    </div>
+  );
+};
+
+export default Profile;

@@ -43,6 +43,9 @@ const Ranking = () => {
             <Button variant="ghost" asChild>
               <a href="/scoring">Scoring</a>
             </Button>
+            <Button variant="ghost" asChild>
+              <a href="/profile">Profile</a>
+            </Button>
           </nav>
         </div>
         <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">

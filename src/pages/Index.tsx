@@ -79,6 +79,9 @@ const Index = () => {
             <Button variant="ghost" asChild>
               <a href="#ranking">Ranking</a>
             </Button>
+            <Button variant="ghost" asChild>
+              <a href="/profile">Profile</a>
+            </Button>
           </nav>
         </div>
 
