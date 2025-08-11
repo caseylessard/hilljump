@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -30,20 +30,60 @@ export const ETFTable = ({ items, live = {} }: Props) => {
         <TableCaption>Top 100 high-yield dividend ETFs ranked by risk-aware total return. Data is illustrative.</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12">#</TableHead>
-            <TableHead>Ticker</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-            <TableHead className="text-right">4W DRIP</TableHead>
-            <TableHead className="text-right">12W DRIP</TableHead>
-            <TableHead className="text-right">52W DRIP</TableHead>
-            <TableHead className="text-right">Yield (TTM)</TableHead>
-            <TableHead className="text-right">Risk</TableHead>
-            <TableHead className="text-right">Score</TableHead>
-            <TableHead className="text-right">Signal</TableHead>
+            <TableHead className="w-12">
+              <button onClick={() => requestSort("rank")} className="flex items-center gap-1">
+                # <span className="text-muted-foreground text-xs">{indicator("rank")}</span>
+              </button>
+            </TableHead>
+            <TableHead>
+              <button onClick={() => requestSort("ticker")} className="flex items-center gap-1">
+                Ticker <span className="text-muted-foreground text-xs">{indicator("ticker")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("price")} className="flex items-center gap-1 ml-auto">
+                Price <span className="text-muted-foreground text-xs">{indicator("price")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("drip4w")} className="flex items-center gap-1 ml-auto">
+                4W DRIP <span className="text-muted-foreground text-xs">{indicator("drip4w")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("drip12w")} className="flex items-center gap-1 ml-auto">
+                12W DRIP <span className="text-muted-foreground text-xs">{indicator("drip12w")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("drip52w")} className="flex items-center gap-1 ml-auto">
+                52W DRIP <span className="text-muted-foreground text-xs">{indicator("drip52w")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("yield")} className="flex items-center gap-1 ml-auto">
+                Yield (TTM) <span className="text-muted-foreground text-xs">{indicator("yield")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("risk")} className="flex items-center gap-1 ml-auto">
+                Risk <span className="text-muted-foreground text-xs">{indicator("risk")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("score")} className="flex items-center gap-1 ml-auto">
+                Score <span className="text-muted-foreground text-xs">{indicator("score")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("signal")} className="flex items-center gap-1 ml-auto">
+                Signal <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
+              </button>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((etf, idx) => {
+          {rows.map((etf, idx) => {
             const liveItem = live[etf.ticker];
             const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
             const ret28dFallback = (Math.pow(1 + daily, 28) - 1) * 100;
