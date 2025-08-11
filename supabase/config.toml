@@ -1,1 +1,7 @@
 project_id = "lyjfwnlindbsbbwjzefh"
+
+[functions.quotes]
+verify_jwt = false
+
+[functions.polygon-quotes]
+verify_jwt = false

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
 import { SAMPLE_ETFS } from "@/data/etfs";
@@ -6,11 +5,14 @@ import { ScoredETF, scoreETFs } from "@/lib/scoring";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScoringControls } from "@/components/dashboard/ScoringControls";
-
+import { fetchLivePrices } from "@/lib/live";
+import { useToast } from "@/hooks/use-toast";
 const Ranking = () => {
   // Default weights for quick reference
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [scoreOpen, setScoreOpen] = useState(false);
+  const [live, setLive] = useState<Record<string, { price: number }>>({});
+  const { toast } = useToast();
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(SAMPLE_ETFS, weights), [weights]);
   const asOf = new Date().toISOString().slice(0, 10);
 
@@ -28,7 +30,30 @@ const Ranking = () => {
       'content',
       'HillJump quick reference: Top 100 high-yield dividend ETFs ranked by risk-aware total return.'
     );
+    const link =
+      (document.querySelector('link[rel="canonical"]') as HTMLLinkElement) ||
+      (() => {
+        const l = document.createElement('link');
+        l.setAttribute('rel', 'canonical');
+        document.head.appendChild(l);
+        return l as HTMLLinkElement;
+      })();
+    link.setAttribute('href', window.location.origin + window.location.pathname);
   }, []);
+
+  useEffect(() => {
+    // Fetch live prices for visible tickers (top 20)
+    const tickers = ranked.slice(0, 20).map(e => e.ticker);
+    if (!tickers.length) return;
+    fetchLivePrices(tickers)
+      .then((prices) => {
+        setLive(Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, { price: v.price }])));
+        toast({ title: "Live data", description: `Updated ${Object.keys(prices).length} tickers from Polygon.` });
+      })
+      .catch((e) => {
+        console.error(e);
+      });
+  }, [ranked, toast]);
 
   return (
     <div>
@@ -66,7 +91,10 @@ const Ranking = () => {
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <div className="flex items-center justify-between">
             <h2 id="ranking-title" className="text-2xl font-semibold">Top 100 (as of {asOf})</h2>
-            <Button variant="outline" onClick={() => setScoreOpen(true)}>Adjust Scoring</Button>
+            <div className="flex items-center gap-2">
+              {Object.keys(live).length > 0 && <span className="text-xs text-muted-foreground">Live: {Object.keys(live).length}</span>}
+              <Button variant="outline" onClick={() => setScoreOpen(true)}>Adjust Scoring</Button>
+            </div>
             <Dialog open={scoreOpen} onOpenChange={setScoreOpen}>
               <DialogContent>
                 <DialogHeader>
