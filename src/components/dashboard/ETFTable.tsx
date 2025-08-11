@@ -186,12 +186,14 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                 <TableCell className="text-right">
                   {(() => {
                     const d = liveItem?.drip4wDollar; const p = liveItem?.drip4wPercent;
-                    if (d == null || p == null) return "—";
-                    const up = p >= 0;
+                    if (d == null && p == null) return "—";
+                    const up = (p ?? 0) >= 0;
                     return (
                       <div className="inline-flex flex-col items-end leading-tight">
-                        <span>${d.toFixed(2)}</span>
-                        <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                        <span>{d != null ? `$${d.toFixed(2)}` : "—"}</span>
+                        <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
+                          {p != null ? `${up ? "+" : ""}${p.toFixed(1)}%` : "—"}
+                        </span>
                       </div>
                     );
                   })()}
@@ -199,12 +201,14 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                 <TableCell className="text-right">
                   {(() => {
                     const d = liveItem?.drip12wDollar; const p = liveItem?.drip12wPercent;
-                    if (d == null || p == null) return "—";
-                    const up = p >= 0;
+                    if (d == null && p == null) return "—";
+                    const up = (p ?? 0) >= 0;
                     return (
                       <div className="inline-flex flex-col items-end leading-tight">
-                        <span>${d.toFixed(2)}</span>
-                        <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                        <span>{d != null ? `$${d.toFixed(2)}` : "—"}</span>
+                        <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
+                          {p != null ? `${up ? "+" : ""}${p.toFixed(1)}%` : "—"}
+                        </span>
                       </div>
                     );
                   })()}
@@ -212,12 +216,14 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                 <TableCell className="text-right">
                   {(() => {
                     const d = liveItem?.drip52wDollar; const p = liveItem?.drip52wPercent;
-                    if (d == null || p == null) return "—";
-                    const up = p >= 0;
+                    if (d == null && p == null) return "—";
+                    const up = (p ?? 0) >= 0;
                     return (
                       <div className="inline-flex flex-col items-end leading-tight">
-                        <span>${d.toFixed(2)}</span>
-                        <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                        <span>{d != null ? `$${d.toFixed(2)}` : "—"}</span>
+                        <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
+                          {p != null ? `${up ? "+" : ""}${p.toFixed(1)}%` : "—"}
+                        </span>
                       </div>
                     );
                   })()}
