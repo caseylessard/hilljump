@@ -1,19 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
-import { SAMPLE_ETFS } from "@/data/etfs";
 import { ScoredETF, scoreETFs } from "@/lib/scoring";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { fetchLivePrices } from "@/lib/live";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { getETFs } from "@/lib/db";
 const Ranking = () => {
   // Default weights for quick reference
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [scoreOpen, setScoreOpen] = useState(false);
   const [live, setLive] = useState<Record<string, { price: number }>>({});
   const { toast } = useToast();
-  const ranked: ScoredETF[] = useMemo(() => scoreETFs(SAMPLE_ETFS, weights), [weights]);
+  const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
+  const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights), [etfs, weights]);
   const asOf = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
