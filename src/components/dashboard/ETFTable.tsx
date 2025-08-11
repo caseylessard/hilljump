@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 type Props = { items: ScoredETF[] };
 
@@ -30,29 +31,44 @@ export const ETFTable = ({ items }: Props) => {
           <TableRow>
             <TableHead className="w-12">#</TableHead>
             <TableHead>Ticker</TableHead>
+            <TableHead className="text-right">3M Total Return</TableHead>
             <TableHead className="text-right">1Y Total Return</TableHead>
             <TableHead className="text-right">Yield (TTM)</TableHead>
-            <TableHead className="text-right">AV</TableHead>
             <TableHead className="text-right">Risk</TableHead>
             <TableHead className="text-right">Score</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((etf, idx) => (
-            <TableRow
-              key={etf.ticker}
-              className={idx < 3 ? "font-semibold cursor-pointer hover:bg-accent" : "cursor-pointer hover:bg-accent"}
-              onClick={() => { setSelected(etf); setSelectedRank(idx + 1); setRange("1Y"); setOpen(true); }}
-            >
-              <TableCell>{idx + 1}</TableCell>
-              <TableCell>{etf.ticker}</TableCell>
-              <TableCell className="text-right">{etf.totalReturn1Y.toFixed(1)}%</TableCell>
-              <TableCell className="text-right">{etf.yieldTTM.toFixed(1)}%</TableCell>
-              <TableCell className="text-right">{fmtCompact.format(etf.avgVolume)}</TableCell>
-              <TableCell className="text-right">{Math.round(etf.riskScore * 100)}%</TableCell>
-              <TableCell className="text-right font-semibold">{(etf.compositeScore * 100).toFixed(0)}</TableCell>
-            </TableRow>
-          ))}
+          {items.map((etf, idx) => {
+            const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
+            const ret3m = (Math.pow(1 + daily, 90) - 1) * 100;
+            const ret1w = (Math.pow(1 + daily, 7) - 1) * 100;
+            const upWeek = ret1w > 0;
+            return (
+              <TableRow
+                key={etf.ticker}
+                className={idx < 3 ? "font-semibold cursor-pointer hover:bg-accent" : "cursor-pointer hover:bg-accent"}
+                onClick={() => { setSelected(etf); setSelectedRank(idx + 1); setRange("1Y"); setOpen(true); }}
+              >
+                <TableCell>{idx + 1}</TableCell>
+                <TableCell>
+                  <span className="inline-flex items-center">
+                    {etf.ticker}
+                    {upWeek ? (
+                      <ArrowUpRight className="ml-1 h-4 w-4 text-primary" aria-label="Up last week" />
+                    ) : (
+                      <ArrowDownRight className="ml-1 h-4 w-4 text-destructive" aria-label="Down last week" />
+                    )}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">{ret3m.toFixed(1)}%</TableCell>
+                <TableCell className="text-right">{etf.totalReturn1Y.toFixed(1)}%</TableCell>
+                <TableCell className="text-right">{etf.yieldTTM.toFixed(1)}%</TableCell>
+                <TableCell className="text-right">{Math.round(etf.riskScore * 100)}%</TableCell>
+                <TableCell className="text-right font-semibold">{(etf.compositeScore * 100).toFixed(0)}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -72,8 +88,8 @@ export const ETFTable = ({ items }: Props) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-4xl font-extrabold">{(selected.compositeScore * 100).toFixed(0)}</div>
-                  {selectedRank != null && <div className="text-xs text-muted-foreground">Rank #{selectedRank}</div>}
+                  {selectedRank != null && <div className="text-4xl font-extrabold">#{selectedRank}</div>}
+                  <div className="text-xs text-muted-foreground">Score: {(selected.compositeScore * 100).toFixed(0)}</div>
                 </div>
               </div>
               <div className="p-4">

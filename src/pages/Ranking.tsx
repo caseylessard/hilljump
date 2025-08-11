@@ -11,6 +11,7 @@ const Ranking = () => {
   // Default weights for quick reference
   const [weights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(SAMPLE_ETFS, weights), [weights]);
+  const asOf = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     document.title = "HillJump — Top Dividend ETF Rankings";
@@ -60,7 +61,7 @@ const Ranking = () => {
       <main className="container grid gap-8 pb-16">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <div className="flex items-center justify-between">
-            <h2 id="ranking-title" className="text-2xl font-semibold">Top 100</h2>
+            <h2 id="ranking-title" className="text-2xl font-semibold">Top 100 (as of {asOf})</h2>
             <Button variant="outline" asChild>
               <a href="/scoring">Adjust Scoring</a>
             </Button>
