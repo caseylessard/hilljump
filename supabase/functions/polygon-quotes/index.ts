@@ -9,14 +9,15 @@ const corsHeaders = {
 };
 
 const POLYGON_API_KEY = Deno.env.get("POLYGON_API_KEY");
+const TWELVEDATA_API_KEY = Deno.env.get("TWELVEDATA_API_KEY");
+
+type PriceResult = { price: number; prevClose?: number; change?: number; changePercent?: number };
 
 serve(async (req: Request) => {
   // CORS preflight
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!POLYGON_API_KEY) throw new Error("Missing POLYGON_API_KEY secret");
-
     const { tickers } = await req.json();
     if (!Array.isArray(tickers) || tickers.length === 0) {
       return json({ error: "tickers must be a non-empty array" }, 400);
@@ -24,12 +25,63 @@ serve(async (req: Request) => {
 
     const symbols: string[] = [...new Set(tickers.map((t: any) => String(t || "").toUpperCase()).filter(Boolean))];
 
-    // Polygon snapshot endpoint supports comma-separated tickers; chunk to be safe (<=50 per call)
-    const chunk = <T,>(arr: T[], size: number) => arr.reduce<T[][]>((acc, _, i) => i % size ? acc : [...acc, arr.slice(i, i + size)], []);
+    // Helper to chunk arrays
+    const chunk = <T,>(arr: T[], size: number) => arr.reduce<T[][]>((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), []);
+
+    const results: Record<string, PriceResult> = {};
+
+    if (TWELVEDATA_API_KEY) {
+      // Preferred: Twelve Data multi-quote endpoint
+      // Docs: https://twelvedata.com/docs#quote (supports comma-separated symbols)
+      const chunks = chunk(symbols, 30); // keep URLs reasonable
+      for (const group of chunks) {
+        const url = new URL("https://api.twelvedata.com/quote");
+        url.searchParams.set("symbol", group.join(","));
+        url.searchParams.set("apikey", TWELVEDATA_API_KEY);
+
+        const res = await fetch(url.toString());
+        const data = await res.json();
+        if (!res.ok) {
+          console.error("TwelveData error", res.status, data);
+          throw new Error(`TwelveData error ${res.status}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+        }
+
+        // Multi-symbol response is an object keyed by symbol
+        // Each item may contain fields: close, previous_close, change, percent_change
+        for (const sym of group) {
+          const item = (data as any)[sym];
+          if (!item || item?.status === "error") {
+            // Skip symbols that errored out individually
+            continue;
+          }
+          const price = Number(item?.close);
+          const prevClose = Number(item?.previous_close);
+          const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : Number(item?.change);
+          // percent_change may be a string, e.g., "1.23"
+          const changePercent = Number.isFinite(prevClose) && prevClose !== 0
+            ? ((Number.isFinite(change) ? change : price - prevClose) / prevClose) * 100
+            : Number(item?.percent_change);
+
+          if (Number.isFinite(price)) {
+            results[sym] = {
+              price,
+              prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
+              change: Number.isFinite(change) ? change : undefined,
+              changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
+            };
+          }
+        }
+      }
+
+      return json({ prices: results });
+    }
+
+    // Fallback: Polygon snapshot endpoint (requires entitlements)
+    if (!POLYGON_API_KEY) {
+      throw new Error("Missing data provider API key. Set TWELVEDATA_API_KEY or POLYGON_API_KEY.");
+    }
+
     const chunks = chunk(symbols, 50);
-
-    const results: Record<string, { price: number; prevClose?: number; change?: number; changePercent?: number }> = {};
-
     for (const group of chunks) {
       const url = new URL("https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers");
       url.searchParams.set("tickers", group.join(","));
@@ -41,7 +93,7 @@ serve(async (req: Request) => {
         throw new Error(`Polygon error ${res.status}: ${text}`);
       }
       const data = await res.json();
-      const list = Array.isArray(data?.tickers) ? data.tickers : [];
+      const list = Array.isArray((data as any)?.tickers) ? (data as any).tickers : [];
 
       for (const item of list) {
         const sym = item?.ticker as string;
