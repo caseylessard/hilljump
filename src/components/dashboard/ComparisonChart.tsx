@@ -27,11 +27,17 @@ function generateSeries(days: number, etfReturnPct: number, underlyingReturnPct?
     etfVal = etfVal * (1 + etfDaily);
     if (underlyingReturnPct != null) undVal = undVal * (1 + underlyingDaily);
   }
-  return data.map((p) => ({
-    ...p,
-    etf: Number((((p.etf / 100) - 1) * 100).toFixed(2)),
-    underlying: p.underlying != null ? Number((((p.underlying / 100) - 1) * 100).toFixed(2)) : undefined,
-  }));
+  return data.map((p) => {
+    if (underlyingReturnPct != null && p.underlying != null) {
+      const etfRelative = (p.etf / p.underlying) * 100;
+      return { d: p.d, etf: Number(etfRelative.toFixed(2)), underlying: 100 };
+    }
+    return {
+      d: p.d,
+      etf: Number((((p.etf / 100) - 1) * 100).toFixed(2)),
+      underlying: undefined,
+    };
+  });
 }
 
 type Props = {
