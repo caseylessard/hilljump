@@ -64,7 +64,7 @@ const Ranking = () => {
           </div>
           <ETFTable items={ranked} />
         </section>
-          <p className="text-muted-foreground text-sm">Top 100 high-yield dividend ETFs ranked by risk-aware total return.</p>
+          <p className="text-muted-foreground text-xs">Not investment advice.</p>
         </main>
     </div>
   );
