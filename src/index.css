@@ -103,3 +103,30 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Additional design tokens and utilities */
+@layer base {
+  :root {
+    --primary-variant: 222.2 60% 20%;
+    --primary-glow: 199 89% 48%;
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-glow)) 100%);
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--primary) / 0.25);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.35);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --ambient: var(--primary-glow);
+  }
+  .dark {
+    --primary-variant: 210 40% 98%;
+    --primary-glow: 217.2 91.2% 59.8%;
+    --gradient-primary: linear-gradient(135deg, hsl(var(--sidebar-primary)) 0%, hsl(var(--sidebar-ring)) 100%);
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--sidebar-ring) / 0.3);
+    --shadow-glow: 0 0 40px hsl(var(--sidebar-ring) / 0.35);
+    --ambient: var(--sidebar-ring);
+  }
+}
+
+@layer components {
+  .bg-gradient-primary { background-image: var(--gradient-primary); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .ambient-spotlight { background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 0%), hsl(var(--ambient) / 0.15), transparent 40%); }
+}
