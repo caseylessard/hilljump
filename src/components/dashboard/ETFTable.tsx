@@ -8,7 +8,7 @@ export const ETFTable = ({ items }: Props) => {
   return (
     <Card className="p-4 overflow-x-auto">
       <Table>
-        <TableCaption>Top 10 high-yield dividend ETFs ranked by risk-aware total return. Data is illustrative.</TableCaption>
+        <TableCaption>Top 100 high-yield dividend ETFs ranked by risk-aware total return. Data is illustrative.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">#</TableHead>

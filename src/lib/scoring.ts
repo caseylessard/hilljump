@@ -73,5 +73,5 @@ export function scoreETFs(data: ETF[], weights: Weights): ScoredETF[] {
     };
   });
 
-  return scored.sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 10);
+  return scored.sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 100);
 }

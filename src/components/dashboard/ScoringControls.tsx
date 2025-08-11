@@ -1,7 +1,8 @@
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
 
 export type WeightState = { r: number; y: number; k: number };
 
@@ -18,7 +19,7 @@ export const ScoringControls = ({ onChange }: Props) => {
   }, [w]);
 
   // propagate up
-  useMemo(() => onChange(normalized), [normalized, onChange]);
+  useEffect(() => onChange(normalized), [normalized, onChange]);
 
   return (
     <Card className="p-4">
@@ -40,6 +41,11 @@ export const ScoringControls = ({ onChange }: Props) => {
           <Badge variant="secondary">{Math.round(normalized.risk * 100)}%</Badge>
         </div>
         <Slider value={[w.k]} onValueChange={([v]) => setW(prev => ({ ...prev, k: v }))} min={0} max={100} step={1} />
+      </div>
+      <div className="pt-4">
+        <Button variant="hero" asChild>
+          <a href="#ranking">Adjust Scoring</a>
+        </Button>
       </div>
     </Card>
   );

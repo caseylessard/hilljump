@@ -106,11 +106,11 @@ const Index = () => {
       <main className="container grid gap-8 pb-16">
         <section aria-labelledby="scoring" className="grid md:grid-cols-3 gap-6">
           <h2 id="scoring" className="sr-only">Scoring Controls</h2>
-          <div className="md:col-span-1">
-            <ScoringControls onChange={setWeights} />
-          </div>
           <div className="md:col-span-2">
             <PerformanceChart items={ranked} />
+          </div>
+          <div className="md:col-span-1">
+            <ScoringControls onChange={setWeights} />
           </div>
         </section>
 
