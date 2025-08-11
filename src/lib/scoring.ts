@@ -10,6 +10,7 @@ export type ScoredETF = ETF & {
   returnNorm: number;
   yieldNorm: number;
   volumeNorm: number;
+  aumNorm: number;
   expenseNorm: number;
   volNorm: number;
   drawdownNorm: number;
@@ -40,6 +41,7 @@ export function scoreETFs(data: ETF[], weights: Weights): ScoredETF[] {
   const ddStats = minMax(data.map(d => d.maxDrawdown1Y)); // negative numbers
   const expStats = minMax(data.map(d => d.expenseRatio));
   const volmStats = minMax(data.map(d => d.avgVolume));
+  const aumStats = minMax(data.map(d => d.aum));
 
   const scored = data.map(d => {
     const returnNorm = (d.totalReturn1Y - retStats.min) / retStats.span;
@@ -49,7 +51,7 @@ export function scoreETFs(data: ETF[], weights: Weights): ScoredETF[] {
     const drawdownRisk = 1 - drawdownNormRaw; // higher drawdown => higher risk
     const expenseNormRaw = (d.expenseRatio - expStats.min) / expStats.span; // higher = worse
     const volumeNorm = (d.avgVolume - volmStats.min) / volmStats.span; // higher = better
-
+    const aumNorm = (d.aum - aumStats.min) / aumStats.span; // higher = better
     // Risk components: high volatility, high expense, deep drawdown, low volume
     const riskScore = clamp(
       0.35 * volNormRaw +
@@ -58,13 +60,14 @@ export function scoreETFs(data: ETF[], weights: Weights): ScoredETF[] {
       0.15 * (1 - volumeNorm)
     );
 
-    const compositeScore = clamp(w.r * returnNorm + w.y * yieldNorm - w.k * riskScore);
+    const compositeScore = clamp(0.9 * (w.r * returnNorm + w.y * yieldNorm - w.k * riskScore) + 0.1 * aumNorm);
 
     return {
       ...d,
       returnNorm,
       yieldNorm,
       volumeNorm,
+      aumNorm,
       expenseNorm: expenseNormRaw,
       volNorm: volNormRaw,
       drawdownNorm: drawdownNormRaw,
