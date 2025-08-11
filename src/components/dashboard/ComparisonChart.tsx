@@ -58,12 +58,12 @@ export const ComparisonChart = ({ etf, underlyingTicker, range }: Props) => {
 
   return (
     <Card className="p-4">
-      <ChartContainer config={config} className="h-72 w-full">
-        <LineChart data={series} margin={{ left: 8, right: 28, top: 8, bottom: 0 }}>
+      <ChartContainer config={config} className="h-72 w-full overflow-hidden">
+        <LineChart data={series} margin={{ left: 8, right: 16, top: 8, bottom: 0 }}>
           <XAxis hide dataKey="d" />
           <YAxis orientation="right" domain={['auto', 'auto']} tickFormatter={(v) => `${Number(v).toFixed(0)}%`} />
           <ChartTooltip content={<ChartTooltipContent />} />
-          <ChartLegend content={<ChartLegendContent />} />
+          
           <Line type="monotone" dataKey="etf" name={`${etf.ticker} (DRIP)`} stroke="hsl(var(--sidebar-ring))" dot={false} strokeWidth={2} />
           {underlyingTicker && (
             <Line type="monotone" dataKey="underlying" name={underlyingTicker} stroke="hsl(var(--primary))" dot={false} strokeWidth={2} />

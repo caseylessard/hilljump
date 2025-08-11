@@ -58,7 +58,7 @@ export const ETFTable = ({ items }: Props) => {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="p-0 overflow-hidden">
           {selected && (
-            <div className="w-full">
+            <div className="w-full overflow-hidden">
               <div className="relative">
                 <img src={heroInvesting} alt={`${selected.ticker} dividend reinvestment background`} className="h-36 w-full object-cover" loading="lazy" />
                 <div className="absolute inset-0 bg-gradient-to-r from-background/80 to-background/20" />
