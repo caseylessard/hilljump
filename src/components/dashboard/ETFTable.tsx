@@ -33,7 +33,6 @@ export const ETFTable = ({ items, live = {} }: Props) => {
             <TableHead className="w-12">#</TableHead>
             <TableHead>Ticker</TableHead>
             <TableHead className="text-right">Price</TableHead>
-            <TableHead className="text-right">Change</TableHead>
             <TableHead className="text-right">4W DRIP</TableHead>
             <TableHead className="text-right">12W DRIP</TableHead>
             <TableHead className="text-right">52W DRIP</TableHead>
@@ -71,17 +70,20 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
-                  {live[etf.ticker]?.price != null ? `$${(live[etf.ticker]!.price).toFixed(2)}` : "—"}
-                </TableCell>
-                <TableCell className="text-right">
                   {(() => {
+                    const price = live[etf.ticker]?.price;
                     const cp = live[etf.ticker]?.changePercent;
-                    if (cp == null) return "—";
-                    const up = cp >= 0;
+                    if (price == null) return "—";
+                    const up = (cp ?? 0) >= 0;
                     return (
-                      <span className={up ? "text-emerald-600" : "text-red-600"}>
-                        {up ? "+" : ""}{cp.toFixed(2)}%
-                      </span>
+                      <div className="inline-flex flex-col items-end leading-tight">
+                        <span>${price.toFixed(2)}</span>
+                        {cp != null && (
+                          <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
+                            {up ? "+" : ""}{cp.toFixed(2)}%
+                          </span>
+                        )}
+                      </div>
                     );
                   })()}
                 </TableCell>
@@ -91,9 +93,10 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                     if (d == null || p == null) return "—";
                     const up = p >= 0;
                     return (
-                      <span>
-                        ${`${d.toFixed(2)}`} <span className={up ? "text-emerald-600" : "text-red-600"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
-                      </span>
+                      <div className="inline-flex flex-col items-end leading-tight">
+                        <span>${d.toFixed(2)}</span>
+                        <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                      </div>
                     );
                   })()}
                 </TableCell>
@@ -103,9 +106,10 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                     if (d == null || p == null) return "—";
                     const up = p >= 0;
                     return (
-                      <span>
-                        ${`${d.toFixed(2)}`} <span className={up ? "text-emerald-600" : "text-red-600"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
-                      </span>
+                      <div className="inline-flex flex-col items-end leading-tight">
+                        <span>${d.toFixed(2)}</span>
+                        <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                      </div>
                     );
                   })()}
                 </TableCell>
@@ -115,9 +119,10 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                     if (d == null || p == null) return "—";
                     const up = p >= 0;
                     return (
-                      <span>
-                        ${`${d.toFixed(2)}`} <span className={up ? "text-emerald-600" : "text-red-600"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
-                      </span>
+                      <div className="inline-flex flex-col items-end leading-tight">
+                        <span>${d.toFixed(2)}</span>
+                        <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>{up ? "+" : ""}{p.toFixed(1)}%</span>
+                      </div>
                     );
                   })()}
                 </TableCell>

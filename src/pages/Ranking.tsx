@@ -8,6 +8,7 @@ import { fetchLivePrices, type LivePrice } from "@/lib/live";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getETFs } from "@/lib/db";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 const Ranking = () => {
   // Default weights for quick reference
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
@@ -16,8 +17,17 @@ const Ranking = () => {
   const { toast } = useToast();
   const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights), [etfs, weights]);
-  const yieldmaxRanked = useMemo(() => ranked.filter(e => e.category === "YieldMax"), [ranked]);
-  const asOf = new Date().toISOString().slice(0, 10);
+  const [filter, setFilter] = useState<string>("YieldMax");
+  const filtered: ScoredETF[] = useMemo(() => {
+    if (filter === "Top 100") return ranked;
+    if (filter === "YieldMax") return ranked.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
+    if (filter === "Covered Call") return ranked.filter(e => e.category === "Covered Call");
+    if (filter === "Income") return ranked.filter(e => e.category === "Income");
+    if (filter === "Dividend") return ranked.filter(e => e.category === "Dividend");
+    if (filter === "US Funds") return ranked.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
+    if (filter === "Canadian Funds") return ranked.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
+    return ranked;
+  }, [ranked, filter]);
 
   useEffect(() => {
     document.title = "HillJump — Top Dividend ETF Rankings";
@@ -45,8 +55,8 @@ const Ranking = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch live prices for all YieldMax tickers and refresh every 60s
-    const tickers = yieldmaxRanked.map(e => e.ticker);
+    // Fetch live prices for all filtered tickers and refresh every 60s
+    const tickers = filtered.map(e => e.ticker);
     if (!tickers.length) return;
 
     let cancelled = false;
@@ -65,7 +75,7 @@ const Ranking = () => {
     run();
     const id = setInterval(run, 60_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [yieldmaxRanked, toast]);
+  }, [filtered, toast]);
 
   return (
     <div>
@@ -102,7 +112,23 @@ const Ranking = () => {
       <main className="container grid gap-8 pb-16">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <div className="flex items-center justify-between">
-            <h2 id="ranking-title" className="text-2xl font-semibold">Top 100 (as of {asOf})</h2>
+            <div className="flex items-center gap-3">
+              <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
+              <Select value={filter} onValueChange={setFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-background shadow-lg">
+                  <SelectItem value="Top 100">Top 100</SelectItem>
+                  <SelectItem value="YieldMax">YieldMax</SelectItem>
+                  <SelectItem value="Covered Call">Covered Call</SelectItem>
+                  <SelectItem value="Income">Income</SelectItem>
+                  <SelectItem value="Dividend">Dividend</SelectItem>
+                  <SelectItem value="US Funds">US Funds</SelectItem>
+                  <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center gap-2">
               {Object.keys(live).length > 0 && <span className="text-xs text-muted-foreground">Live: {Object.keys(live).length}</span>}
               <Button variant="outline" onClick={() => setScoreOpen(true)}>Adjust Scoring</Button>
@@ -116,7 +142,7 @@ const Ranking = () => {
               </DialogContent>
             </Dialog>
           </div>
-          <ETFTable items={yieldmaxRanked} live={live} />
+          <ETFTable items={filtered} live={live} />
         </section>
           <p className="text-muted-foreground text-xs">Not investment advice.</p>
         </main>
