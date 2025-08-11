@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      etfs: {
+        Row: {
+          aum: number
+          avg_volume: number
+          category: string | null
+          created_at: string
+          exchange: string
+          expense_ratio: number
+          id: string
+          max_drawdown_1y: number
+          name: string
+          ticker: string
+          total_return_1y: number
+          updated_at: string
+          volatility_1y: number
+          yield_ttm: number
+        }
+        Insert: {
+          aum: number
+          avg_volume: number
+          category?: string | null
+          created_at?: string
+          exchange: string
+          expense_ratio: number
+          id?: string
+          max_drawdown_1y: number
+          name: string
+          ticker: string
+          total_return_1y: number
+          updated_at?: string
+          volatility_1y: number
+          yield_ttm: number
+        }
+        Update: {
+          aum?: number
+          avg_volume?: number
+          category?: string | null
+          created_at?: string
+          exchange?: string
+          expense_ratio?: number
+          id?: string
+          max_drawdown_1y?: number
+          name?: string
+          ticker?: string
+          total_return_1y?: number
+          updated_at?: string
+          volatility_1y?: number
+          yield_ttm?: number
+        }
+        Relationships: []
+      }
       portfolio_positions: {
         Row: {
           created_at: string
