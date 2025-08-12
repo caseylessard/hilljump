@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
+import { UserBadge } from "@/components/UserBadge";
 
 const Options = () => {
   useEffect(() => {
@@ -42,9 +43,7 @@ const Options = () => {
             <Button variant="ghost" asChild>
               <a href="/crypto">Crypto</a>
             </Button>
-            <Button variant="ghost" asChild>
-              <a href="/profile">Profile</a>
-            </Button>
+            <UserBadge />
           </nav>
         </div>
         <div className="container py-8">

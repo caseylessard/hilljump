@@ -8,6 +8,7 @@ import { ScoredETF, scoreETFs } from "@/lib/scoring";
 import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ComparisonChart, RangeKey } from "@/components/dashboard/ComparisonChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserBadge } from "@/components/UserBadge";
 
 const UNDERLYING_MAP: Record<string, string> = {
   TSLY: "TSLA",
@@ -55,9 +56,7 @@ const Scoring = () => {
             <Button variant="ghost" asChild>
               <a href="/scoring">Scoring</a>
             </Button>
-            <Button variant="ghost" asChild>
-              <a href="/profile">Profile</a>
-            </Button>
+            <UserBadge />
           </nav>
         </div>
         <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">

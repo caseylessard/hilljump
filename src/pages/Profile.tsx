@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserBadge } from "@/components/UserBadge";
 
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
@@ -16,6 +18,8 @@ const Profile = () => {
   const [ticker, setTicker] = useState("");
   const [shares, setShares] = useState<number>(0);
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [firstName, setFirstName] = useState<string>("");
+  const [country, setCountry] = useState<'US' | 'CA'>('CA');
 
   // SEO
   useEffect(() => {
@@ -62,6 +66,25 @@ const Profile = () => {
     });
   }, [positions, toast]);
 
+  // Load user profile (first name and country)
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, country')
+        .eq('id', userId)
+        .maybeSingle();
+      if (!error && data) {
+        setFirstName((data as any).first_name ?? '');
+        setCountry(((data as any).country as 'US' | 'CA') ?? 'CA');
+      } else {
+        setFirstName('');
+        setCountry('CA');
+      }
+    })();
+  }, [userId]);
+
   const total = useMemo(() => positions.reduce((sum, p) => sum + (prices[p.ticker] ?? 0) * (Number(p.shares) || 0), 0), [positions, prices]);
 
   const addOrUpdate = async () => {
@@ -81,15 +104,22 @@ const Profile = () => {
     setPositions(prev => prev.filter(p => p.id !== id));
   };
 
+  const savePreferences = async () => {
+    if (!userId) return;
+    const { error } = await supabase.from('profiles').upsert({ id: userId, first_name: firstName || null, country });
+    if (error) {
+      toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Preferences saved', description: `${firstName ? firstName + ' • ' : ''}${country === 'CA' ? 'Canada 🇨🇦' : 'United States 🇺🇸'}` });
+  };
   return (
     <div>
       <header className="border-b">
         <div className="container flex items-center justify-between py-4">
           <a href="/" className="font-bold text-lg tracking-tight" aria-label="HillJump home">HillJump</a>
           <nav className="flex items-center gap-2" aria-label="Primary">
-            <Button variant="ghost" asChild><a href="/">Ranking</a></Button>
-            <Button variant="ghost" asChild><a href="/scoring">Scoring</a></Button>
-            <Button variant="ghost" asChild><a href="/profile">Profile</a></Button>
+            <UserBadge />
           </nav>
         </div>
       </header>
@@ -103,6 +133,28 @@ const Profile = () => {
           </Card>
         ) : (
           <>
+            <Card className="p-4 grid gap-3">
+              <div className="grid md:grid-cols-3 gap-2 items-end">
+                <div>
+                  <label className="block text-sm mb-1">First name</label>
+                  <Input placeholder="e.g., Alex" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Country</label>
+                  <Select value={country} onValueChange={(v) => setCountry(v as 'US' | 'CA')}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Country" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CA">Canada 🇨🇦</SelectItem>
+                      <SelectItem value="US">United States 🇺🇸</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={savePreferences} className="w-full">Save</Button>
+                </div>
+              </div>
+            </Card>
+
             <Card className="p-4 grid gap-3">
               <div className="grid grid-cols-3 gap-2">
                 <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />

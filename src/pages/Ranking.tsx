@@ -10,6 +10,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getETFs } from "@/lib/db";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchLatestDistributions, type Distribution } from "@/lib/dividends";
+import { UserBadge } from "@/components/UserBadge";
+import { useUserProfile } from "@/hooks/useUserProfile";
 const Ranking = () => {
   // Default weights for quick reference
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
@@ -18,6 +20,8 @@ const Ranking = () => {
   const [dists, setDists] = useState<Record<string, Distribution>>({});
   const { toast } = useToast();
   const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
+  const { profile } = useUserProfile();
+  const region = (profile?.country ?? 'CA') as 'US' | 'CA';
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, live), [etfs, weights, live]);
   const [filter, setFilter] = useState<string>("Top 100");
   const filtered: ScoredETF[] = useMemo(() => {
@@ -73,7 +77,7 @@ const Ranking = () => {
 
     const run = async () => {
       try {
-        const prices = await fetchLivePrices(tickers);
+        const prices = await fetchLivePrices(tickers, region);
         if (cancelled) return;
         setLive(prices);
         toast({ title: "Live data", description: `Updated ${Object.keys(prices).length} tickers.` });
@@ -85,7 +89,7 @@ const Ranking = () => {
     run();
     const id = setInterval(run, 60_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [etfs, filter, toast]);
+  }, [etfs, filter, toast, region]);
 
   // Fetch latest distributions for all ETFs (no frequent refresh needed)
   useEffect(() => {
@@ -122,9 +126,7 @@ const Ranking = () => {
             <Button variant="ghost" asChild>
               <a href="/crypto">Crypto</a>
             </Button>
-            <Button variant="ghost" asChild>
-              <a href="/profile">Profile</a>
-            </Button>
+            <UserBadge />
           </nav>
         </div>
         <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">

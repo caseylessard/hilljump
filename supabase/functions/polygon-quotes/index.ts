@@ -19,12 +19,14 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { tickers, include28d, includeDRIP } = await req.json();
+    const { tickers, include28d, includeDRIP, region } = await req.json();
     if (!Array.isArray(tickers) || tickers.length === 0) {
       return json({ error: "tickers must be a non-empty array" }, 400);
     }
 
     const symbols: string[] = [...new Set(tickers.map((t: any) => String(t || "").toUpperCase()).filter(Boolean))];
+    const netDivFactor = region === 'US' ? 1 : 0.85; // default to CA (15% withholding assumed)
+
 
     // Helper to chunk arrays
     const chunk = <T,>(arr: T[], size: number) => arr.reduce<T[][]>((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), []);
@@ -205,7 +207,7 @@ serve(async (req: Request) => {
                         if (start && results[sym]?.price) {
                           const end = results[sym].price;
                           const priceChangePct = ((end - start) / start) * 100;
-                          const div = divSums[sym] || 0;
+                          const div = (divSums[sym] || 0) * netDivFactor;
                           const divRetPct = (div / start) * 100;
                           results[sym].price28dStart = start;
                           results[sym].change28dPercent = priceChangePct;
@@ -338,27 +340,31 @@ serve(async (req: Request) => {
           const div12 = sumDivs(s12ISO);
           const div52 = sumDivs(s52ISO);
 
+          const div4Net = div4 * netDivFactor;
+          const div12Net = div12 * netDivFactor;
+          const div52Net = div52 * netDivFactor;
+
           if (Number.isFinite(start4)) {
-            const dollar = (priceNow as number) + div4 - (start4 as number);
+            const dollar = (priceNow as number) + div4Net - (start4 as number);
             const pct = (dollar / (start4 as number)) * 100;
             (results[sym] as any).price4wStart = start4;
-            (results[sym] as any).dividends4w = div4;
+            (results[sym] as any).dividends4w = div4Net;
             (results[sym] as any).drip4wDollar = dollar;
             (results[sym] as any).drip4wPercent = pct;
           }
           if (Number.isFinite(start12)) {
-            const dollar = (priceNow as number) + div12 - (start12 as number);
+            const dollar = (priceNow as number) + div12Net - (start12 as number);
             const pct = (dollar / (start12 as number)) * 100;
             (results[sym] as any).price12wStart = start12;
-            (results[sym] as any).dividends12w = div12;
+            (results[sym] as any).dividends12w = div12Net;
             (results[sym] as any).drip12wDollar = dollar;
             (results[sym] as any).drip12wPercent = pct;
           }
           if (Number.isFinite(start52)) {
-            const dollar = (priceNow as number) + div52 - (start52 as number);
+            const dollar = (priceNow as number) + div52Net - (start52 as number);
             const pct = (dollar / (start52 as number)) * 100;
             (results[sym] as any).price52wStart = start52;
-            (results[sym] as any).dividends52w = div52;
+            (results[sym] as any).dividends52w = div52Net;
             (results[sym] as any).drip52wDollar = dollar;
             (results[sym] as any).drip52wPercent = pct;
           }

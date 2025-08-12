@@ -26,9 +26,9 @@ export type LivePrice = {
   totalReturn28dPercent?: number;
 };
 
-export async function fetchLivePrices(tickers: string[]): Promise<Record<string, LivePrice>> {
+export async function fetchLivePrices(tickers: string[], region: 'US' | 'CA' = 'CA'): Promise<Record<string, LivePrice>> {
   const { data, error } = await supabase.functions.invoke("polygon-quotes", {
-    body: { tickers, include28d: true, includeDRIP: true },
+    body: { tickers, include28d: true, includeDRIP: true, region },
   });
   if (error) throw error;
   return (data?.prices as Record<string, LivePrice>) || {};

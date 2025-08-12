@@ -9,6 +9,7 @@ import { ScoredETF, scoreETFs } from "@/lib/scoring";
 import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
+import { UserBadge } from "@/components/UserBadge";
 
 const Index = () => {
   const { toast } = useToast();
@@ -80,9 +81,7 @@ const Index = () => {
             <Button variant="ghost" asChild>
               <a href="#ranking">Ranking</a>
             </Button>
-            <Button variant="ghost" asChild>
-              <a href="/profile">Profile</a>
-            </Button>
+            <UserBadge />
           </nav>
         </div>
 
