@@ -5,14 +5,20 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScoredETF } from "@/lib/scoring";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { format } from "date-fns";
 
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { LivePrice } from "@/lib/live";
-type Props = { items: ScoredETF[]; live?: Record<string, LivePrice> };
 
-export const ETFTable = ({ items, live = {} }: Props) => {
+type Props = {
+  items: ScoredETF[];
+  live?: Record<string, LivePrice>;
+  distributions?: Record<string, { amount: number; date: string; currency?: string }>;
+};
+
+export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ScoredETF | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
@@ -26,7 +32,7 @@ export const ETFTable = ({ items, live = {} }: Props) => {
   };
 
   // Sorting state and helpers
-  type SortKey = "rank" | "ticker" | "price" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
+  type SortKey = "rank" | "ticker" | "price" | "lastDist" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
@@ -43,10 +49,11 @@ export const ETFTable = ({ items, live = {} }: Props) => {
   const rows = useMemo(() => {
     const getVal = (etf: ScoredETF): number | string => {
       const lp = live[etf.ticker];
-      switch (sortKey) {
-        case "ticker": return etf.ticker;
-        case "price": return lp?.price ?? Number.NaN;
-        case "drip4w": return lp?.drip4wPercent ?? Number.NaN;
+        switch (sortKey) {
+          case "ticker": return etf.ticker;
+          case "price": return lp?.price ?? Number.NaN;
+          case "lastDist": return distributions[etf.ticker]?.amount ?? Number.NaN;
+          case "drip4w": return lp?.drip4wPercent ?? Number.NaN;
         case "drip12w": return lp?.drip12wPercent ?? Number.NaN;
         case "drip52w": return lp?.drip52wPercent ?? Number.NaN;
         case "yield": { const y = etf.yieldTTM; return Math.abs(y) <= 1 ? y * 100 : y; }
@@ -99,6 +106,11 @@ export const ETFTable = ({ items, live = {} }: Props) => {
             <TableHead className="text-right">
               <button onClick={() => requestSort("price")} className="flex items-center gap-1 ml-auto">
                 Price <span className="text-muted-foreground text-xs">{indicator("price")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("lastDist")} className="flex items-center gap-1 ml-auto">
+                Last Dist. <span className="text-muted-foreground text-xs">{indicator("lastDist")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
@@ -179,6 +191,24 @@ export const ETFTable = ({ items, live = {} }: Props) => {
                             {up ? "+" : ""}{cp.toFixed(2)}%
                           </span>
                         )}
+                      </div>
+                    );
+                  })()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {(() => {
+                    const dist = distributions[etf.ticker];
+                    if (!dist) return "—";
+                    const amountStr = new Intl.NumberFormat("en", {
+                      style: "currency",
+                      currency: dist.currency || "USD",
+                      maximumFractionDigits: 4,
+                    }).format(dist.amount);
+                    const dateStr = format(new Date(dist.date), "MM/dd");
+                    return (
+                      <div className="inline-flex flex-col items-end leading-tight">
+                        <span>{amountStr}</span>
+                        <span className="text-muted-foreground text-xs">{dateStr}</span>
                       </div>
                     );
                   })()}

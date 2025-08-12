@@ -9,11 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getETFs } from "@/lib/db";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fetchLatestDistributions, type Distribution } from "@/lib/dividends";
 const Ranking = () => {
   // Default weights for quick reference
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [scoreOpen, setScoreOpen] = useState(false);
   const [live, setLive] = useState<Record<string, LivePrice>>({});
+  const [dists, setDists] = useState<Record<string, Distribution>>({});
   const { toast } = useToast();
   const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, live), [etfs, weights, live]);
@@ -85,6 +87,23 @@ const Ranking = () => {
     return () => { cancelled = true; clearInterval(id); };
   }, [etfs, filter, toast]);
 
+  // Fetch latest distributions for all ETFs (no frequent refresh needed)
+  useEffect(() => {
+    if (!etfs.length) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const map = await fetchLatestDistributions(etfs.map(e => e.ticker));
+        if (cancelled) return;
+        setDists(map);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [etfs]);
+
   return (
     <div>
       <header className="relative overflow-hidden">
@@ -150,7 +169,7 @@ const Ranking = () => {
               </DialogContent>
             </Dialog>
           </div>
-          <ETFTable items={filtered} live={live} />
+          <ETFTable items={filtered} live={live} distributions={dists} />
         </section>
           <p className="text-muted-foreground text-xs">Not investment advice.</p>
         </main>
