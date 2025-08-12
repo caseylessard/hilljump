@@ -105,8 +105,17 @@ const Profile = () => {
   };
 
   const savePreferences = async () => {
-    if (!userId) return;
-    const { error } = await supabase.from('profiles').upsert({ id: userId, first_name: firstName || null, country });
+    // Ensure we have a fresh, valid session (important on mobile/in-app browsers)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      toast({ title: 'Not signed in', description: 'Please sign in again to save your profile.', variant: 'destructive' });
+      window.location.href = '/auth';
+      return;
+    }
+    const uid = session.user.id;
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ id: uid, first_name: firstName || null, country });
     if (error) {
       toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
       return;
