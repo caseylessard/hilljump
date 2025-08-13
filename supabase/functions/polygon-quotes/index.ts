@@ -112,49 +112,53 @@ serve(async (req: Request) => {
       const canadianMissing = missingSymbols.filter(s => canadianSymbols.includes(s));
       const usMissing = missingSymbols.filter(s => usSymbols.includes(s));
       
-      // Alpha Vantage for Canadian symbols (supports .TO symbols)
-      if (canadianMissing.length > 0 && ALPHA_VANTAGE_API_KEY) {
-        console.log(`Using Alpha Vantage for ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 5));
+      // Alpha Vantage for Canadian symbols - simplified approach
+      if (canadianMissing.length > 0) {
+        console.log(`Processing ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 10));
         
-        // Alpha Vantage free tier: 25 requests/day, so we'll process a few symbols
-        const limitedSymbols = canadianMissing.slice(0, 5); // Limit to avoid rate limits
-        
-        for (const symbol of limitedSymbols) {
+        if (!ALPHA_VANTAGE_API_KEY) {
+          console.log("No Alpha Vantage API key found");
+        } else {
+          console.log("Alpha Vantage API key found, testing with first symbol");
+          
+          // Test with just one symbol first  
+          const testSymbol = canadianMissing[0]; // e.g., "BANK"
+          const toSymbol = `${testSymbol}.TO`; // "BANK.TO"
+          
           try {
-            const toSymbol = `${symbol}.TO`; // Alpha Vantage expects .TO format
             const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${toSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+            console.log(`Testing Alpha Vantage with: ${toSymbol}`);
+            
             const res = await fetch(url);
             const data = await res.json();
+            console.log(`Alpha Vantage response:`, JSON.stringify(data));
             
             if (data?.['Global Quote']) {
               const quote = data['Global Quote'];
               const price = Number(quote['05. price']);
-              const prevClose = Number(quote['08. previous close']);
-              const change = Number(quote['09. change']);
-              const changePercent = Number(quote['10. change percent']?.replace('%', ''));
+              console.log(`Found price for ${toSymbol}: $${price}`);
               
               if (Number.isFinite(price)) {
-                const dbSymbol = `${symbol}.TO`;
-                results[dbSymbol] = {
+                const prevClose = Number(quote['08. previous close']);
+                const change = Number(quote['09. change']);
+                const changePercent = Number(quote['10. change percent']?.replace('%', ''));
+                
+                results[toSymbol] = {
                   price,
                   prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
                   change: Number.isFinite(change) ? change : undefined,
                   changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
                 };
-                console.log(`Alpha Vantage: ${dbSymbol} = $${price}`);
+                console.log(`SUCCESS: Added ${toSymbol} = $${price}`);
               }
             } else {
-              console.log(`Alpha Vantage no data for ${symbol}:`, data);
+              console.log(`No Global Quote found in response`);
             }
-            
-            // Rate limit delay for free tier
-            await new Promise(resolve => setTimeout(resolve, 100));
           } catch (err) {
-            console.error(`Alpha Vantage error for ${symbol}:`, err);
+            console.error(`Alpha Vantage error:`, err);
           }
         }
-      } else if (canadianMissing.length > 0) {
-        console.log(`No Alpha Vantage API key available for ${canadianMissing.length} Canadian symbols`);
+      }
       
       // Twelve Data for US symbols
       if (usMissing.length > 0 && TWELVEDATA_API_KEY) {
