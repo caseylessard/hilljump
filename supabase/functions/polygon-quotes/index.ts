@@ -39,8 +39,8 @@ serve(async (req: Request) => {
 
     let providerUsed: 'polygon' | 'twelvedata' | 'mixed' | 'none' = 'none';
 
-    // Separate Canadian (.TO) and US symbols
-    const canadianSymbols = symbols.filter(s => s.includes('.TO'));
+    // Separate Canadian and US symbols based on exchange, not .TO suffix
+    const canadianSymbols = symbols.filter(s => s.includes('.TO')).map(s => s.replace('.TO', '')); // Remove .TO for API calls
     const usSymbols = symbols.filter(s => !s.includes('.TO'));
     
     console.log(`Processing ${canadianSymbols.length} Canadian symbols and ${usSymbols.length} US symbols`);
@@ -99,46 +99,51 @@ serve(async (req: Request) => {
       missingSymbols.push(...usSymbols);
     }
 
-    // Add all Canadian symbols to missing list for Twelve Data (skip Polygon entirely)
-    missingSymbols.push(...canadianSymbols);
+    // Add Canadian symbols to missing list for Yahoo Finance (skip Polygon entirely)
+    const canadianMissing = canadianSymbols; // All Canadian symbols go to Yahoo Finance
+    missingSymbols.push(...canadianMissing);
     
     if (canadianSymbols.length > 0) {
-      console.log(`Skipping Polygon for Canadian symbols, going straight to Twelve Data: ${canadianSymbols.join(', ')}`);
+      console.log(`Routing Canadian symbols to Yahoo Finance: ${canadianSymbols.join(', ')}`);
     }
 
     // Use Yahoo Finance for Canadian symbols and Twelve Data for US symbols
     if (missingSymbols.length > 0) {
-      const canadianMissing = missingSymbols.filter(s => s.includes('.TO'));
-      const usMissing = missingSymbols.filter(s => !s.includes('.TO'));
+      const canadianMissing = missingSymbols.filter(s => canadianSymbols.includes(s));
+      const usMissing = missingSymbols.filter(s => usSymbols.includes(s));
       
-      // Yahoo Finance for Canadian symbols
+      // Yahoo Finance for Canadian symbols (using base ticker + .TO)
       if (canadianMissing.length > 0) {
         console.log(`Using Yahoo Finance for ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 10));
         const chunks = chunk(canadianMissing, 20);
         for (const group of chunks) {
           try {
-            const symbols = group.join(',');
-            const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}`;
+            // Add .TO back for Yahoo Finance API
+            const symbolsWithExchange = group.map(s => `${s}.TO`).join(',');
+            const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbolsWithExchange)}`;
             const res = await fetch(url);
             const data = await res.json();
             
             if (res.ok && data?.quoteResponse?.result) {
               for (const item of data.quoteResponse.result) {
-                const sym = item?.symbol?.toUpperCase();
-                if (!sym) continue;
+                const yahooSymbol = item?.symbol?.toUpperCase(); // This will be like "BANK.TO"
+                const baseSymbol = yahooSymbol?.replace('.TO', ''); // Convert back to "BANK"
+                const dbSymbol = `${baseSymbol}.TO`; // Our database key is "BANK.TO"
+                
+                if (!baseSymbol) continue;
                 const price = Number(item?.regularMarketPrice);
                 const prevClose = Number(item?.regularMarketPreviousClose);
                 const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : undefined;
                 const changePercent = Number.isFinite(prevClose) && prevClose !== 0 && Number.isFinite(change) ? (change / prevClose) * 100 : undefined;
                 
                 if (Number.isFinite(price)) {
-                  results[sym] = {
+                  results[dbSymbol] = { // Store with .TO suffix for database consistency
                     price,
                     prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
                     change: Number.isFinite(change) ? change : undefined,
                     changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
                   };
-                  console.log(`Yahoo Finance: ${sym} = $${price}`);
+                  console.log(`Yahoo Finance: ${dbSymbol} = $${price}`);
                 }
               }
             }
