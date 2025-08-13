@@ -48,13 +48,17 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
 
   // Group tickers by their optimal data source
   const polygonTickers: string[] = [];
-  const canadianTickers: string[] = [];
+  const eodhTickers: string[] = [];
   
   etfData?.forEach((etf: any) => {
     if (etf.polygon_supported && etf.country === 'US') {
       polygonTickers.push(etf.ticker);
+    } else if (etf.data_source === 'eodhd' || etf.country === 'CA' || etf.ticker.endsWith('.TO')) {
+      // Use EODHD for Canadian ETFs
+      eodhTickers.push(etf.ticker);
     } else {
-      canadianTickers.push(etf.ticker);
+      // Fallback to Canadian region for other tickers
+      eodhTickers.push(etf.ticker);
     }
   });
 
@@ -62,8 +66,8 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
   const dbTickers = new Set(etfData?.map((etf: any) => etf.ticker) || []);
   tickers.forEach(ticker => {
     if (!dbTickers.has(ticker)) {
-      // Default: assume Canadian if not in database
-      canadianTickers.push(ticker);
+      // Default: assume EODHD/Canadian if not in database
+      eodhTickers.push(ticker);
     }
   });
 
@@ -79,12 +83,21 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
     }
   }
   
-  if (canadianTickers.length > 0) {
+  if (eodhTickers.length > 0) {
     try {
-      const caData = await fetchLivePrices(canadianTickers, 'CA');
-      Object.assign(results, caData);
+      // Use EODHD for Canadian ETFs
+      const { data, error } = await supabase.functions.invoke("quotes", {
+        body: { tickers: eodhTickers },
+      });
+      if (error) throw error;
+      const eodhData = (data?.prices as Record<string, number>) || {};
+      
+      // Convert to LivePrice format
+      Object.entries(eodhData).forEach(([ticker, price]) => {
+        results[ticker] = { price };
+      });
     } catch (error) {
-      console.warn('Canadian fetch failed:', canadianTickers, error);
+      console.warn('EODHD fetch failed for Canadian tickers:', eodhTickers, error);
     }
   }
 
