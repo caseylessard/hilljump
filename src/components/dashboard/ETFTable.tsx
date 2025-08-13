@@ -36,13 +36,16 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
     AMDY: "AMD",
   };
 
-  function countryFlagFromExchange(exchange?: string) {
-    const ex = (exchange || "").toUpperCase();
+  function countryFlag(etf: ScoredETF) {
+    const c = (etf.country || "").toUpperCase();
+    if (c === "CA") return "🇨🇦";
+    const ex = (etf.exchange || "").toUpperCase();
     if (/(TSX|TSXV|NEO|CSE|TSE)/.test(ex)) return "🇨🇦";
     return "🇺🇸";
   }
 
   function getFundManager(etf: ScoredETF): string {
+    if (etf.manager) return etf.manager;
     const n = (etf.name || "").toUpperCase();
     const c = (etf.category || "").toUpperCase();
     if (n.includes("YIELDMAX") || c.includes("YIELDMAX")) return "YieldMax";
@@ -61,12 +64,13 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
     "ROUNDHILL": roundhillLogo,
   };
 
-  function getManagerLogo(manager: string): string | undefined {
-    const key = manager.toUpperCase();
+  function getManagerLogo(etf: ScoredETF, manager?: string): string | undefined {
+    const key = (etf.logoKey || manager || etf.manager || "").toUpperCase();
     return MANAGER_LOGOS[key];
   }
 
   function getEtfDescription(etf: ScoredETF): string {
+    if (etf.strategyLabel) return etf.strategyLabel;
     const nm = (etf.name || "").toUpperCase();
     const cat = (etf.category || "").toUpperCase();
     let base = "ETF";
@@ -216,7 +220,7 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
                 <TableCell>{idx + 1}</TableCell>
                 <TableCell>
                   <span className="inline-flex items-center">
-                    {etf.ticker} <span className="ml-1" aria-hidden>{countryFlagFromExchange(etf.exchange)}</span>
+                    {etf.ticker} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
                     {upWeek ? (
                       <ArrowUpRight className="ml-1 h-4 w-4 text-emerald-500" aria-label="Up last week" />
                     ) : (
@@ -328,7 +332,7 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
                 <div className="flex items-center gap-3">
                   {(() => {
                     const manager = getFundManager(selected);
-                    const logo = getManagerLogo(manager);
+                    const logo = getManagerLogo(selected, manager);
                     return (
                       <>
                         <div className="rounded-full border-2 border-foreground p-1 bg-[hsl(var(--success))]">
@@ -348,7 +352,7 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
                         <div>
                           <div className="text-2xl font-semibold inline-flex items-center gap-2">
                             {selected.ticker}
-                            <span className="ml-1" aria-hidden>{countryFlagFromExchange(selected.exchange)}</span>
+                            <span className="ml-1" aria-hidden>{countryFlag(selected)}</span>
                           </div>
                           <div className="text-sm font-medium">{manager}</div>
                           <div className="text-sm text-muted-foreground">{getEtfDescription(selected)}</div>

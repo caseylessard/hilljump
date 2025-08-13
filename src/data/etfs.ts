@@ -10,6 +10,11 @@ export type ETF = {
   maxDrawdown1Y: number; // negative percentage
   aum: number; // Assets Under Management (USD)
   category?: string;
+  // Persisted metadata (optional)
+  country?: string; // e.g., 'US' | 'CA'
+  manager?: string; // e.g., 'YieldMax'
+  strategyLabel?: string; // e.g., 'CC ETF - NVDA'
+  logoKey?: string; // maps to a local asset key
 };
 
 export const SAMPLE_ETFS: ETF[] = [

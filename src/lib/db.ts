@@ -15,6 +15,10 @@ function mapRow(row: any): ETF {
     maxDrawdown1Y: Number(row.max_drawdown_1y) || 0,
     aum: Number(row.aum) || 0,
     category: row.category ?? undefined,
+    country: row.country ?? undefined,
+    manager: row.manager ?? undefined,
+    strategyLabel: row.strategy_label ?? undefined,
+    logoKey: row.logo_key ?? undefined,
   };
 }
 

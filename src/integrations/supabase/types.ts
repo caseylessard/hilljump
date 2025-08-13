@@ -60,13 +60,17 @@ export type Database = {
           aum: number
           avg_volume: number
           category: string | null
+          country: string | null
           created_at: string
           distribution_frequency: string | null
           exchange: string
           expense_ratio: number
           id: string
+          logo_key: string | null
+          manager: string | null
           max_drawdown_1y: number
           name: string
+          strategy_label: string | null
           ticker: string
           total_return_1y: number
           updated_at: string
@@ -77,13 +81,17 @@ export type Database = {
           aum: number
           avg_volume: number
           category?: string | null
+          country?: string | null
           created_at?: string
           distribution_frequency?: string | null
           exchange: string
           expense_ratio: number
           id?: string
+          logo_key?: string | null
+          manager?: string | null
           max_drawdown_1y: number
           name: string
+          strategy_label?: string | null
           ticker: string
           total_return_1y: number
           updated_at?: string
@@ -94,13 +102,17 @@ export type Database = {
           aum?: number
           avg_volume?: number
           category?: string | null
+          country?: string | null
           created_at?: string
           distribution_frequency?: string | null
           exchange?: string
           expense_ratio?: number
           id?: string
+          logo_key?: string | null
+          manager?: string | null
           max_drawdown_1y?: number
           name?: string
+          strategy_label?: string | null
           ticker?: string
           total_return_1y?: number
           updated_at?: string
