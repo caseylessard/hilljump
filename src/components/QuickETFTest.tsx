@@ -182,9 +182,24 @@ const QuickETFTest: React.FC = () => {
                       {result.data && (
                         <div className="text-sm text-muted-foreground mt-1">
                           {result.data.name && <div>Name: {result.data.name}</div>}
-                          {result.data.price && <div>Price: ${result.data.price.toFixed(2)}</div>}
-                          {result.data.yield && <div>Yield: {result.data.yield.toFixed(2)}%</div>}
-                          {result.data.aum && <div>AUM: ${(result.data.aum / 1000000).toFixed(0)}M</div>}
+                          {result.data.price && (
+                            <div>Price: ${(() => {
+                              const price = typeof result.data.price === 'number' ? result.data.price : parseFloat(result.data.price as string);
+                              return !isNaN(price) ? price.toFixed(2) : 'N/A';
+                            })()}</div>
+                          )}
+                          {result.data.yield && (
+                            <div>Yield: {(() => {
+                              const yieldVal = typeof result.data.yield === 'number' ? result.data.yield : parseFloat(result.data.yield as string);
+                              return !isNaN(yieldVal) ? yieldVal.toFixed(2) : 'N/A';
+                            })()}%</div>
+                          )}
+                          {result.data.aum && (
+                            <div>AUM: ${(() => {
+                              const aum = typeof result.data.aum === 'number' ? result.data.aum : parseFloat(result.data.aum as string);
+                              return !isNaN(aum) ? (aum / 1000000).toFixed(0) : 'N/A';
+                            })()}M</div>
+                          )}
                         </div>
                       )}
                       
