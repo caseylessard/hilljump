@@ -7,64 +7,22 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-async function fetchStooqPrice(symbol: string): Promise<number | null> {
-  const tryFetch = async (s: string) => {
-    const url = `https://stooq.com/q/l/?s=${encodeURIComponent(s)}&f=sd2t2ohlcv&h&e=csv`;
-    console.log(`Trying Stooq format: ${s}`);
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const csv = await res.text();
-    const lines = csv.trim().split("\n");
-    if (lines.length < 2) return null;
-    const headers = lines[0].split(",");
-    const values = lines[1].split(",");
-    const iClose = headers.findIndex((h) => h.toLowerCase() === "close");
-    if (iClose === -1) return null;
-    const close = parseFloat(values[iClose]);
-    return Number.isFinite(close) ? close : null;
-  };
+const POLYGON_API_KEY = Deno.env.get("POLYGON_API_KEY");
 
-  const baseSymbol = symbol.toLowerCase();
-  console.log(`Fetching price for: ${symbol}`);
-  
-  // For Canadian symbols (.TO), try different formats Stooq might accept
-  if (baseSymbol.includes('.to')) {
-    const baseCode = baseSymbol.replace('.to', '');
-    console.log(`Canadian symbol detected: ${symbol}, trying formats for ${baseCode}`);
-    
-    // Try formats commonly used by Stooq for Canadian symbols
-    const formats = [
-      baseSymbol,           // bank.to
-      `${baseCode}.wa`,     // bank.wa (Warsaw? Sometimes used for international)
-      baseCode,             // bank (without exchange)
-      `${baseCode}.ca`,     // bank.ca
-      `${baseCode}.tsx`,    // bank.tsx
-    ];
-    
-    for (const format of formats) {
-      const price = await tryFetch(format);
-      if (price !== null) {
-        console.log(`Success with format ${format}: $${price}`);
-        return price;
-      }
-    }
-    console.log(`All Canadian formats failed for ${symbol}`);
-    return null;
-  }
-  
-  // For US symbols, try with and without .us suffix
-  console.log(`US symbol detected: ${symbol}`);
-  let price = await tryFetch(baseSymbol);
-  if (price !== null) return price;
-  
-  price = await tryFetch(baseSymbol + '.us');
-  if (price !== null) {
-    console.log(`Success with .us suffix: $${price}`);
-    return price;
-  }
-  
-  console.log(`All US formats failed for ${symbol}`);
-  return price;
+async function fetchStooqPrice(symbol: string): Promise<number | null> {
+  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol.toLowerCase())}&f=sd2t2ohlcv&h&e=csv`;
+  console.log(`Stooq request for: ${symbol}`);
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const csv = await res.text();
+  const lines = csv.trim().split("\n");
+  if (lines.length < 2) return null;
+  const headers = lines[0].split(",");
+  const values = lines[1].split(",");
+  const iClose = headers.findIndex((h) => h.toLowerCase() === "close");
+  if (iClose === -1) return null;
+  const close = parseFloat(values[iClose]);
+  return Number.isFinite(close) ? close : null;
 }
 
 serve(async (req: Request) => {
@@ -77,47 +35,96 @@ serve(async (req: Request) => {
     if (!Array.isArray(tickers)) throw new Error("tickers must be an array");
     
     const symbols: string[] = [...new Set(tickers.map((t: any) => String(t || "").toUpperCase()).filter(Boolean))];
-    console.log(`Processing ${symbols.length} symbols using Stooq:`, symbols.slice(0, 10));
+    console.log(`Processing ${symbols.length} symbols`);
+    
+    // Separate Canadian and US symbols
+    const canadianSymbols = symbols.filter(s => s.includes('.TO'));
+    const usSymbols = symbols.filter(s => !s.includes('.TO'));
+    
+    console.log(`US symbols (${usSymbols.length}): ${usSymbols.slice(0, 5).join(', ')}`);
+    console.log(`Canadian symbols (${canadianSymbols.length}): ${canadianSymbols.slice(0, 5).join(', ')}`);
     
     const results: Record<string, any> = {};
     
-    // Process symbols in batches to avoid overwhelming Stooq
-    const batchSize = 10;
-    for (let i = 0; i < symbols.length; i += batchSize) {
-      const batch = symbols.slice(i, i + batchSize);
-      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}: ${batch.join(', ')}`);
-      
-      await Promise.all(
-        batch.map(async (symbol) => {
-          try {
-            const price = await fetchStooqPrice(symbol);
-            if (price !== null) {
-              results[symbol] = {
-                price,
-                prevClose: undefined,
-                change: undefined,
-                changePercent: undefined,
-              };
-              console.log(`Stooq: ${symbol} = $${price}`);
-            } else {
-              console.log(`Stooq: No data for ${symbol}`);
+    // Handle US symbols with Polygon (if available) or Stooq
+    if (usSymbols.length > 0) {
+      if (POLYGON_API_KEY) {
+        console.log("Using Polygon for US symbols");
+        try {
+          const url = new URL("https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers");
+          url.searchParams.set("tickers", usSymbols.join(","));
+          url.searchParams.set("apiKey", POLYGON_API_KEY);
+
+          const res = await fetch(url.toString());
+          if (res.ok) {
+            const data = await res.json();
+            const list = Array.isArray(data?.tickers) ? data.tickers : [];
+            
+            for (const item of list) {
+              const sym = item?.ticker as string;
+              const lastPrice = Number(item?.lastTrade?.p ?? item?.day?.c ?? item?.min?.c);
+              if (sym && Number.isFinite(lastPrice)) {
+                results[sym] = { price: lastPrice };
+                console.log(`Polygon: ${sym} = $${lastPrice}`);
+              }
             }
-          } catch (err) {
-            console.error(`Error fetching ${symbol}:`, err);
           }
-        })
-      );
+        } catch (err) {
+          console.error("Polygon failed, falling back to Stooq for US:", err);
+        }
+      }
       
-      // Small delay between batches to be respectful to Stooq
-      if (i + batchSize < symbols.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+      // Use Stooq for any missing US symbols
+      const missingUS = usSymbols.filter(s => !results[s]);
+      if (missingUS.length > 0) {
+        console.log(`Using Stooq for ${missingUS.length} US symbols`);
+        for (const symbol of missingUS) {
+          const price = await fetchStooqPrice(symbol);
+          if (price !== null) {
+            results[symbol] = { price };
+            console.log(`Stooq: ${symbol} = $${price}`);
+          }
+        }
       }
     }
     
-    console.log(`Successfully fetched ${Object.keys(results).length} prices using Stooq`);
+    // Handle Canadian symbols with original quotes endpoint
+    if (canadianSymbols.length > 0) {
+      console.log(`Using quotes endpoint for ${canadianSymbols.length} Canadian symbols`);
+      try {
+        const quotesResponse = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/quotes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+          },
+          body: JSON.stringify({ tickers: canadianSymbols })
+        });
+        
+        if (quotesResponse.ok) {
+          const quotesData = await quotesResponse.json();
+          if (quotesData?.prices) {
+            console.log(`Found ${Object.keys(quotesData.prices).length} Canadian prices`);
+            for (const [symbol, price] of Object.entries(quotesData.prices)) {
+              if (Number.isFinite(price)) {
+                results[symbol] = { price: price as number };
+                console.log(`Quotes: ${symbol} = $${price}`);
+              }
+            }
+          }
+        } else {
+          console.error(`Quotes endpoint failed: ${quotesResponse.status}`);
+        }
+      } catch (err) {
+        console.error("Quotes endpoint error:", err);
+      }
+    }
+    
+    
+    console.log(`Final results: ${Object.keys(results).length} symbols`);
     
     // Add enrichment for 28d and DRIP if requested
-    if (include28d || includeDRIP) {
+    if ((include28d || includeDRIP) && Object.keys(results).length > 0) {
       try {
         const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
         const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
