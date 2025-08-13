@@ -1,4 +1,3 @@
-
 // deno-lint-ignore-file no-explicit-any
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -27,7 +26,6 @@ serve(async (req: Request) => {
     const symbols: string[] = [...new Set(tickers.map((t: any) => String(t || "").toUpperCase()).filter(Boolean))];
     const netDivFactor = region === 'US' ? 1 : 0.85; // default to CA (15% withholding assumed)
 
-
     // Helper to chunk arrays
     const chunk = <T,>(arr: T[], size: number) => arr.reduce<T[][]>((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), []);
 
@@ -40,12 +38,19 @@ serve(async (req: Request) => {
     }> = {};
 
     let providerUsed: 'polygon' | 'twelvedata' | 'mixed' | 'none' = 'none';
+
+    // Separate Canadian (.TO) and US symbols
+    const canadianSymbols = symbols.filter(s => s.includes('.TO'));
+    const usSymbols = symbols.filter(s => !s.includes('.TO'));
+    
+    console.log(`Processing ${canadianSymbols.length} Canadian symbols and ${usSymbols.length} US symbols`);
+
     let missingSymbols: string[] = [];
 
-    // Preferred: Polygon snapshot endpoint (with upgraded plan)
-    if (POLYGON_API_KEY) {
+    // For US symbols: Try Polygon first (if available)
+    if (usSymbols.length > 0 && POLYGON_API_KEY) {
       try {
-        const chunks = chunk(symbols, 50);
+        const chunks = chunk(usSymbols, 50);
         for (const group of chunks) {
           const url = new URL("https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers");
           url.searchParams.set("tickers", group.join(","));
@@ -78,24 +83,32 @@ serve(async (req: Request) => {
         }
         providerUsed = 'polygon';
         
-        // Check which symbols are missing from Polygon results
-        missingSymbols = symbols.filter(sym => !results[sym]);
-        if (missingSymbols.length > 0) {
-          console.log(`Missing from Polygon: ${missingSymbols.join(', ')}`);
+        // Check which US symbols are missing from Polygon results
+        const missingUsSymbols = usSymbols.filter(sym => !results[sym]);
+        if (missingUsSymbols.length > 0) {
+          console.log(`Missing US symbols from Polygon: ${missingUsSymbols.join(', ')}`);
+          missingSymbols.push(...missingUsSymbols);
         }
       } catch (polygonError) {
-        console.error("Polygon API failed, falling back to Twelve Data:", polygonError);
-        // Clear results and continue to Twelve Data fallback
-        Object.keys(results).forEach(key => delete results[key]);
-        missingSymbols = symbols;
+        console.error("Polygon API failed for US symbols, falling back to Twelve Data:", polygonError);
+        // Add all US symbols to missing list for Twelve Data fallback
+        missingSymbols.push(...usSymbols);
       }
-    } else {
-      missingSymbols = symbols;
+    } else if (usSymbols.length > 0) {
+      // No Polygon key, add US symbols to missing list
+      missingSymbols.push(...usSymbols);
     }
 
-    // Fallback: Twelve Data multi-quote endpoint for missing symbols or if Polygon failed completely
+    // Add all Canadian symbols to missing list for Twelve Data (skip Polygon entirely)
+    missingSymbols.push(...canadianSymbols);
+    
+    if (canadianSymbols.length > 0) {
+      console.log(`Skipping Polygon for Canadian symbols, going straight to Twelve Data: ${canadianSymbols.join(', ')}`);
+    }
+
+    // Use Twelve Data for all missing symbols (Canadian + any US that failed Polygon)
     if (missingSymbols.length > 0 && TWELVEDATA_API_KEY) {
-      console.log(`Using Twelve Data for ${missingSymbols.length} missing symbols:`, missingSymbols.slice(0, 10));
+      console.log(`Using Twelve Data for ${missingSymbols.length} symbols:`, missingSymbols.slice(0, 10));
       const chunks = chunk(missingSymbols, 30); // keep URLs reasonable
       for (const group of chunks) {
         const url = new URL("https://api.twelvedata.com/quote");
@@ -106,16 +119,21 @@ serve(async (req: Request) => {
         const res = await fetch(url.toString());
         const data = await res.json();
         console.log(`Twelve Data response status: ${res.status}`);
+        
         if (!res.ok) {
           console.error("TwelveData error", res.status, data);
-          throw new Error(`TwelveData error ${res.status}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+          // Don't throw, just log and continue with other chunks
+          continue;
         }
 
         // Handle both shapes: { data: [ {symbol, close, previous_close, ...}, ... ] }
         // and { AAPL: {...}, MSFT: {...} }
         if (Array.isArray((data as any)?.data)) {
           for (const item of (data as any).data) {
-            if (!item || item?.status === "error") continue;
+            if (!item || item?.status === "error") {
+              console.log(`Skipped symbol due to error status:`, item?.symbol);
+              continue;
+            }
             const sym = String(item?.symbol || "").toUpperCase();
             if (!sym) continue;
             const price = Number(item?.close);
@@ -131,12 +149,19 @@ serve(async (req: Request) => {
                 change: Number.isFinite(change) ? change : undefined,
                 changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
               };
+              console.log(`Successfully processed ${sym}: price=${price}, prevClose=${prevClose}`);
+            } else {
+              console.log(`Invalid price data for ${sym}:`, item);
             }
           }
         } else {
+          // Handle object format response
           for (const sym of group) {
             const item = (data as any)[sym];
-            if (!item || item?.status === "error") continue;
+            if (!item || item?.status === "error") {
+              console.log(`Skipped symbol ${sym} due to error status:`, item);
+              continue;
+            }
             const price = Number(item?.close);
             const prevClose = Number(item?.previous_close);
             const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : Number(item?.change);
@@ -150,17 +175,22 @@ serve(async (req: Request) => {
                 change: Number.isFinite(change) ? change : undefined,
                 changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
               };
+              console.log(`Successfully processed ${sym}: price=${price}, prevClose=${prevClose}`);
+            } else {
+              console.log(`Invalid price data for ${sym}:`, item);
             }
           }
         }
       }
-      console.log(`Twelve Data processed ${Object.keys(results).length} symbols successfully`);
+      console.log(`Twelve Data processed ${Object.keys(results).length} total symbols successfully`);
       providerUsed = providerUsed === 'polygon' ? 'mixed' : 'twelvedata';
     } else if (missingSymbols.length > 0) {
       console.log(`Missing Twelve Data API key, cannot fetch ${missingSymbols.length} symbols`);
     }
 
     console.log(`Final results: ${Object.keys(results).length} symbols from provider: ${providerUsed}`);
+    console.log(`Canadian symbols in results:`, Object.keys(results).filter(s => s.includes('.TO')));
+    
     if (Object.keys(results).length === 0) {
       throw new Error("Missing data provider API key or no data returned.");
     }
