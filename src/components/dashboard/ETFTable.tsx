@@ -107,6 +107,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   };
   const rows = useMemo(() => {
     const getVal = (etf: ScoredETF): number | string => {
+      // Look up live data using the full ticker (including .TO for Canadian ETFs)
       const lp = live[etf.ticker];
         switch (sortKey) {
           case "ticker": return etf.ticker;
@@ -211,6 +212,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         </TableHeader>
         <TableBody>
           {rows.map((etf, idx) => {
+            // Use full ticker for live data lookup (including .TO for Canadian)
             const liveItem = live[etf.ticker];
             const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
             const ret28dFallback = (Math.pow(1 + daily, 28) - 1) * 100;
@@ -238,8 +240,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 </TableCell>
                 <TableCell className="text-right">
                   {(() => {
-                    const price = live[etf.ticker]?.price;
-                    const cp = live[etf.ticker]?.changePercent;
+                    // Use full ticker for live data lookup
+                    const price = liveItem?.price;
+                    const cp = liveItem?.changePercent;
                     if (price == null) return "—";
                     const up = (cp ?? 0) >= 0;
                     return (
@@ -256,6 +259,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 </TableCell>
                 <TableCell className="text-right">
                   {(() => {
+                    // Use full ticker for distributions lookup too
                     const dist = distributions[etf.ticker];
                     if (!dist) return "—";
                     const amountStr = new Intl.NumberFormat("en", {

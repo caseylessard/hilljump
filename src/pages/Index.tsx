@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { SAMPLE_ETFS } from "@/data/etfs";
 import { ScoredETF, scoreETFs } from "@/lib/scoring";
+import { fetchLivePricesWithDataSources, LivePrice } from "@/lib/live";
+import { getETFs } from "@/lib/db";
+import { useQuery } from "@tanstack/react-query";
 import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -15,9 +18,41 @@ const Index = () => {
   const { toast } = useToast();
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
+  
+  // Fetch real ETF data from database
+  const { data: etfs = [], isLoading } = useQuery({ 
+    queryKey: ["etfs"], 
+    queryFn: getETFs, 
+    staleTime: 60_000 
+  });
+
+  // Fetch live prices for real ETFs
+  useEffect(() => {
+    if (!etfs.length) return;
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const tickers = etfs.map(e => e.ticker);
+        const prices = await fetchLivePricesWithDataSources(tickers);
+        if (cancelled) return;
+        setLivePrices(prices);
+        toast({ 
+          title: "Live data", 
+          description: `Updated ${Object.keys(prices).length} tickers with real data.` 
+        });
+      } catch (e) {
+        console.error(e);
+        toast({ title: "Sample data", description: "Using illustrative ETF data fallback." });
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [etfs, toast]);
 
   useEffect(() => {
-    toast({ title: "Sample data", description: "Using illustrative ETF data. Live data integration coming soon." });
 
     // SEO: Title, description, canonical
     document.title = "HillJump — Dividend ETF Rankings by Total Return";
@@ -45,8 +80,30 @@ const Index = () => {
     link.setAttribute('href', window.location.origin + window.location.pathname);
   }, [toast]);
 
-  const ranked: ScoredETF[] = useMemo(() => scoreETFs(SAMPLE_ETFS, weights), [weights]);
-  const yieldmaxRanked: ScoredETF[] = useMemo(() => ranked.filter(e => e.category === "YieldMax"), [ranked]);
+  // Use real ETF data if available, fallback to sample data
+  const dataToUse = etfs.length > 0 ? etfs : SAMPLE_ETFS;
+  const ranked: ScoredETF[] = useMemo(() => scoreETFs(dataToUse, weights, livePrices), [dataToUse, weights, livePrices]);
+  
+  // Filter for high-yield ETFs (top performers)
+  const topETFs: ScoredETF[] = useMemo(() => {
+    // Show Canadian funds that typically have higher yields
+    const canadianFunds = ranked.filter(e => 
+      /TSX|NEO|TSXV/i.test(e.exchange) || 
+      (e.country || "").toUpperCase() === 'CA' ||
+      e.ticker.endsWith('.TO')
+    );
+    
+    // Show top ETFs by composite score, prioritizing Canadian high-yield funds
+    const topFunds = ranked.slice(0, 20);
+    
+    // Combine and dedupe, prioritizing Canadian funds
+    const combined = [...canadianFunds, ...topFunds];
+    const unique = combined.filter((etf, index, arr) => 
+      arr.findIndex(e => e.ticker === etf.ticker) === index
+    );
+    
+    return unique.slice(0, 15); // Show top 15 diverse high-yield ETFs
+  }, [ranked]);
 
   const jsonLd = useMemo(() => ({
     "@context": "https://schema.org",
@@ -119,7 +176,7 @@ const Index = () => {
 
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
-          <ETFTable items={yieldmaxRanked} />
+          <ETFTable items={topETFs} live={livePrices} />
         </section>
       </main>
 
