@@ -130,8 +130,8 @@ serve(async (req: Request) => {
         // and { AAPL: {...}, MSFT: {...} }
         if (Array.isArray((data as any)?.data)) {
           for (const item of (data as any).data) {
-            if (!item || item?.status === "error") {
-              console.log(`Skipped symbol due to error status:`, item?.symbol);
+            if (!item || item?.status === "error" || !item?.close) {
+              console.log(`Skipped symbol due to error/missing data:`, item?.symbol || 'unknown', item?.status, 'close:', item?.close);
               continue;
             }
             const sym = String(item?.symbol || "").toUpperCase();
@@ -158,8 +158,8 @@ serve(async (req: Request) => {
           // Handle object format response
           for (const sym of group) {
             const item = (data as any)[sym];
-            if (!item || item?.status === "error") {
-              console.log(`Skipped symbol ${sym} due to error status:`, item);
+            if (!item || item?.status === "error" || !item?.close) {
+              console.log(`Skipped symbol ${sym} due to error/missing data:`, item?.status, 'close:', item?.close);
               continue;
             }
             const price = Number(item?.close);
