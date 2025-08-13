@@ -31,6 +31,11 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
     AMDY: "AMD",
   };
 
+  function countryFlagFromExchange(exchange?: string) {
+    const ex = (exchange || "").toUpperCase();
+    if (/(TSX|TSXV|NEO|CSE|TSE)/.test(ex)) return "🇨🇦";
+    return "🇺🇸";
+  }
   // Sorting state and helpers
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
   const [sortKey, setSortKey] = useState<SortKey>("score");
@@ -169,7 +174,7 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
                 <TableCell>{idx + 1}</TableCell>
                 <TableCell>
                   <span className="inline-flex items-center">
-                    {etf.ticker} <span className="text-muted-foreground ml-1">({etf.exchange})</span>
+                    {etf.ticker} <span className="ml-1" aria-hidden>{countryFlagFromExchange(etf.exchange)}</span>
                     {upWeek ? (
                       <ArrowUpRight className="ml-1 h-4 w-4 text-emerald-500" aria-label="Up last week" />
                     ) : (
