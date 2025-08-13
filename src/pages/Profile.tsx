@@ -25,6 +25,8 @@ const Profile = () => {
   const [approved, setApproved] = useState<boolean>(false);
   const [country, setCountry] = useState<'US' | 'CA'>('CA');
   const [weights, setWeights] = useState({ r: 60, y: 20, k: 20, d: 50 });
+  const [subscribed, setSubscribed] = useState(false);
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
 
   // SEO
   useEffect(() => {
@@ -116,6 +118,25 @@ const Profile = () => {
     })();
   }, [userId]);
 
+  // Load subscription status
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('subscribers')
+        .select('subscribed, subscription_tier')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data) {
+        setSubscribed(Boolean((data as any).subscribed));
+        setSubscriptionTier(((data as any).subscription_tier as string) || null);
+      } else {
+        setSubscribed(false);
+        setSubscriptionTier(null);
+      }
+    })();
+  }, [userId]);
+
   const total = useMemo(() => positions.reduce((sum, p) => sum + (prices[p.ticker] ?? 0) * (Number(p.shares) || 0), 0), [positions, prices]);
 
   const addOrUpdate = async () => {
@@ -177,6 +198,36 @@ const Profile = () => {
       return;
     }
     toast({ title: 'Ranking preferences saved' });
+  };
+
+  const refreshSubscription = async () => {
+    const { data, error } = await supabase.functions.invoke('check-subscription');
+    if (error) {
+      toast({ title: 'Refresh failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const d: any = data || {};
+    setSubscribed(Boolean(d.subscribed));
+    setSubscriptionTier(d.subscription_tier || null);
+    toast({ title: 'Subscription status updated' });
+  };
+
+  const upgrade = async (tier: 'subscriber' | 'premium') => {
+    const { data, error } = await supabase.functions.invoke('create-checkout', { body: { tier } });
+    if (error || !(data as any)?.url) {
+      toast({ title: 'Checkout failed', description: error?.message || 'Unable to start checkout', variant: 'destructive' });
+      return;
+    }
+    window.open((data as any).url, '_blank');
+  };
+
+  const manageSubscription = async () => {
+    const { data, error } = await supabase.functions.invoke('customer-portal');
+    if (error || !(data as any)?.url) {
+      toast({ title: 'Portal error', description: error?.message || 'Unable to open portal', variant: 'destructive' });
+      return;
+    }
+    window.open((data as any).url, '_blank');
   };
   const exportCAEtfs = async () => {
     try {
@@ -300,6 +351,23 @@ const Profile = () => {
                   <Badge variant="secondary">{weights.d}%</Badge>
                 </div>
                 <Slider value={[weights.d]} onValueChange={([v]) => setWeights((w) => ({ ...w, d: v }))} min={0} max={100} step={1} />
+              </div>
+            </Card>
+
+            <Card className="p-4 grid gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Subscription</div>
+                  <div className="text-sm text-muted-foreground">Current: {subscribed ? (subscriptionTier ? subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1) : 'Active') : 'Free'}</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={refreshSubscription}>Refresh</Button>
+                  <Button onClick={manageSubscription}>Manage</Button>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                <Button onClick={() => upgrade('subscriber')}>Upgrade to Subscriber — $9/mo</Button>
+                <Button variant="secondary" onClick={() => upgrade('premium')}>Upgrade to Premium — $29/mo</Button>
               </div>
             </Card>
 
