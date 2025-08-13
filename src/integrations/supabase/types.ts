@@ -244,6 +244,27 @@ export type Database = {
         }
         Relationships: []
       }
+      security_recommendations: {
+        Row: {
+          created_at: string | null
+          id: string
+          recommendation: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          recommendation: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          recommendation?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
