@@ -252,6 +252,21 @@ const Profile = () => {
     }
     window.open((data as any).url, '_blank');
   };
+
+  const resetPassword = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const email = session?.user?.email;
+      if (!email) { toast({ title: 'Not signed in', description: 'Please sign in first.', variant: 'destructive' }); return; }
+      const redirectUrl = `${window.location.origin}/auth`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
+      if (error) throw error;
+      toast({ title: 'Password reset sent', description: `Check ${email} for a reset link.` });
+    } catch (e: any) {
+      toast({ title: 'Reset failed', description: e.message || String(e), variant: 'destructive' });
+    }
+  };
+
   const exportEtfs = async () => {
     try {
       const columns = [
@@ -368,6 +383,7 @@ const Profile = () => {
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={refreshSubscription}>Refresh</Button>
                   <Button onClick={manageSubscription}>Manage</Button>
+                  <Button variant="outline" onClick={resetPassword}>Reset Password</Button>
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-2">
@@ -376,7 +392,7 @@ const Profile = () => {
               </div>
             </Card>
 
-            {subscribed && (
+            {(subscribed || isAdmin) && (
               <Card className="p-4 grid gap-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -432,7 +448,7 @@ const Profile = () => {
             )}
 
 
-            {subscribed && (
+            {(subscribed || isAdmin) && (
               <Card className="p-4 grid gap-3">
                 <div className="grid grid-cols-3 gap-2">
                   <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
@@ -443,7 +459,7 @@ const Profile = () => {
             )}
 
 
-            {subscribed && (
+            {(subscribed || isAdmin) && (
               <Card className="p-4 overflow-x-auto">
                 <Table>
                   <TableHeader>

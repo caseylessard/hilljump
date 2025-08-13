@@ -24,6 +24,7 @@ const Ranking = () => {
   const { profile } = useUserProfile();
   const region = (profile?.country ?? 'CA') as 'US' | 'CA';
   const [subscribed, setSubscribed] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, live), [etfs, weights, live]);
   const [filter, setFilter] = useState<string>("Top 100");
   const filtered: ScoredETF[] = useMemo(() => {
@@ -38,13 +39,17 @@ const Ranking = () => {
   }, [ranked, filter]);
 
   useEffect(() => {
-    // Load subscription status
+    // Load subscription status and admin role
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const uid = session?.user?.id;
-      if (!uid) { setSubscribed(false); return; }
-      const { data } = await supabase.from('subscribers').select('subscribed').eq('user_id', uid).maybeSingle();
-      setSubscribed(Boolean((data as any)?.subscribed));
+      if (!uid) { setSubscribed(false); setIsAdmin(false); return; }
+      const [{ data: sub }, { data: roles }] = await Promise.all([
+        supabase.from('subscribers').select('subscribed').eq('user_id', uid).maybeSingle(),
+        supabase.from('user_roles').select('role').eq('user_id', uid)
+      ]);
+      setSubscribed(Boolean((sub as any)?.subscribed));
+      setIsAdmin(Array.isArray(roles) && roles.some((r: any) => String(r.role).toLowerCase() === 'admin'));
     })();
   }, []);
 
@@ -173,7 +178,7 @@ const Ranking = () => {
             </div>
             <div className="flex items-center gap-2">
               {Object.keys(live).length > 0 && <span className="text-xs text-muted-foreground">Live: {Object.keys(live).length}</span>}
-              <Button variant="outline" onClick={() => setScoreOpen(true)} disabled={!subscribed} aria-disabled={!subscribed}>
+              <Button variant="outline" onClick={() => setScoreOpen(true)} disabled={!(subscribed || isAdmin)} aria-disabled={!(subscribed || isAdmin)}>
                 Adjust Scoring
               </Button>
             </div>
@@ -182,8 +187,8 @@ const Ranking = () => {
                 <DialogHeader>
                   <DialogTitle>Adjust Scoring</DialogTitle>
                 </DialogHeader>
-                {/* Only render controls for subscribed users */}
-                {subscribed ? (
+                {/* Only render controls for subscribed or admin users */}
+                {subscribed || isAdmin ? (
                   <ScoringControls onChange={setWeights} />
                 ) : (
                   <div className="text-sm text-muted-foreground">Subscribe to adjust scoring.</div>
@@ -191,7 +196,7 @@ const Ranking = () => {
               </DialogContent>
             </Dialog>
           </div>
-          <ETFTable items={filtered} live={live} distributions={dists} allowSorting={subscribed} />
+          <ETFTable items={filtered} live={live} distributions={dists} allowSorting={subscribed || isAdmin} />
         </section>
           <p className="text-muted-foreground text-xs">Not investment advice.</p>
         </main>
