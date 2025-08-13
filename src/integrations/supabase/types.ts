@@ -71,6 +71,7 @@ export type Database = {
           max_drawdown_1y: number
           name: string
           strategy_label: string | null
+          summary: string | null
           ticker: string
           total_return_1y: number
           updated_at: string
@@ -92,6 +93,7 @@ export type Database = {
           max_drawdown_1y: number
           name: string
           strategy_label?: string | null
+          summary?: string | null
           ticker: string
           total_return_1y: number
           updated_at?: string
@@ -113,6 +115,7 @@ export type Database = {
           max_drawdown_1y?: number
           name?: string
           strategy_label?: string | null
+          summary?: string | null
           ticker?: string
           total_return_1y?: number
           updated_at?: string

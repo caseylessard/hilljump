@@ -270,7 +270,7 @@ const Profile = () => {
   const exportEtfs = async () => {
     try {
       const columns = [
-        'ticker','name','exchange','category','yield_ttm','total_return_1y','avg_volume','expense_ratio','volatility_1y','max_drawdown_1y','aum','manager','strategy_label','logo_key','country'
+        'ticker','name','exchange','category','yield_ttm','total_return_1y','avg_volume','expense_ratio','volatility_1y','max_drawdown_1y','aum','manager','strategy_label','logo_key','country','summary'
       ];
       const { data, error } = await supabase
         .from('etfs')

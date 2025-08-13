@@ -10,6 +10,7 @@ export type ETF = {
   maxDrawdown1Y: number; // negative percentage
   aum: number; // Assets Under Management (USD)
   category?: string;
+  summary?: string; // plain language description of the ETF
   // Persisted metadata (optional)
   country?: string; // e.g., 'US' | 'CA'
   manager?: string; // e.g., 'YieldMax'
