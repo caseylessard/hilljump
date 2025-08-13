@@ -13,13 +13,20 @@ function log(level: string, message: string, data?: any) {
 }
 
 // Alpha Vantage API for fundamental data
-async function fetchAlphaVantageData(symbol: string, apiKey: string) {
+async function fetchAlphaVantageData(symbol: string, country: string, apiKey: string) {
   try {
-    const url = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=${apiKey}`;
+    // Format symbol for Alpha Vantage based on country
+    let apiSymbol = symbol;
+    if (country === 'CA') {
+      // Canadian symbols need .TO suffix for Alpha Vantage
+      apiSymbol = symbol.endsWith('.TO') ? symbol : `${symbol}.TO`;
+    }
+    
+    const url = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${apiSymbol}&apikey=${apiKey}`;
     const response = await fetch(url);
     const data = await response.json();
     
-    if (data.Symbol) {
+    if (data.Symbol && !data.Note && !data.Information) {
       return {
         symbol: data.Symbol,
         dividendYield: parseFloat(data.DividendYield) || null,
@@ -36,10 +43,16 @@ async function fetchAlphaVantageData(symbol: string, apiKey: string) {
 }
 
 // Yahoo Finance API (alternative source)
-async function fetchYahooFinanceData(symbol: string) {
+async function fetchYahooFinanceData(symbol: string, country: string) {
   try {
-    // Using a public Yahoo Finance API endpoint
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
+    // Format symbol for Yahoo Finance based on country
+    let apiSymbol = symbol;
+    if (country === 'CA') {
+      // Canadian symbols need .TO suffix for Yahoo Finance
+      apiSymbol = symbol.endsWith('.TO') ? symbol : `${symbol}.TO`;
+    }
+    
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${apiSymbol}`;
     const response = await fetch(url);
     const data = await response.json();
     
@@ -127,24 +140,27 @@ serve(async (req: Request) => {
 
     for (const etf of etfs) {
       const ticker = etf.ticker;
-      log('INFO', `Processing ${ticker}`);
+      const country = etf.country || 'US';
+      log('INFO', `Processing ${ticker} (${country})`);
 
       let etfData: any = null;
 
       // Try multiple data sources in order of preference
       if (alphaVantageKey && !etfData) {
-        etfData = await fetchAlphaVantageData(ticker, alphaVantageKey);
+        etfData = await fetchAlphaVantageData(ticker, country, alphaVantageKey);
         if (etfData) log('INFO', `Alpha Vantage data found for ${ticker}`);
       }
 
       if (!etfData) {
-        etfData = await fetchYahooFinanceData(ticker);
+        etfData = await fetchYahooFinanceData(ticker, country);
         if (etfData) log('INFO', `Yahoo Finance data found for ${ticker}`);
       }
 
       if (!etfData) {
-        etfData = await fetchFMPData(ticker);
-        if (etfData) log('INFO', `FMP data found for ${ticker}`);
+        // Try the .TO version for Canadian funds if original didn't work
+        const fallbackTicker = country === 'CA' && !ticker.endsWith('.TO') ? `${ticker}.TO` : ticker;
+        etfData = await fetchFMPData(fallbackTicker);
+        if (etfData) log('INFO', `FMP data found for ${fallbackTicker}`);
       }
 
       if (etfData) {
