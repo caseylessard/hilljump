@@ -26,83 +26,61 @@ const QuickETFTest: React.FC = () => {
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
   const [progress, setProgress] = useState(0);
-
-  const testTickers = [
-    { ticker: 'AAPL', country: 'US' },
-    { ticker: 'GOOGL', country: 'US' },
-    { ticker: 'MSFT', country: 'US' },
-    { ticker: 'NVDA', country: 'US' },
-    { ticker: 'TSLA', country: 'US' },
-    { ticker: 'SHOP.TO', country: 'CA' },
-    { ticker: 'RY.TO', country: 'CA' },
-    { ticker: 'TD.TO', country: 'CA' },
-    { ticker: 'CNR.TO', country: 'CA' },
-    { ticker: 'WEED.TO', country: 'CA' }
-  ];
+  const [totalETFs, setTotalETFs] = useState(0);
 
   const runTest = async () => {
     setTesting(true);
     setResults([]);
     setProgress(0);
-
-    // Initialize results with pending status
-    const initialResults = testTickers.map(({ ticker, country }) => ({
-      ticker,
-      country,
-      status: 'pending' as const,
-      timestamp: new Date().toISOString()
-    }));
-    setResults(initialResults);
+    setTotalETFs(0);
 
     try {
       const wsUrl = `wss://lyjfwnlindbsbbwjzefh.supabase.co/functions/v1/etf-stream`;
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('WebSocket connected for testing');
-        ws.send(JSON.stringify({ 
-          type: 'test', 
-          tickers: testTickers.map(t => t.ticker) 
-        }));
+        console.log('WebSocket connected for Canadian ETF test');
+        // Send test message without tickers - will fetch all Canadian ETFs
+        ws.send(JSON.stringify({ type: 'test' }));
       };
 
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        console.log('Test message:', message);
+        console.log('Canadian ETF test message:', message);
 
         if (message.type === 'connected') {
           console.log('WebSocket connected successfully');
-        } else if (message.type === 'test_data') {
-          console.log('Test data received:', message);
         } else if (message.type === 'progress') {
-          setProgress((message.current / message.total) * 100);
+          if (message.total) {
+            setTotalETFs(message.total);
+          }
+          const progressPercent = message.progress?.percentage || 0;
+          setProgress(progressPercent);
         } else if (message.type === 'data') {
-          setResults(prev => prev.map(result => 
-            result.ticker === message.ticker 
-              ? {
-                  ...result,
-                  status: 'success' as const,
-                  data: message.data,
-                  timestamp: new Date().toISOString()
-                }
-              : result
-          ));
-          setProgress(prev => Math.min(prev + 10, 100));
+          // Add new result for this Canadian ETF
+          const newResult: TestResult = {
+            ticker: message.ticker,
+            country: 'CA',
+            status: 'success',
+            data: message.data,
+            timestamp: new Date().toISOString()
+          };
+          setResults(prev => [...prev, newResult]);
+        } else if (message.type === 'database_updated') {
+          console.log('Database updated:', message.message);
         } else if (message.type === 'error') {
-          console.error('Test error:', message.message);
-          setResults(prev => prev.map(result => 
-            result.status === 'pending'
-              ? {
-                  ...result,
-                  status: 'error' as const,
-                  error: message.message,
-                  timestamp: new Date().toISOString()
-                }
-              : result
-          ));
+          console.error('Canadian ETF test error:', message.message);
+          const errorResult: TestResult = {
+            ticker: 'ERROR',
+            country: 'CA',
+            status: 'error',
+            error: message.message,
+            timestamp: new Date().toISOString()
+          };
+          setResults(prev => [...prev, errorResult]);
           setTesting(false);
         } else if (message.type === 'complete') {
-          console.log('Test complete');
+          console.log('Canadian ETF test complete:', message.message);
           setProgress(100);
           setTesting(false);
         }
@@ -144,14 +122,14 @@ const QuickETFTest: React.FC = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>ETF Data Stream Test (10 Stocks)</span>
+          <span>Update All Canadian ETF Prices ({totalETFs > 0 ? totalETFs : '?'} ETFs)</span>
           <Button 
             onClick={runTest} 
             disabled={testing}
             className="flex items-center gap-2"
           >
             {testing ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {testing ? 'Testing...' : 'Run Test'}
+            {testing ? 'Updating Prices...' : 'Update Canadian ETF Prices'}
           </Button>
         </CardTitle>
       </CardHeader>

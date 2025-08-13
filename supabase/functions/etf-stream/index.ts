@@ -110,7 +110,49 @@ serve(async (req) => {
       const message = JSON.parse(event.data);
       console.log("[ETF-STREAM] Received client message:", message);
       
-      if (message.type === 'test' && message.tickers) {
+      if (message.type === 'test') {
+        // Handle both old format (with tickers) and new format (without tickers for Canadian ETFs)
+        if (message.tickers) {
+          // Old test format - use provided tickers
+          console.log("[ETF-STREAM] Test mode activated for tickers:", message.tickers);
+        } else {
+          // New test format - fetch all Canadian ETFs from database
+          console.log("[ETF-STREAM] Canadian ETF data fetch test activated");
+          
+          try {
+            // Get all Canadian ETFs from the database
+            const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+            const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+            const supabase = createClient(supabaseUrl, supabaseKey);
+            
+            const { data: canadianETFs, error: fetchError } = await supabase
+              .from('etfs')
+              .select('ticker, name, data_source')
+              .or('country.eq.CA,ticker.like.%.TO,data_source.eq.eodhd');
+            
+            if (fetchError) {
+              socket.send(JSON.stringify({ type: 'error', message: `Failed to fetch Canadian ETFs: ${fetchError.message}` }));
+              return;
+            }
+            
+            const canadianTickers = canadianETFs?.map(etf => etf.ticker) || [];
+            console.log("[ETF-STREAM] Found Canadian ETFs:", canadianTickers);
+            
+            if (canadianTickers.length === 0) {
+              socket.send(JSON.stringify({ type: 'error', message: 'No Canadian ETFs found in database' }));
+              return;
+            }
+            
+            // Set message.tickers to Canadian tickers to continue with existing logic
+            message.tickers = canadianTickers;
+          } catch (error) {
+            console.error("[ETF-STREAM] Failed to fetch Canadian ETFs:", error);
+            socket.send(JSON.stringify({ type: 'error', message: `Failed to fetch Canadian ETFs: ${error.message}` }));
+            return;
+          }
+        }
+        
+        // Continue with existing test logic using message.tickers
         console.log("[ETF-STREAM] Test mode activated for tickers:", message.tickers);
         
         try {
