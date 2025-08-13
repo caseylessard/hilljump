@@ -51,11 +51,43 @@ async function fetchEODHDData(symbols: string[], apiKey: string): Promise<Map<st
         console.error(`[EODHD] Fundamentals request failed for ${symbol}: ${fundResponse.status}`);
       }
       
+      // Extract yield data - try multiple possible fields for Canadian ETFs
+      let yieldValue = undefined;
+      if (fundData?.ETF_Data?.Yield) {
+        yieldValue = fundData.ETF_Data.Yield;
+      } else if (fundData?.Highlights?.DividendYield) {
+        yieldValue = fundData.Highlights.DividendYield;
+      } else if (fundData?.Valuation?.DividendYield) {
+        yieldValue = fundData.Valuation.DividendYield;
+      } else if (fundData?.General?.DividendYield) {
+        yieldValue = fundData.General.DividendYield;
+      }
+      
+      // Extract AUM data - try multiple fields
+      let aumValue = undefined;
+      if (fundData?.ETF_Data?.TotalAssets) {
+        aumValue = fundData.ETF_Data.TotalAssets;
+      } else if (fundData?.General?.MarketCapitalization) {
+        aumValue = fundData.General.MarketCapitalization;
+      } else if (fundData?.Highlights?.MarketCapitalization) {
+        aumValue = fundData.Highlights.MarketCapitalization;
+      }
+      
+      // Log available fields for debugging
+      if (fundData) {
+        console.log(`[EODHD] Available data fields for ${symbol}:`, {
+          ETF_Data: Object.keys(fundData?.ETF_Data || {}),
+          Highlights: Object.keys(fundData?.Highlights || {}),
+          General: Object.keys(fundData?.General || {}),
+          Valuation: Object.keys(fundData?.Valuation || {})
+        });
+      }
+
       const etfData: ETFData = {
         ticker: symbol,
         name: fundData?.General?.Name || priceData?.name || symbol,
-        yield: fundData?.ETF_Data?.Yield,
-        aum: fundData?.ETF_Data?.TotalAssets,
+        yield: yieldValue,
+        aum: aumValue,
         volume: priceData?.volume || fundData?.Highlights?.AverageVolume,
         return1y: fundData?.Technicals?.['52WeekHigh'] && fundData?.Technicals?.['52WeekLow'] 
           ? ((fundData.Technicals['52WeekHigh'] - fundData.Technicals['52WeekLow']) / fundData.Technicals['52WeekLow'] * 100)
