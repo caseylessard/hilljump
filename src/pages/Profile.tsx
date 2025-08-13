@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UserBadge } from "@/components/UserBadge";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Loader2 } from "lucide-react";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [ticker, setTicker] = useState("");
@@ -300,6 +302,7 @@ const Profile = () => {
   };
 
   const importEtfsFromFile = async (file: File) => {
+    setImporting(true);
     try {
       const text = await file.text();
       const { data, error } = await supabase.functions.invoke('import-etfs', { body: { csv: text } });
@@ -308,6 +311,8 @@ const Profile = () => {
       toast({ title: 'Import complete', description: `Inserted ${res.inserted || 0}, updated ${res.updated || 0}` });
     } catch (e: any) {
       toast({ title: 'Import failed', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setImporting(false);
     }
   };
   return (
@@ -506,13 +511,22 @@ const Profile = () => {
                   </div>
                   <div className="flex gap-2">
                     <Button onClick={exportEtfs}>Export CSV</Button>
-                    <label className="cursor-pointer">
-                      <input type="file" accept=".csv" className="hidden" onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) importEtfsFromFile(file);
-                        e.currentTarget.value = '';
-                      }} />
-                      <span className="inline-flex items-center justify-center h-9 px-4 rounded-md border bg-background">Import CSV</span>
+                    <label className={`cursor-pointer ${importing ? 'pointer-events-none' : ''}`}>
+                      <input 
+                        type="file" 
+                        accept=".csv" 
+                        className="hidden" 
+                        disabled={importing}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) importEtfsFromFile(file);
+                          e.currentTarget.value = '';
+                        }} 
+                      />
+                      <span className={`inline-flex items-center justify-center h-9 px-4 rounded-md border bg-background gap-2 ${importing ? 'opacity-50' : ''}`}>
+                        {importing && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Import CSV
+                      </span>
                     </label>
                   </div>
                 </div>
