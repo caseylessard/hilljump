@@ -106,7 +106,7 @@ serve(async (req) => {
       const { data: etfs, error } = await supabase
         .from('etfs')
         .select('ticker, name, country')
-        .or('yield.is.null,return1y.is.null,aum.is.null')
+        .or('yield_ttm.is.null,total_return_1y.is.null,aum.is.null')
         .limit(50); // Start with a reasonable batch
       
       if (error) {
@@ -157,10 +157,10 @@ serve(async (req) => {
         
         // Prepare database update
         const updateData: any = {};
-        if (data.yield !== undefined) updateData.yield = data.yield;
+        if (data.yield !== undefined) updateData.yield_ttm = data.yield;
         if (data.aum !== undefined) updateData.aum = data.aum;
-        if (data.volume !== undefined) updateData.volume = data.volume;
-        if (data.return1y !== undefined) updateData.return1y = data.return1y;
+        if (data.volume !== undefined) updateData.avg_volume = data.volume;
+        if (data.return1y !== undefined) updateData.total_return_1y = data.return1y;
         if (data.name) updateData.name = data.name;
         
         if (Object.keys(updateData).length > 0) {
