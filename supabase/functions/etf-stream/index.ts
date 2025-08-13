@@ -20,54 +20,62 @@ interface ETFData {
 async function fetchEODHDData(symbols: string[], apiKey: string): Promise<Map<string, ETFData>> {
   const results = new Map<string, ETFData>();
   
-  // EODHD allows batch requests for fundamentals
-  const batchSize = 10; // Reasonable batch size
+  console.log(`[EODHD] Starting fetch for ${symbols.length} symbols:`, symbols);
   
-  for (let i = 0; i < symbols.length; i += batchSize) {
-    const batch = symbols.slice(i, i + batchSize);
-    
-    await Promise.all(batch.map(async (symbol) => {
-      try {
-        // Get fundamentals data
-        const fundUrl = `https://eodhd.com/api/fundamentals/${symbol}?api_token=${apiKey}&fmt=json`;
-        const fundResponse = await fetch(fundUrl);
-        
-        if (fundResponse.ok) {
-          const fundData = await fundResponse.json();
-          
-          // Get real-time price
-          const priceUrl = `https://eodhd.com/api/real-time/${symbol}?api_token=${apiKey}&fmt=json`;
-          const priceResponse = await fetch(priceUrl);
-          let priceData = null;
-          
-          if (priceResponse.ok) {
-            priceData = await priceResponse.json();
-          }
-          
-          const etfData: ETFData = {
-            ticker: symbol,
-            name: fundData?.General?.Name || symbol,
-            yield: fundData?.ETF_Data?.Yield,
-            aum: fundData?.ETF_Data?.TotalAssets,
-            volume: priceData?.volume || fundData?.Highlights?.AverageVolume,
-            return1y: fundData?.Technicals?.['52WeekHigh'] && fundData?.Technicals?.['52WeekLow'] 
-              ? ((fundData.Technicals['52WeekHigh'] - fundData.Technicals['52WeekLow']) / fundData.Technicals['52WeekLow'] * 100)
-              : undefined,
-            price: priceData?.close || fundData?.General?.LastClosePrice,
-            country: symbol.includes('.TO') ? 'CA' : 'US'
-          };
-          
-          results.set(symbol, etfData);
-        }
-      } catch (error) {
-        console.error(`Error fetching data for ${symbol}:`, error);
+  // Process symbols one by one with proper error handling
+  for (const symbol of symbols) {
+    try {
+      console.log(`[EODHD] Fetching data for ${symbol}`);
+      
+      // Get real-time price first (simpler endpoint)
+      const priceUrl = `https://eodhd.com/api/real-time/${symbol}?api_token=${apiKey}&fmt=json`;
+      const priceResponse = await fetch(priceUrl);
+      
+      if (!priceResponse.ok) {
+        console.error(`[EODHD] Price request failed for ${symbol}: ${priceResponse.status}`);
+        continue;
       }
       
-      // Rate limiting: small delay between requests
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }));
+      const priceData = await priceResponse.json();
+      console.log(`[EODHD] Price data for ${symbol}:`, priceData);
+      
+      // Get fundamentals data
+      const fundUrl = `https://eodhd.com/api/fundamentals/${symbol}?api_token=${apiKey}&fmt=json`;
+      const fundResponse = await fetch(fundUrl);
+      let fundData = null;
+      
+      if (fundResponse.ok) {
+        fundData = await fundResponse.json();
+        console.log(`[EODHD] Fundamentals data for ${symbol}:`, fundData?.General?.Name || 'No name');
+      } else {
+        console.error(`[EODHD] Fundamentals request failed for ${symbol}: ${fundResponse.status}`);
+      }
+      
+      const etfData: ETFData = {
+        ticker: symbol,
+        name: fundData?.General?.Name || priceData?.name || symbol,
+        yield: fundData?.ETF_Data?.Yield,
+        aum: fundData?.ETF_Data?.TotalAssets,
+        volume: priceData?.volume || fundData?.Highlights?.AverageVolume,
+        return1y: fundData?.Technicals?.['52WeekHigh'] && fundData?.Technicals?.['52WeekLow'] 
+          ? ((fundData.Technicals['52WeekHigh'] - fundData.Technicals['52WeekLow']) / fundData.Technicals['52WeekLow'] * 100)
+          : undefined,
+        price: priceData?.close || priceData?.price || fundData?.General?.LastClosePrice,
+        country: symbol.includes('.TO') ? 'CA' : 'US'
+      };
+      
+      console.log(`[EODHD] Final data for ${symbol}:`, etfData);
+      results.set(symbol, etfData);
+      
+    } catch (error) {
+      console.error(`[EODHD] Error fetching data for ${symbol}:`, error);
+    }
+    
+    // Rate limiting: small delay between requests
+    await new Promise(resolve => setTimeout(resolve, 200));
   }
   
+  console.log(`[EODHD] Completed fetch. Got data for ${results.size}/${symbols.length} symbols`);
   return results;
 }
 
@@ -282,10 +290,6 @@ serve(async (req) => {
     }
   };
   
-  socket.onmessage = (event) => {
-    console.log("[ETF-STREAM] Received message:", event.data);
-    // Handle any client messages if needed
-  };
   
   socket.onerror = (error) => {
     console.error("[ETF-STREAM] WebSocket error:", error);
