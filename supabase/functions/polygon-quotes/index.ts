@@ -95,14 +95,17 @@ serve(async (req: Request) => {
 
     // Fallback: Twelve Data multi-quote endpoint for missing symbols or if Polygon failed completely
     if (missingSymbols.length > 0 && TWELVEDATA_API_KEY) {
+      console.log(`Using Twelve Data for ${missingSymbols.length} missing symbols:`, missingSymbols.slice(0, 10));
       const chunks = chunk(missingSymbols, 30); // keep URLs reasonable
       for (const group of chunks) {
         const url = new URL("https://api.twelvedata.com/quote");
         url.searchParams.set("symbol", group.join(","));
         url.searchParams.set("apikey", TWELVEDATA_API_KEY);
 
+        console.log(`Twelve Data request for symbols: ${group.join(",")}`);
         const res = await fetch(url.toString());
         const data = await res.json();
+        console.log(`Twelve Data response status: ${res.status}`);
         if (!res.ok) {
           console.error("TwelveData error", res.status, data);
           throw new Error(`TwelveData error ${res.status}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
@@ -151,9 +154,13 @@ serve(async (req: Request) => {
           }
         }
       }
+      console.log(`Twelve Data processed ${Object.keys(results).length} symbols successfully`);
       providerUsed = providerUsed === 'polygon' ? 'mixed' : 'twelvedata';
+    } else if (missingSymbols.length > 0) {
+      console.log(`Missing Twelve Data API key, cannot fetch ${missingSymbols.length} symbols`);
     }
 
+    console.log(`Final results: ${Object.keys(results).length} symbols from provider: ${providerUsed}`);
     if (Object.keys(results).length === 0) {
       throw new Error("Missing data provider API key or no data returned.");
     }
