@@ -10,6 +10,7 @@ const corsHeaders = {
 async function fetchStooqPrice(symbol: string): Promise<number | null> {
   const tryFetch = async (s: string) => {
     const url = `https://stooq.com/q/l/?s=${encodeURIComponent(s)}&f=sd2t2ohlcv&h&e=csv`;
+    console.log(`Trying Stooq format: ${s}`);
     const res = await fetch(url);
     if (!res.ok) return null;
     const csv = await res.text();
@@ -23,20 +24,46 @@ async function fetchStooqPrice(symbol: string): Promise<number | null> {
     return Number.isFinite(close) ? close : null;
   };
 
-  // Try raw symbol first, then with .us suffix for US stocks
   const baseSymbol = symbol.toLowerCase();
+  console.log(`Fetching price for: ${symbol}`);
+  
+  // For Canadian symbols (.TO), try different formats Stooq might accept
+  if (baseSymbol.includes('.to')) {
+    const baseCode = baseSymbol.replace('.to', '');
+    console.log(`Canadian symbol detected: ${symbol}, trying formats for ${baseCode}`);
+    
+    // Try formats commonly used by Stooq for Canadian symbols
+    const formats = [
+      baseSymbol,           // bank.to
+      `${baseCode}.wa`,     // bank.wa (Warsaw? Sometimes used for international)
+      baseCode,             // bank (without exchange)
+      `${baseCode}.ca`,     // bank.ca
+      `${baseCode}.tsx`,    // bank.tsx
+    ];
+    
+    for (const format of formats) {
+      const price = await tryFetch(format);
+      if (price !== null) {
+        console.log(`Success with format ${format}: $${price}`);
+        return price;
+      }
+    }
+    console.log(`All Canadian formats failed for ${symbol}`);
+    return null;
+  }
+  
+  // For US symbols, try with and without .us suffix
+  console.log(`US symbol detected: ${symbol}`);
   let price = await tryFetch(baseSymbol);
+  if (price !== null) return price;
   
-  // If Canadian (.to) symbol failed, try without .to
-  if (price === null && baseSymbol.includes('.to')) {
-    price = await tryFetch(baseSymbol.replace('.to', ''));
+  price = await tryFetch(baseSymbol + '.us');
+  if (price !== null) {
+    console.log(`Success with .us suffix: $${price}`);
+    return price;
   }
   
-  // If US symbol failed, try with .us suffix
-  if (price === null && !baseSymbol.includes('.to') && !baseSymbol.includes('.us')) {
-    price = await tryFetch(baseSymbol + '.us');
-  }
-  
+  console.log(`All US formats failed for ${symbol}`);
   return price;
 }
 
