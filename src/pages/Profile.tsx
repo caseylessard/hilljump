@@ -122,6 +122,39 @@ const Profile = () => {
     }
     toast({ title: 'Preferences saved', description: `${firstName ? firstName + ' • ' : ''}${country === 'CA' ? 'Canada 🇨🇦' : 'United States 🇺🇸'}` });
   };
+  const exportCAEtfs = async () => {
+    try {
+      const columns = [
+        'ticker','name','exchange','category','yield_ttm','total_return_1y','avg_volume','expense_ratio','volatility_1y','max_drawdown_1y','aum','manager','strategy_label','logo_key','country'
+      ];
+      const { data, error } = await supabase
+        .from('etfs')
+        .select(columns.join(','))
+        .eq('country', 'CA')
+        .order('ticker');
+      if (error) throw error;
+      const esc = (v: any) => {
+        if (v == null) return '';
+        const s = String(v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const csv = [columns.join(',')]
+        .concat((data || []).map((row: any) => columns.map((c) => esc((row as any)[c])).join(',')))
+        .join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'etfs_ca_template.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: 'CSV downloaded', description: `${(data || []).length} Canadian ETFs exported` });
+    } catch (e: any) {
+      toast({ title: 'Export failed', description: e.message || String(e), variant: 'destructive' });
+    }
+  };
+  
   return (
     <div>
       <header className="border-b">
@@ -169,6 +202,16 @@ const Profile = () => {
                 <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
                 <Input type="number" placeholder="Shares" value={shares} onChange={(e) => setShares(Number(e.target.value))} />
                 <Button onClick={addOrUpdate}>Add / Update</Button>
+              </div>
+            </Card>
+
+            <Card className="p-4 grid gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Export Canadian ETFs CSV</div>
+                  <div className="text-sm text-muted-foreground">Includes manager, strategy_label, logo_key, and country fields.</div>
+                </div>
+                <Button onClick={exportCAEtfs}>Download CSV</Button>
               </div>
             </Card>
 
