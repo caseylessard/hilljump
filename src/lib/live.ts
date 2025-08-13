@@ -49,16 +49,20 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
   // Group tickers by their optimal data source
   const polygonTickers: string[] = [];
   const eodhTickers: string[] = [];
+  const fallbackTickers: string[] = [];
   
   etfData?.forEach((etf: any) => {
     if (etf.polygon_supported && etf.country === 'US') {
       polygonTickers.push(etf.ticker);
     } else if (etf.data_source === 'eodhd' || etf.country === 'CA' || etf.ticker.endsWith('.TO')) {
-      // Use EODHD for Canadian ETFs
+      // Use EODHD specifically for Canadian ETFs
       eodhTickers.push(etf.ticker);
+    } else if (etf.country === 'US') {
+      // US tickers that aren't Polygon-supported go to fallback (polygon-quotes with region=US)
+      fallbackTickers.push(etf.ticker);
     } else {
-      // Fallback to Canadian region for other tickers
-      eodhTickers.push(etf.ticker);
+      // Everything else goes to fallback
+      fallbackTickers.push(etf.ticker);
     }
   });
 
@@ -66,8 +70,13 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
   const dbTickers = new Set(etfData?.map((etf: any) => etf.ticker) || []);
   tickers.forEach(ticker => {
     if (!dbTickers.has(ticker)) {
-      // Default: assume EODHD/Canadian if not in database
-      eodhTickers.push(ticker);
+      if (ticker.endsWith('.TO')) {
+        // Canadian ticker
+        eodhTickers.push(ticker);
+      } else {
+        // Default: assume US ticker
+        fallbackTickers.push(ticker);
+      }
     }
   });
 
@@ -83,9 +92,19 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
     }
   }
   
+  if (fallbackTickers.length > 0) {
+    try {
+      // Use polygon-quotes for US tickers that aren't polygon supported
+      const usData = await fetchLivePrices(fallbackTickers, 'US');
+      Object.assign(results, usData);
+    } catch (error) {
+      console.warn('US fallback fetch failed:', fallbackTickers, error);
+    }
+  }
+  
   if (eodhTickers.length > 0) {
     try {
-      // Use EODHD for Canadian ETFs
+      // Use EODHD quotes function for Canadian ETFs only
       const { data, error } = await supabase.functions.invoke("quotes", {
         body: { tickers: eodhTickers },
       });
