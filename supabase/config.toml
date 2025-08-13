@@ -1,5 +1,8 @@
 project_id = "lyjfwnlindbsbbwjzefh"
 
+[functions.etf-stream]
+verify_jwt = false
+
 [functions.fetch-etf-data]
 verify_jwt = false
 
