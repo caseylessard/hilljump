@@ -24,7 +24,7 @@ const Profile = () => {
   const [username, setUsername] = useState<string>("");
   const [approved, setApproved] = useState<boolean>(false);
   const [country, setCountry] = useState<'US' | 'CA'>('CA');
-  const [weights, setWeights] = useState({ r: 60, y: 20, k: 20, d: 50 });
+  const [weights, setWeights] = useState({ r: 60, y: 20, k: 20, d: 50, t4: 0, t52: 0, h: 0 });
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -105,7 +105,7 @@ const Profile = () => {
     (async () => {
       const { data, error } = await supabase
         .from('user_preferences')
-        .select('return_weight, yield_weight, risk_weight, dividend_stability')
+        .select('return_weight, yield_weight, risk_weight, dividend_stability, period_4w_weight, period_52w_weight, home_country_bias')
         .eq('user_id', userId)
         .maybeSingle();
       if (!error && data) {
@@ -114,6 +114,9 @@ const Profile = () => {
           y: Number((data as any).yield_weight) || 20,
           k: Number((data as any).risk_weight) || 20,
           d: Number((data as any).dividend_stability) || 50,
+          t4: Number((data as any).period_4w_weight) || 0,
+          t52: Number((data as any).period_52w_weight) || 0,
+          h: Number((data as any).home_country_bias) || 0,
         });
       }
     })();
@@ -209,6 +212,9 @@ const Profile = () => {
         yield_weight: weights.y,
         risk_weight: weights.k,
         dividend_stability: weights.d,
+        period_4w_weight: weights.t4,
+        period_52w_weight: weights.t52,
+        home_country_bias: weights.h,
       });
     if (error) {
       toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
@@ -402,6 +408,24 @@ const Profile = () => {
                   <Badge variant="secondary">{weights.d}%</Badge>
                 </div>
                 <Slider value={[weights.d]} onValueChange={([v]) => setWeights((w) => ({ ...w, d: v }))} min={0} max={100} step={1} />
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm font-medium">4W Performance Weight</span>
+                  <Badge variant="secondary">{weights.t4}%</Badge>
+                </div>
+                <Slider value={[weights.t4]} onValueChange={([v]) => setWeights((w) => ({ ...w, t4: v }))} min={0} max={100} step={1} />
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm font-medium">52W Performance Weight</span>
+                  <Badge variant="secondary">{weights.t52}%</Badge>
+                </div>
+                <Slider value={[weights.t52]} onValueChange={([v]) => setWeights((w) => ({ ...w, t52: v }))} min={0} max={100} step={1} />
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm font-medium">Home Country Bias</span>
+                  <Badge variant="secondary">{weights.h}%</Badge>
+                </div>
+                <Slider value={[weights.h]} onValueChange={([v]) => setWeights((w) => ({ ...w, h: v }))} min={0} max={100} step={1} />
               </div>
             </Card>
 

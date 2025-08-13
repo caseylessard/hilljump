@@ -218,6 +218,9 @@ export type Database = {
         Row: {
           created_at: string
           dividend_stability: number
+          home_country_bias: number
+          period_4w_weight: number
+          period_52w_weight: number
           return_weight: number
           risk_weight: number
           updated_at: string
@@ -227,6 +230,9 @@ export type Database = {
         Insert: {
           created_at?: string
           dividend_stability?: number
+          home_country_bias?: number
+          period_4w_weight?: number
+          period_52w_weight?: number
           return_weight?: number
           risk_weight?: number
           updated_at?: string
@@ -236,6 +242,9 @@ export type Database = {
         Update: {
           created_at?: string
           dividend_stability?: number
+          home_country_bias?: number
+          period_4w_weight?: number
+          period_52w_weight?: number
           return_weight?: number
           risk_weight?: number
           updated_at?: string
