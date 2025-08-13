@@ -1,32 +1,42 @@
-import { Button } from "@/components/ui/button";
-import { useEffect, useMemo, useState } from "react";
-import { ScoredETF, scoreETFs } from "@/lib/scoring";
-import { ETFTable } from "@/components/dashboard/ETFTable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScoringControls } from "@/components/dashboard/ScoringControls";
-import { fetchLivePricesWithDataSources, type LivePrice } from "@/lib/live";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { getETFs } from "@/lib/db";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchLatestDistributions, type Distribution } from "@/lib/dividends";
-import { UserBadge } from "@/components/UserBadge";
-import { useUserProfile } from "@/hooks/useUserProfile";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Settings } from 'lucide-react';
+import { ETFTable } from '@/components/dashboard/ETFTable';
+import { ScoringControls } from '@/components/dashboard/ScoringControls';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { ScoredETF, scoreETFs } from '@/lib/scoring';
+import { fetchLivePricesWithDataSources, LivePrice } from '@/lib/live';
+import { Distribution, fetchLatestDistributions } from '@/lib/dividends';
+import { getETFs } from '@/lib/db';
+import { UserBadge } from '@/components/UserBadge';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useToast } from '@/hooks/use-toast';
+import QuickETFTest from '@/components/QuickETFTest';
+
+type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
+
 const Ranking = () => {
-  // Default weights for quick reference
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
-  const [scoreOpen, setScoreOpen] = useState(false);
-  const [live, setLive] = useState<Record<string, LivePrice>>({});
-  const [dists, setDists] = useState<Record<string, Distribution>>({});
-  const { toast } = useToast();
-  const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
-  const { profile } = useUserProfile();
-  const region = (profile?.country ?? 'CA') as 'US' | 'CA';
-  const [subscribed, setSubscribed] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, live), [etfs, weights, live]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
+  const [distributions, setDistributions] = useState<Record<string, Distribution>>({});
   const [filter, setFilter] = useState<string>("Top 100");
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const { toast } = useToast();
+  const { profile } = useUserProfile();
+  const { data: etfs = [], isLoading, error } = useQuery({ 
+    queryKey: ["etfs"], 
+    queryFn: getETFs, 
+    staleTime: 60_000 
+  });
+
+  const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, livePrices), [etfs, weights, livePrices]);
+  
   const filtered: ScoredETF[] = useMemo(() => {
     if (filter === "Top 100") return ranked;
     if (filter === "YieldMax") return ranked.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
@@ -39,66 +49,51 @@ const Ranking = () => {
   }, [ranked, filter]);
 
   useEffect(() => {
-    // Load subscription status and admin role
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const uid = session?.user?.id;
-      if (!uid) { setSubscribed(false); setIsAdmin(false); return; }
+      if (!uid) { 
+        setIsSubscribed(false); 
+        setIsAdmin(false); 
+        return; 
+      }
+      
       const [{ data: sub }, { data: roles }] = await Promise.all([
         supabase.from('subscribers').select('subscribed').eq('user_id', uid).maybeSingle(),
         supabase.from('user_roles').select('role').eq('user_id', uid)
       ]);
-      setSubscribed(Boolean((sub as any)?.subscribed));
+      
+      setIsSubscribed(Boolean((sub as any)?.subscribed));
       setIsAdmin(Array.isArray(roles) && roles.some((r: any) => String(r.role).toLowerCase() === 'admin'));
     })();
   }, []);
 
   useEffect(() => {
     document.title = "HillJump — Top Dividend ETF Rankings";
-    const meta =
-      (document.querySelector('meta[name="description"]') as HTMLMetaElement) ||
+    const meta = document.querySelector('meta[name="description"]') as HTMLMetaElement ||
       (() => {
         const m = document.createElement('meta');
         m.setAttribute('name', 'description');
         document.head.appendChild(m);
         return m as HTMLMetaElement;
       })();
-    meta.setAttribute(
-      'content',
-      'HillJump quick reference: Top 100 high-yield dividend ETFs ranked by risk-aware total return.'
-    );
-    const link =
-      (document.querySelector('link[rel="canonical"]') as HTMLLinkElement) ||
-      (() => {
-        const l = document.createElement('link');
-        l.setAttribute('rel', 'canonical');
-        document.head.appendChild(l);
-        return l as HTMLLinkElement;
-      })();
-    link.setAttribute('href', window.location.origin + window.location.pathname);
+    meta.setAttribute('content', 'HillJump quick reference: Top 100 high-yield dividend ETFs ranked by risk-aware total return.');
   }, []);
 
   useEffect(() => {
-    // Fetch live prices for all filtered tickers and refresh every 60s
-    const base = etfs;
-    let subset = base;
-    if (filter === "YieldMax") subset = base.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
-    else if (filter === "Covered Call") subset = base.filter(e => e.category === "Covered Call");
-    else if (filter === "Income") subset = base.filter(e => e.category === "Income");
-    else if (filter === "Dividend") subset = base.filter(e => e.category === "Dividend");
-    else if (filter === "US Funds") subset = base.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
-    else if (filter === "Canadian Funds") subset = base.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
-    const tickers = (filter === "Top 100" ? base : subset).map(e => e.ticker);
-    if (!tickers.length) return;
-
+    if (!etfs.length) return;
     let cancelled = false;
 
     const run = async () => {
       try {
+        const tickers = etfs.map(e => e.ticker);
         const prices = await fetchLivePricesWithDataSources(tickers);
         if (cancelled) return;
-        setLive(prices);
-        toast({ title: "Live data", description: `Updated ${Object.keys(prices).length} tickers.` });
+        setLivePrices(prices);
+        toast({ 
+          title: "Live data", 
+          description: `Updated ${Object.keys(prices).length} tickers.` 
+        });
       } catch (e) {
         console.error(e);
       }
@@ -107,21 +102,22 @@ const Ranking = () => {
     run();
     const id = setInterval(run, 60_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [etfs, filter, toast, region]);
+  }, [etfs, toast]);
 
-  // Fetch latest distributions for all ETFs (no frequent refresh needed)
   useEffect(() => {
     if (!etfs.length) return;
     let cancelled = false;
+    
     const run = async () => {
       try {
         const map = await fetchLatestDistributions(etfs.map(e => e.ticker));
         if (cancelled) return;
-        setDists(map);
+        setDistributions(map);
       } catch (e) {
         console.error(e);
       }
     };
+    
     run();
     return () => { cancelled = true; };
   }, [etfs]);
@@ -139,6 +135,9 @@ const Ranking = () => {
               <a href="/">Dividends</a>
             </Button>
             <Button variant="ghost" asChild>
+              <a href="/test-stream">Stream Test</a>
+            </Button>
+            <Button variant="ghost" asChild>
               <a href="/options">Options</a>
             </Button>
             <Button variant="ghost" asChild>
@@ -149,9 +148,7 @@ const Ranking = () => {
         </div>
         <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">
           <div className="space-y-3">
-            
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Dividend ETF Rankings</h1>
-            
           </div>
         </div>
       </header>
@@ -176,30 +173,40 @@ const Ranking = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              {Object.keys(live).length > 0 && <span className="text-xs text-muted-foreground">Live: {Object.keys(live).length}</span>}
-              <Button variant="outline" onClick={() => setScoreOpen(true)} disabled={!(subscribed || isAdmin)} aria-disabled={!(subscribed || isAdmin)}>
+            
+            {(isSubscribed || isAdmin) && (
+              <Button onClick={() => setShowDialog(true)} className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
                 Adjust Scoring
               </Button>
-            </div>
-            <Dialog open={scoreOpen} onOpenChange={setScoreOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Adjust Scoring</DialogTitle>
-                </DialogHeader>
-                {/* Only render controls for subscribed or admin users */}
-                {subscribed || isAdmin ? (
-                  <ScoringControls onChange={setWeights} />
-                ) : (
-                  <div className="text-sm text-muted-foreground">Subscribe to adjust scoring.</div>
-                )}
-              </DialogContent>
-            </Dialog>
+            )}
           </div>
-          <ETFTable items={filtered} live={live} distributions={dists} allowSorting={subscribed || isAdmin} />
+
+          {/* Quick ETF Test Panel */}
+          <QuickETFTest />
+
+          <ETFTable 
+            items={filtered} 
+            live={livePrices}
+            distributions={distributions}
+          />
         </section>
-          <p className="text-muted-foreground text-xs">Not investment advice.</p>
-        </main>
+
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adjust Scoring</DialogTitle>
+            </DialogHeader>
+            {(isSubscribed || isAdmin) ? (
+              <ScoringControls onChange={setWeights} />
+            ) : (
+              <div className="text-sm text-muted-foreground">Subscribe to adjust scoring.</div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <p className="text-muted-foreground text-xs">Not investment advice.</p>
+      </main>
     </div>
   );
 };
