@@ -331,12 +331,12 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
                     const logo = getManagerLogo(manager);
                     return (
                       <>
-                        <div className="rounded-full border-2 border-foreground p-1">
+                        <div className="rounded-full border-2 border-foreground p-1 bg-[hsl(var(--success))]">
                           {logo ? (
                             <img
                               src={logo}
                               alt={`${manager} ETF fund manager logo`}
-                              className="h-16 w-16 object-contain rounded-full bg-muted"
+                              className="h-16 w-16 object-contain rounded-full"
                               loading="lazy"
                             />
                           ) : (
