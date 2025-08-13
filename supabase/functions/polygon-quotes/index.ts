@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const POLYGON_API_KEY = Deno.env.get("POLYGON_API_KEY");
-const TWELVEDATA_API_KEY = Deno.env.get("TWELVEDATA_API_KEY");
+const ALPHA_VANTAGE_API_KEY = Deno.env.get("ALPHA_VANTAGE_API_KEY");
 
 type PriceResult = { price: number; prevClose?: number; change?: number; changePercent?: number };
 
@@ -112,23 +112,49 @@ serve(async (req: Request) => {
       const canadianMissing = missingSymbols.filter(s => canadianSymbols.includes(s));
       const usMissing = missingSymbols.filter(s => usSymbols.includes(s));
       
-      // Alpha Vantage for Canadian symbols (supports TSX with .TO)
-      if (canadianMissing.length > 0) {
-        console.log(`Using static fallback for ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 10));
+      // Alpha Vantage for Canadian symbols (supports .TO symbols)
+      if (canadianMissing.length > 0 && ALPHA_VANTAGE_API_KEY) {
+        console.log(`Using Alpha Vantage for ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 5));
         
-        // For now, let's just mark Canadian symbols as having static data
-        // This prevents errors and we can add real data later
-        for (const symbol of canadianMissing) {
-          const dbSymbol = `${symbol}.TO`;
-          results[dbSymbol] = {
-            price: 25.00, // Static placeholder price
-            prevClose: 24.95,
-            change: 0.05,
-            changePercent: 0.20,
-          };
-          console.log(`Static fallback: ${dbSymbol} = $25.00 (placeholder)`);
+        // Alpha Vantage free tier: 25 requests/day, so we'll process a few symbols
+        const limitedSymbols = canadianMissing.slice(0, 5); // Limit to avoid rate limits
+        
+        for (const symbol of limitedSymbols) {
+          try {
+            const toSymbol = `${symbol}.TO`; // Alpha Vantage expects .TO format
+            const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${toSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            if (data?.['Global Quote']) {
+              const quote = data['Global Quote'];
+              const price = Number(quote['05. price']);
+              const prevClose = Number(quote['08. previous close']);
+              const change = Number(quote['09. change']);
+              const changePercent = Number(quote['10. change percent']?.replace('%', ''));
+              
+              if (Number.isFinite(price)) {
+                const dbSymbol = `${symbol}.TO`;
+                results[dbSymbol] = {
+                  price,
+                  prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
+                  change: Number.isFinite(change) ? change : undefined,
+                  changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
+                };
+                console.log(`Alpha Vantage: ${dbSymbol} = $${price}`);
+              }
+            } else {
+              console.log(`Alpha Vantage no data for ${symbol}:`, data);
+            }
+            
+            // Rate limit delay for free tier
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (err) {
+            console.error(`Alpha Vantage error for ${symbol}:`, err);
+          }
         }
-      }
+      } else if (canadianMissing.length > 0) {
+        console.log(`No Alpha Vantage API key available for ${canadianMissing.length} Canadian symbols`);
       
       // Twelve Data for US symbols
       if (usMissing.length > 0 && TWELVEDATA_API_KEY) {
