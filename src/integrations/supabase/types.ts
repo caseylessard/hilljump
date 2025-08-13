@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_update_logs: {
+        Row: {
+          created_at: string | null
+          end_time: string | null
+          error_message: string | null
+          id: string
+          run_date: string | null
+          start_time: string | null
+          status: string | null
+          total_etfs: number | null
+          updated_etfs: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_time?: string | null
+          error_message?: string | null
+          id?: string
+          run_date?: string | null
+          start_time?: string | null
+          status?: string | null
+          total_etfs?: number | null
+          updated_etfs?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string | null
+          error_message?: string | null
+          id?: string
+          run_date?: string | null
+          start_time?: string | null
+          status?: string | null
+          total_etfs?: number | null
+          updated_etfs?: number | null
+        }
+        Relationships: []
+      }
       dividends: {
         Row: {
           amount: number
