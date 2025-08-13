@@ -26,14 +26,23 @@ async function fetchAlphaVantageData(symbol: string, country: string, apiKey: st
     const response = await fetch(url);
     const data = await response.json();
     
+    // Log raw data for specific Canadian tickers
+    if (symbol === 'QQCL' || symbol === 'HTAE' || symbol.includes('QQCL') || symbol.includes('HTAE')) {
+      log('INFO', `Alpha Vantage RAW data for ${apiSymbol}:`, data);
+    }
+    
     if (data.Symbol && !data.Note && !data.Information) {
-      return {
+      const result = {
         symbol: data.Symbol,
         dividendYield: parseFloat(data.DividendYield) || null,
         marketCap: parseFloat(data.MarketCapitalization) || null,
         beta: parseFloat(data.Beta) || null,
         peRatio: parseFloat(data.PERatio) || null,
       };
+      if (symbol === 'QQCL' || symbol === 'HTAE' || symbol.includes('QQCL') || symbol.includes('HTAE')) {
+        log('INFO', `Alpha Vantage PARSED data for ${apiSymbol}:`, result);
+      }
+      return result;
     }
     return null;
   } catch (error) {
@@ -56,16 +65,25 @@ async function fetchYahooFinanceData(symbol: string, country: string) {
     const response = await fetch(url);
     const data = await response.json();
     
+    // Log raw data for specific Canadian tickers
+    if (symbol === 'QQCL' || symbol === 'HTAE' || symbol.includes('QQCL') || symbol.includes('HTAE')) {
+      log('INFO', `Yahoo Finance RAW data for ${apiSymbol}:`, data);
+    }
+    
     if (data?.chart?.result?.[0]) {
       const result = data.chart.result[0];
       const meta = result.meta;
-      return {
+      const parsedResult = {
         symbol: meta.symbol,
         currentPrice: meta.regularMarketPrice || null,
         dividendYield: meta.dividendYield ? meta.dividendYield * 100 : null, // Convert to percentage
         trailingPE: meta.trailingPE || null,
         marketCap: meta.marketCap || null,
       };
+      if (symbol === 'QQCL' || symbol === 'HTAE' || symbol.includes('QQCL') || symbol.includes('HTAE')) {
+        log('INFO', `Yahoo Finance PARSED data for ${apiSymbol}:`, parsedResult);
+      }
+      return parsedResult;
     }
     return null;
   } catch (error) {

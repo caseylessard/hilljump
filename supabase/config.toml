@@ -3,6 +3,9 @@ project_id = "lyjfwnlindbsbbwjzefh"
 [functions.fetch-etf-data]
 verify_jwt = false
 
+[functions.test-canadian-apis]
+verify_jwt = false
+
 [functions.quotes]
 verify_jwt = false
 
