@@ -44,12 +44,12 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
 
   function getFundManager(etf: ScoredETF): string {
     const n = (etf.name || "").toUpperCase();
-    if (n.startsWith("YIELDMAX")) return "YieldMax";
-    if (n.startsWith("GLOBAL X")) return "Global X";
-    if (n.startsWith("JPMORGAN")) return "JPMorgan";
-    if (n.startsWith("AMPLIFY")) return "Amplify";
-    if (n.startsWith("ROUNDHILL")) return "Roundhill";
-    if ((etf.category || "").toUpperCase().includes("YIELDMAX")) return "YieldMax";
+    const c = (etf.category || "").toUpperCase();
+    if (n.includes("YIELDMAX") || c.includes("YIELDMAX")) return "YieldMax";
+    if (n.includes("GLOBAL X")) return "Global X";
+    if (n.includes("JPMORGAN") || n.includes("J.P. MORGAN") || n.includes("JP MORGAN")) return "JPMorgan";
+    if (n.includes("AMPLIFY")) return "Amplify";
+    if (n.includes("ROUNDHILL")) return "Roundhill";
     return "ETF";
   }
 
@@ -336,7 +336,7 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
                             <img
                               src={logo}
                               alt={`${manager} ETF fund manager logo`}
-                              className="h-16 w-16 object-contain rounded-full bg-background"
+                              className="h-16 w-16 object-contain rounded-full bg-muted"
                               loading="lazy"
                             />
                           ) : (
