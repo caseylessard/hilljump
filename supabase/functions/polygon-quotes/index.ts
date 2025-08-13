@@ -118,33 +118,74 @@ serve(async (req: Request) => {
         const chunks = chunk(canadianMissing, 20);
         for (const group of chunks) {
           try {
-            // Add .TO back for Yahoo Finance API
-            const symbolsWithExchange = group.map(s => `${s}.TO`).join(',');
-            const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbolsWithExchange)}`;
-            const res = await fetch(url);
-            const data = await res.json();
+            // Test both approaches - with and without .TO
+            console.log(`Testing Canadian symbols:`, group);
             
-            if (res.ok && data?.quoteResponse?.result) {
+            // Test 1: Try with .TO suffix
+            const symbolsWithTO = group.map(s => `${s}.TO`).join(',');
+            console.log(`Testing with .TO: ${symbolsWithTO}`);
+            let url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbolsWithTO)}`;
+            let res = await fetch(url);
+            let data = await res.json();
+            
+            let foundResults = false;
+            if (res.ok && data?.quoteResponse?.result && data.quoteResponse.result.length > 0) {
+              console.log(`SUCCESS with .TO - found ${data.quoteResponse.result.length} results`);
               for (const item of data.quoteResponse.result) {
-                const yahooSymbol = item?.symbol?.toUpperCase(); // This will be like "BANK.TO"
-                const baseSymbol = yahooSymbol?.replace('.TO', ''); // Convert back to "BANK"
-                const dbSymbol = `${baseSymbol}.TO`; // Our database key is "BANK.TO"
+                const yahooSymbol = item?.symbol?.toUpperCase();
+                const baseSymbol = yahooSymbol?.replace('.TO', '');
+                const dbSymbol = `${baseSymbol}.TO`;
                 
                 if (!baseSymbol) continue;
                 const price = Number(item?.regularMarketPrice);
-                const prevClose = Number(item?.regularMarketPreviousClose);
-                const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : undefined;
-                const changePercent = Number.isFinite(prevClose) && prevClose !== 0 && Number.isFinite(change) ? (change / prevClose) * 100 : undefined;
-                
                 if (Number.isFinite(price)) {
-                  results[dbSymbol] = { // Store with .TO suffix for database consistency
+                  const prevClose = Number(item?.regularMarketPreviousClose);
+                  const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : undefined;
+                  const changePercent = Number.isFinite(prevClose) && prevClose !== 0 && Number.isFinite(change) ? (change / prevClose) * 100 : undefined;
+                  
+                  results[dbSymbol] = {
                     price,
                     prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
                     change: Number.isFinite(change) ? change : undefined,
                     changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
                   };
-                  console.log(`Yahoo Finance: ${dbSymbol} = $${price}`);
+                  console.log(`Yahoo Finance (.TO): ${dbSymbol} = $${price}`);
+                  foundResults = true;
                 }
+              }
+            }
+            
+            // Test 2: If .TO didn't work, try without .TO
+            if (!foundResults) {
+              console.log(`Testing without .TO: ${group.join(',')}`);
+              url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(group.join(','))}`;
+              res = await fetch(url);
+              data = await res.json();
+              
+              if (res.ok && data?.quoteResponse?.result && data.quoteResponse.result.length > 0) {
+                console.log(`SUCCESS without .TO - found ${data.quoteResponse.result.length} results`);
+                for (const item of data.quoteResponse.result) {
+                  const yahooSymbol = item?.symbol?.toUpperCase();
+                  const dbSymbol = `${yahooSymbol}.TO`; // Add .TO for database consistency
+                  
+                  if (!yahooSymbol) continue;
+                  const price = Number(item?.regularMarketPrice);
+                  if (Number.isFinite(price)) {
+                    const prevClose = Number(item?.regularMarketPreviousClose);
+                    const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : undefined;
+                    const changePercent = Number.isFinite(prevClose) && prevClose !== 0 && Number.isFinite(change) ? (change / prevClose) * 100 : undefined;
+                    
+                    results[dbSymbol] = {
+                      price,
+                      prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
+                      change: Number.isFinite(change) ? change : undefined,
+                      changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
+                    };
+                    console.log(`Yahoo Finance (no .TO): ${dbSymbol} = $${price}`);
+                  }
+                }
+              } else {
+                console.log(`Both .TO and no-.TO failed for group:`, group);
               }
             }
           } catch (err) {
