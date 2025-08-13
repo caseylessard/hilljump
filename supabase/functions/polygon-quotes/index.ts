@@ -39,7 +39,8 @@ serve(async (req: Request) => {
       totalReturn28dPercent?: number;
     }> = {};
 
-    let providerUsed: 'polygon' | 'twelvedata' | 'none' = 'none';
+    let providerUsed: 'polygon' | 'twelvedata' | 'mixed' | 'none' = 'none';
+    let missingSymbols: string[] = [];
 
     // Preferred: Polygon snapshot endpoint (with upgraded plan)
     if (POLYGON_API_KEY) {
@@ -76,16 +77,25 @@ serve(async (req: Request) => {
           }
         }
         providerUsed = 'polygon';
+        
+        // Check which symbols are missing from Polygon results
+        missingSymbols = symbols.filter(sym => !results[sym]);
+        if (missingSymbols.length > 0) {
+          console.log(`Missing from Polygon: ${missingSymbols.join(', ')}`);
+        }
       } catch (polygonError) {
         console.error("Polygon API failed, falling back to Twelve Data:", polygonError);
         // Clear results and continue to Twelve Data fallback
         Object.keys(results).forEach(key => delete results[key]);
+        missingSymbols = symbols;
       }
+    } else {
+      missingSymbols = symbols;
     }
 
-    // Fallback: Twelve Data multi-quote endpoint
-    if (providerUsed !== 'polygon' && TWELVEDATA_API_KEY) {
-      const chunks = chunk(symbols, 30); // keep URLs reasonable
+    // Fallback: Twelve Data multi-quote endpoint for missing symbols or if Polygon failed completely
+    if (missingSymbols.length > 0 && TWELVEDATA_API_KEY) {
+      const chunks = chunk(missingSymbols, 30); // keep URLs reasonable
       for (const group of chunks) {
         const url = new URL("https://api.twelvedata.com/quote");
         url.searchParams.set("symbol", group.join(","));
@@ -141,7 +151,7 @@ serve(async (req: Request) => {
           }
         }
       }
-      providerUsed = 'twelvedata';
+      providerUsed = providerUsed === 'polygon' ? 'mixed' : 'twelvedata';
     }
 
     if (Object.keys(results).length === 0) {
