@@ -117,18 +117,19 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
       
       // Convert database data to LivePrice format
       dbData?.forEach((etf: any) => {
-        // Use the actual price if available from WebSocket, otherwise estimate
-        const price = etf.current_price || (etf.yield_ttm ? (100 / Math.max(etf.yield_ttm, 1)) : 50);
-        
-        results[etf.ticker] = {
-          price: price,
-          // Add any other data we have from the database
-          ...(etf.yield_ttm && { yieldTTM: etf.yield_ttm }),
-          ...(etf.aum && { aum: etf.aum }),
-          ...(etf.avg_volume && { volume: etf.avg_volume }),
-          ...(etf.total_return_1y && { totalReturn1Y: etf.total_return_1y }),
-          ...(etf.price_updated_at && { priceUpdatedAt: etf.price_updated_at })
-        };
+        // Only include ETFs with valid price data
+        if (etf.current_price && etf.current_price > 0) {
+          results[etf.ticker] = {
+            price: etf.current_price,
+            // Add any other data we have from the database
+            ...(etf.yield_ttm && { yieldTTM: etf.yield_ttm }),
+            ...(etf.aum && { aum: etf.aum }),
+            ...(etf.avg_volume && { volume: etf.avg_volume }),
+            ...(etf.total_return_1y && { totalReturn1Y: etf.total_return_1y }),
+            ...(etf.price_updated_at && { priceUpdatedAt: etf.price_updated_at })
+          };
+        }
+        // ETFs without valid prices are excluded from live price data
       });
       
       console.log(`Retrieved database data for ${Object.keys(results).length} EODHD tickers`);

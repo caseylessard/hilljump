@@ -122,7 +122,7 @@ const QuickETFTest: React.FC = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Update All Canadian ETF Prices ({totalETFs > 0 ? totalETFs : '?'} ETFs)</span>
+          <span>Update All Canadian ETF Prices ({totalETFs > 0 ? totalETFs : '94+'} ETFs)</span>
           <Button 
             onClick={runTest} 
             disabled={testing}
