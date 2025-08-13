@@ -39,8 +39,8 @@ serve(async (req: Request) => {
 
     let providerUsed: 'polygon' | 'twelvedata' | 'mixed' | 'none' = 'none';
 
-    // Separate Canadian and US symbols based on exchange, not .TO suffix
-    const canadianSymbols = symbols.filter(s => s.includes('.TO')).map(s => s.replace('.TO', '')); // Remove .TO for API calls
+    // Separate Canadian and US symbols
+    const canadianSymbols = symbols.filter(s => s.includes('.TO'));
     const usSymbols = symbols.filter(s => !s.includes('.TO'));
     
     console.log(`Processing ${canadianSymbols.length} Canadian symbols and ${usSymbols.length} US symbols`);
@@ -99,12 +99,12 @@ serve(async (req: Request) => {
       missingSymbols.push(...usSymbols);
     }
 
-    // Add Canadian symbols to missing list for Yahoo Finance (skip Polygon entirely)
-    const canadianMissing = canadianSymbols; // All Canadian symbols go to Yahoo Finance
+    // Add Canadian symbols to missing list for simple quotes endpoint
+    const canadianMissing = canadianSymbols; // All Canadian symbols use simple quotes
     missingSymbols.push(...canadianMissing);
     
     if (canadianSymbols.length > 0) {
-      console.log(`Routing Canadian symbols to Yahoo Finance: ${canadianSymbols.join(', ')}`);
+      console.log(`Routing Canadian symbols to simple quotes: ${canadianSymbols.join(', ')}`);
     }
 
     // Use Yahoo Finance for Canadian symbols and Twelve Data for US symbols
@@ -112,53 +112,38 @@ serve(async (req: Request) => {
       const canadianMissing = missingSymbols.filter(s => canadianSymbols.includes(s));
       const usMissing = missingSymbols.filter(s => usSymbols.includes(s));
       
-      // Yahoo Finance for Canadian symbols - free and reliable
+      // Simple quotes endpoint for Canadian symbols - reliable fallback
       if (canadianMissing.length > 0) {
-        console.log(`Using Yahoo Finance for ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 10));
+        console.log(`Using simple quotes for ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 10));
         
-        const chunks = chunk(canadianMissing, 10); // Process in small batches
-        for (const group of chunks) {
-          try {
-            // Yahoo Finance expects .TO format
-            const symbolsWithTO = group.map(s => `${s}.TO`).join(',');
-            const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbolsWithTO)}`;
-            console.log(`Yahoo Finance request: ${symbolsWithTO}`);
-            
-            const res = await fetch(url, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        try {
+          const { data: quotesResult, error: quotesError } = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/quotes`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+            },
+            body: JSON.stringify({ tickers: canadianMissing })
+          }).then(r => r.json());
+
+          if (quotesError) {
+            console.error("Simple quotes error:", quotesError);
+          } else if (quotesResult?.prices) {
+            console.log(`Found ${Object.keys(quotesResult.prices).length} prices from simple quotes`);
+            for (const [symbol, price] of Object.entries(quotesResult.prices)) {
+              if (Number.isFinite(price)) {
+                results[symbol] = {
+                  price: price as number,
+                  prevClose: undefined,
+                  change: undefined,
+                  changePercent: undefined,
+                };
+                console.log(`Simple quotes: ${symbol} = $${price}`);
               }
-            });
-            const data = await res.json();
-            console.log(`Yahoo Finance response status: ${res.status}`);
-            
-            if (res.ok && data?.quoteResponse?.result) {
-              console.log(`Found ${data.quoteResponse.result.length} results from Yahoo Finance`);
-              for (const item of data.quoteResponse.result) {
-                const yahooSymbol = item?.symbol?.toUpperCase(); // e.g., "BANK.TO"
-                if (!yahooSymbol) continue;
-                
-                const price = Number(item?.regularMarketPrice);
-                const prevClose = Number(item?.regularMarketPreviousClose);
-                const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : undefined;
-                const changePercent = Number.isFinite(prevClose) && prevClose !== 0 && Number.isFinite(change) ? (change / prevClose) * 100 : undefined;
-                
-                if (Number.isFinite(price)) {
-                  results[yahooSymbol] = { // Store exactly as Yahoo returns it
-                    price,
-                    prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
-                    change: Number.isFinite(change) ? change : undefined,
-                    changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
-                  };
-                  console.log(`Yahoo Finance: ${yahooSymbol} = $${price}`);
-                }
-              }
-            } else {
-              console.log(`Yahoo Finance failed for group:`, group);
             }
-          } catch (err) {
-            console.error(`Yahoo Finance error for group:`, err);
           }
+        } catch (err) {
+          console.error("Simple quotes fetch error:", err);
         }
       }
       
