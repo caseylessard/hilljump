@@ -105,190 +105,202 @@ serve(async (req) => {
     }));
   };
 
-  let testTickers: string[] | null = null;
-
   socket.onmessage = async (event) => {
-    const message = JSON.parse(event.data);
-    console.log("[ETF-STREAM] Received client message:", message);
-    
-    if (message.type === 'test' && message.tickers) {
-      testTickers = message.tickers;
-      console.log("[ETF-STREAM] Test mode activated for tickers:", testTickers);
+    try {
+      const message = JSON.parse(event.data);
+      console.log("[ETF-STREAM] Received client message:", message);
       
-      try {
-        const eodhd_api_key = Deno.env.get('EODHD_API_KEY')!;
-        
-        if (!eodhd_api_key) {
-          socket.send(JSON.stringify({ type: 'error', message: 'EODHD API key not configured' }));
-          return;
-        }
-        
-        socket.send(JSON.stringify({ 
-          type: 'progress', 
-          message: `Starting to fetch test data for ${testTickers.length} tickers`,
-          total: testTickers.length 
-        }));
-        
-        const etfDataMap = await fetchEODHDData(testTickers, eodhd_api_key);
-        
-        let processed = 0;
-        
-        // Stream results as they're processed
-        for (const [ticker, data] of etfDataMap) {
-          processed++;
-          
-          // Send progress update
-          socket.send(JSON.stringify({
-            type: 'data',
-            ticker: data.ticker,
-            data: {
-              name: data.name,
-              yield: data.yield,
-              aum: data.aum,
-              volume: data.volume,
-              return1y: data.return1y,
-              price: data.price
-            },
-            progress: {
-              current: processed,
-              total: testTickers.length,
-              percentage: Math.round((processed / testTickers.length) * 100)
-            }
-          }));
-        }
-        
-        socket.send(JSON.stringify({
-          type: 'complete',
-          message: `Successfully processed ${processed} test tickers`,
-          stats: {
-            total: testTickers.length,
-            updated: 0, // No database updates in test mode
-            processed
-          }
-        }));
-        
-      } catch (error) {
-        console.error("[ETF-STREAM] Test error:", error);
-        socket.send(JSON.stringify({
-          type: 'error',
-          message: `Test error: ${error.message}`
-        }));
+      if (message.type === 'test' && message.tickers) {
+        console.log("[ETF-STREAM] Test mode activated for tickers:", message.tickers);
+        await handleTestMode(socket, message.tickers);
+      } else {
+        console.log("[ETF-STREAM] Regular mode - fetching ETFs from database");
+        await handleRegularMode(socket);
       }
-    } else {
-      // Handle regular ETF update mode
-      try {
-        // Initialize Supabase client
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        const eodhd_api_key = Deno.env.get('EODHD_API_KEY')!;
-        
-        if (!eodhd_api_key) {
-          socket.send(JSON.stringify({ type: 'error', message: 'EODHD API key not configured' }));
-          return;
-        }
-        
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        
-        // Get all ETFs that need updating
-        const { data: etfs, error } = await supabase
-          .from('etfs')
-          .select('ticker, name, country')
-          .or('yield_ttm.is.null,total_return_1y.is.null,aum.is.null')
-          .limit(50); // Start with a reasonable batch
-        
-        if (error) {
-          socket.send(JSON.stringify({ type: 'error', message: 'Failed to fetch ETFs from database' }));
-          return;
-        }
-        
-        if (!etfs || etfs.length === 0) {
-          socket.send(JSON.stringify({ type: 'complete', message: 'No ETFs need updating' }));
-          return;
-        }
-        
-        socket.send(JSON.stringify({ 
-          type: 'progress', 
-          message: `Starting to fetch data for ${etfs.length} ETFs`,
-          total: etfs.length 
-        }));
-        
-        const symbols = etfs.map(etf => etf.ticker);
-        const etfDataMap = await fetchEODHDData(symbols, eodhd_api_key);
-        
-        let processed = 0;
-        const updates = [];
-        
-        // Stream results as they're processed
-        for (const [ticker, data] of etfDataMap) {
-          processed++;
-          
-          // Send progress update
-          socket.send(JSON.stringify({
-            type: 'data',
-            ticker: data.ticker,
-            data: {
-              name: data.name,
-              yield: data.yield,
-              aum: data.aum,
-              volume: data.volume,
-              return1y: data.return1y,
-              price: data.price
-            },
-            progress: {
-              current: processed,
-              total: etfs.length,
-              percentage: Math.round((processed / etfs.length) * 100)
-            }
-          }));
-          
-          // Prepare database update
-          const updateData: any = {};
-          if (data.yield !== undefined) updateData.yield_ttm = data.yield;
-          if (data.aum !== undefined) updateData.aum = data.aum;
-          if (data.volume !== undefined) updateData.avg_volume = data.volume;
-          if (data.return1y !== undefined) updateData.total_return_1y = data.return1y;
-          if (data.name) updateData.name = data.name;
-          
-          if (Object.keys(updateData).length > 0) {
-            updates.push({ ticker, ...updateData });
-          }
-        }
-        
-        // Batch update database
-        if (updates.length > 0) {
-          for (const update of updates) {
-            const { ticker, ...updateData } = update;
-            await supabase
-              .from('etfs')
-              .update(updateData)
-              .eq('ticker', ticker);
-          }
-          
-          socket.send(JSON.stringify({
-            type: 'database_updated',
-            message: `Updated ${updates.length} ETFs in database`
-          }));
-        }
-        
-        socket.send(JSON.stringify({
-          type: 'complete',
-          message: `Successfully processed ${processed} ETFs`,
-          stats: {
-            total: etfs.length,
-            updated: updates.length,
-            processed
-          }
-        }));
-        
-      } catch (error) {
-        console.error("[ETF-STREAM] Error:", error);
-        socket.send(JSON.stringify({
-          type: 'error',
-          message: `Stream error: ${error.message}`
-        }));
-      }
+    } catch (error) {
+      console.error("[ETF-STREAM] Error parsing message:", error);
+      socket.send(JSON.stringify({
+        type: 'error',
+        message: `Message parsing error: ${error.message}`
+      }));
     }
   };
+
+  async function handleTestMode(socket: WebSocket, testTickers: string[]) {
+    try {
+      const eodhd_api_key = Deno.env.get('EODHD_API_KEY')!;
+      
+      if (!eodhd_api_key) {
+        socket.send(JSON.stringify({ type: 'error', message: 'EODHD API key not configured' }));
+        return;
+      }
+      
+      socket.send(JSON.stringify({ 
+        type: 'progress', 
+        message: `Starting to fetch test data for ${testTickers.length} tickers`,
+        total: testTickers.length 
+      }));
+      
+      const etfDataMap = await fetchEODHDData(testTickers, eodhd_api_key);
+      
+      let processed = 0;
+      
+      // Stream results as they're processed
+      for (const [ticker, data] of etfDataMap) {
+        processed++;
+        
+        // Send progress update
+        socket.send(JSON.stringify({
+          type: 'data',
+          ticker: data.ticker,
+          data: {
+            name: data.name,
+            yield: data.yield,
+            aum: data.aum,
+            volume: data.volume,
+            return1y: data.return1y,
+            price: data.price
+          },
+          progress: {
+            current: processed,
+            total: testTickers.length,
+            percentage: Math.round((processed / testTickers.length) * 100)
+          }
+        }));
+      }
+      
+      socket.send(JSON.stringify({
+        type: 'complete',
+        message: `Successfully processed ${processed} test tickers`,
+        stats: {
+          total: testTickers.length,
+          updated: 0, // No database updates in test mode
+          processed
+        }
+      }));
+      
+    } catch (error) {
+      console.error("[ETF-STREAM] Test error:", error);
+      socket.send(JSON.stringify({
+        type: 'error',
+        message: `Test error: ${error.message}`
+      }));
+    }
+  }
+
+  async function handleRegularMode(socket: WebSocket) {
+    try {
+      // Initialize Supabase client
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const eodhd_api_key = Deno.env.get('EODHD_API_KEY')!;
+      
+      if (!eodhd_api_key) {
+        socket.send(JSON.stringify({ type: 'error', message: 'EODHD API key not configured' }));
+        return;
+      }
+      
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      // Get all ETFs that need updating
+      const { data: etfs, error } = await supabase
+        .from('etfs')
+        .select('ticker, name, country')
+        .or('yield_ttm.is.null,total_return_1y.is.null,aum.is.null')
+        .limit(50); // Start with a reasonable batch
+      
+      if (error) {
+        socket.send(JSON.stringify({ type: 'error', message: 'Failed to fetch ETFs from database' }));
+        return;
+      }
+      
+      if (!etfs || etfs.length === 0) {
+        socket.send(JSON.stringify({ type: 'complete', message: 'No ETFs need updating' }));
+        return;
+      }
+      
+      socket.send(JSON.stringify({ 
+        type: 'progress', 
+        message: `Starting to fetch data for ${etfs.length} ETFs`,
+        total: etfs.length 
+      }));
+      
+      const symbols = etfs.map(etf => etf.ticker);
+      const etfDataMap = await fetchEODHDData(symbols, eodhd_api_key);
+      
+      let processed = 0;
+      const updates = [];
+      
+      // Stream results as they're processed
+      for (const [ticker, data] of etfDataMap) {
+        processed++;
+        
+        // Send progress update
+        socket.send(JSON.stringify({
+          type: 'data',
+          ticker: data.ticker,
+          data: {
+            name: data.name,
+            yield: data.yield,
+            aum: data.aum,
+            volume: data.volume,
+            return1y: data.return1y,
+            price: data.price
+          },
+          progress: {
+            current: processed,
+            total: etfs.length,
+            percentage: Math.round((processed / etfs.length) * 100)
+          }
+        }));
+        
+        // Prepare database update
+        const updateData: any = {};
+        if (data.yield !== undefined) updateData.yield_ttm = data.yield;
+        if (data.aum !== undefined) updateData.aum = data.aum;
+        if (data.volume !== undefined) updateData.avg_volume = data.volume;
+        if (data.return1y !== undefined) updateData.total_return_1y = data.return1y;
+        if (data.name) updateData.name = data.name;
+        
+        if (Object.keys(updateData).length > 0) {
+          updates.push({ ticker, ...updateData });
+        }
+      }
+      
+      // Batch update database
+      if (updates.length > 0) {
+        for (const update of updates) {
+          const { ticker, ...updateData } = update;
+          await supabase
+            .from('etfs')
+            .update(updateData)
+            .eq('ticker', ticker);
+        }
+        
+        socket.send(JSON.stringify({
+          type: 'database_updated',
+          message: `Updated ${updates.length} ETFs in database`
+        }));
+      }
+      
+      socket.send(JSON.stringify({
+        type: 'complete',
+        message: `Successfully processed ${processed} ETFs`,
+        stats: {
+          total: etfs.length,
+          updated: updates.length,
+          processed
+        }
+      }));
+      
+    } catch (error) {
+      console.error("[ETF-STREAM] Error:", error);
+      socket.send(JSON.stringify({
+        type: 'error',
+        message: `Stream error: ${error.message}`
+      }));
+    }
+  }
   
   
   socket.onerror = (error) => {
