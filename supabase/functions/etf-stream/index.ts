@@ -114,38 +114,29 @@ serve(async (req) => {
         console.log("[ETF-STREAM] Test mode activated for tickers:", message.tickers);
         
         try {
-          const eodhd_api_key = Deno.env.get('EODHD_API_KEY')!;
-          
-          if (!eodhd_api_key) {
-            socket.send(JSON.stringify({ type: 'error', message: 'EODHD API key not configured' }));
-            return;
-          }
-          
+          // Use simplified test data since EODHD is rate limited
           socket.send(JSON.stringify({ 
             type: 'progress', 
-            message: `Starting to fetch test data for ${message.tickers.length} tickers`,
+            message: `Starting simplified test for ${message.tickers.length} tickers (EODHD rate limited)`,
             total: message.tickers.length 
           }));
           
-          const etfDataMap = await fetchEODHDData(message.tickers, eodhd_api_key);
-          
+          // Generate test data for each ticker
           let processed = 0;
-          
-          // Stream results as they're processed
-          for (const [ticker, data] of etfDataMap) {
+          for (const ticker of message.tickers) {
             processed++;
             
-            // Send progress update
+            // Send test data immediately
             socket.send(JSON.stringify({
               type: 'data',
-              ticker: data.ticker,
+              ticker: ticker,
               data: {
-                name: data.name,
-                yield: data.yield,
-                aum: data.aum,
-                volume: data.volume,
-                return1y: data.return1y,
-                price: data.price
+                name: `Test ${ticker} Name`,
+                yield: Math.random() * 10,
+                aum: Math.random() * 1000000000,
+                volume: Math.random() * 1000000,
+                return1y: Math.random() * 20 - 10,
+                price: Math.random() * 100 + 10
               },
               progress: {
                 current: processed,
@@ -153,6 +144,9 @@ serve(async (req) => {
                 percentage: Math.round((processed / message.tickers.length) * 100)
               }
             }));
+            
+            // Small delay to simulate real API calls
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
           
           socket.send(JSON.stringify({
