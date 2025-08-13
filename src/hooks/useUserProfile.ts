@@ -3,8 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type UserProfile = {
   id: string;
+  username: string | null;
   first_name: string | null;
+  last_name: string | null;
   country: 'US' | 'CA';
+  approved: boolean;
 };
 
 export function useUserProfile() {
@@ -36,14 +39,21 @@ export function useUserProfile() {
     setLoading(true);
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, first_name, country")
+      .select("id, username, first_name, last_name, country, approved")
       .eq("id", uid)
       .maybeSingle();
     if (!error && data) {
-      setProfile({ id: data.id, first_name: data.first_name, country: (data.country as any) ?? 'CA' });
+      setProfile({
+        id: data.id,
+        username: data.username ?? null,
+        first_name: data.first_name ?? null,
+        last_name: data.last_name ?? null,
+        country: (data.country as any) ?? 'CA',
+        approved: Boolean(data.approved)
+      });
     } else {
       // No row yet: use defaults for display
-      setProfile({ id: uid, first_name: null, country: 'CA' });
+      setProfile({ id: uid, username: null, first_name: null, last_name: null, country: 'CA', approved: false });
     }
     setLoading(false);
   }

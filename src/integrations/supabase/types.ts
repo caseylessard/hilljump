@@ -147,25 +147,121 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approved: boolean
           country: string
           created_at: string
           first_name: string | null
           id: string
+          last_name: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
+          approved?: boolean
           country?: string
           created_at?: string
           first_name?: string | null
           id: string
+          last_name?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
+          approved?: boolean
           country?: string
           created_at?: string
           first_name?: string | null
           id?: string
+          last_name?: string | null
           updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      subscribers: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          dividend_stability: number
+          return_weight: number
+          risk_weight: number
+          updated_at: string
+          user_id: string
+          yield_weight: number
+        }
+        Insert: {
+          created_at?: string
+          dividend_stability?: number
+          return_weight?: number
+          risk_weight?: number
+          updated_at?: string
+          user_id: string
+          yield_weight?: number
+        }
+        Update: {
+          created_at?: string
+          dividend_stability?: number
+          return_weight?: number
+          risk_weight?: number
+          updated_at?: string
+          user_id?: string
+          yield_weight?: number
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -174,10 +270,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "premium" | "subscriber" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -304,6 +406,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "premium", "subscriber", "user"],
+    },
   },
 } as const

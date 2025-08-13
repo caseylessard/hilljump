@@ -7,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserBadge } from "@/components/UserBadge";
-
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -19,7 +20,11 @@ const Profile = () => {
   const [shares, setShares] = useState<number>(0);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [approved, setApproved] = useState<boolean>(false);
   const [country, setCountry] = useState<'US' | 'CA'>('CA');
+  const [weights, setWeights] = useState({ r: 60, y: 20, k: 20, d: 50 });
 
   // SEO
   useEffect(() => {
@@ -66,21 +71,47 @@ const Profile = () => {
     });
   }, [positions, toast]);
 
-  // Load user profile (first name and country)
+  // Load user profile (username, names, country, approved)
   useEffect(() => {
     if (!userId) return;
     (async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, country')
+        .select('username, first_name, last_name, country, approved')
         .eq('id', userId)
         .maybeSingle();
       if (!error && data) {
+        setUsername((data as any).username ?? '');
         setFirstName((data as any).first_name ?? '');
+        setLastName((data as any).last_name ?? '');
         setCountry(((data as any).country as 'US' | 'CA') ?? 'CA');
+        setApproved(Boolean((data as any).approved));
       } else {
+        setUsername('');
         setFirstName('');
+        setLastName('');
         setCountry('CA');
+        setApproved(false);
+      }
+    })();
+  }, [userId]);
+
+  // Load ranking preferences
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('return_weight, yield_weight, risk_weight, dividend_stability')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!error && data) {
+        setWeights({
+          r: Number((data as any).return_weight) || 60,
+          y: Number((data as any).yield_weight) || 20,
+          k: Number((data as any).risk_weight) || 20,
+          d: Number((data as any).dividend_stability) || 50,
+        });
       }
     })();
   }, [userId]);
@@ -113,14 +144,39 @@ const Profile = () => {
       return;
     }
     const uid = session.user.id;
+    const desiredUsername = (username || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
     const { error } = await supabase
       .from('profiles')
-      .upsert({ id: uid, first_name: firstName || null, country });
+      .upsert({ id: uid, username: desiredUsername || null, first_name: firstName || null, last_name: lastName || null, country });
+    if (error) {
+      const msg = error.message || '';
+      if (msg.toLowerCase().includes('idx_profiles_username_unique') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+        toast({ title: 'Username taken', description: 'Please choose a different username.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Save failed', description: msg, variant: 'destructive' });
+      }
+      return;
+    }
+    setUsername(desiredUsername);
+    toast({ title: 'Preferences saved', description: `${firstName ? firstName + ' • ' : ''}${country === 'CA' ? 'Canada 🇨🇦' : 'United States 🇺🇸'}` });
+  };
+
+  const saveRanking = async () => {
+    if (!userId) return;
+    const { error } = await supabase
+      .from('user_preferences')
+      .upsert({
+        user_id: userId,
+        return_weight: weights.r,
+        yield_weight: weights.y,
+        risk_weight: weights.k,
+        dividend_stability: weights.d,
+      });
     if (error) {
       toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Preferences saved', description: `${firstName ? firstName + ' • ' : ''}${country === 'CA' ? 'Canada 🇨🇦' : 'United States 🇺🇸'}` });
+    toast({ title: 'Ranking preferences saved' });
   };
   const exportCAEtfs = async () => {
     try {
@@ -176,10 +232,22 @@ const Profile = () => {
         ) : (
           <>
             <Card className="p-4 grid gap-3">
-              <div className="grid md:grid-cols-3 gap-2 items-end">
+              <div className="grid md:grid-cols-5 gap-2 items-end">
+                <div>
+                  <label className="block text-sm mb-1">Username</label>
+                  <Input
+                    placeholder="e.g., caseylessard"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  />
+                </div>
                 <div>
                   <label className="block text-sm mb-1">First name</label>
                   <Input placeholder="e.g., Alex" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Last name</label>
+                  <Input placeholder="e.g., Smith" value={lastName} onChange={(e) => setLastName(e.target.value)} />
                 </div>
                 <div>
                   <label className="block text-sm mb-1">Country</label>
@@ -194,6 +262,44 @@ const Profile = () => {
                 <div className="flex gap-2">
                   <Button onClick={savePreferences} className="w-full">Save</Button>
                 </div>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Status: {approved ? <Badge variant="secondary">Approved</Badge> : <Badge variant="outline">Pending approval</Badge>}
+              </div>
+            </Card>
+
+            <Card className="p-4 grid gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Ranking Preferences</div>
+                  <div className="text-sm text-muted-foreground">Adjust weights and dividend stability for ETF rankings.</div>
+                </div>
+                <Button onClick={saveRanking}>Save Rankings</Button>
+              </div>
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Total Return Priority</span>
+                  <Badge variant="secondary">{weights.r}%</Badge>
+                </div>
+                <Slider value={[weights.r]} onValueChange={([v]) => setWeights((w) => ({ ...w, r: v }))} min={0} max={100} step={1} />
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm font-medium">Yield Emphasis</span>
+                  <Badge variant="secondary">{weights.y}%</Badge>
+                </div>
+                <Slider value={[weights.y]} onValueChange={([v]) => setWeights((w) => ({ ...w, y: v }))} min={0} max={100} step={1} />
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm font-medium">Risk Devaluation</span>
+                  <Badge variant="secondary">{weights.k}%</Badge>
+                </div>
+                <Slider value={[weights.k]} onValueChange={([v]) => setWeights((w) => ({ ...w, k: v }))} min={0} max={100} step={1} />
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm font-medium">Dividend Stability Preference</span>
+                  <Badge variant="secondary">{weights.d}%</Badge>
+                </div>
+                <Slider value={[weights.d]} onValueChange={([v]) => setWeights((w) => ({ ...w, d: v }))} min={0} max={100} step={1} />
               </div>
             </Card>
 
