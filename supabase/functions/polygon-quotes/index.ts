@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const POLYGON_API_KEY = Deno.env.get("POLYGON_API_KEY");
-const ALPHA_VANTAGE_API_KEY = Deno.env.get("ALPHA_VANTAGE_API_KEY");
+const TWELVEDATA_API_KEY = Deno.env.get("TWELVEDATA_API_KEY");
 
 type PriceResult = { price: number; prevClose?: number; change?: number; changePercent?: number };
 
@@ -112,55 +112,57 @@ serve(async (req: Request) => {
       const canadianMissing = missingSymbols.filter(s => canadianSymbols.includes(s));
       const usMissing = missingSymbols.filter(s => usSymbols.includes(s));
       
-      // Alpha Vantage for Canadian symbols - simplified approach
+      // Yahoo Finance for Canadian symbols - free and reliable
       if (canadianMissing.length > 0) {
-        console.log(`Processing ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 10));
+        console.log(`Using Yahoo Finance for ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 10));
         
-        if (!ALPHA_VANTAGE_API_KEY) {
-          console.log("No Alpha Vantage API key found");
-        } else {
-          console.log("Alpha Vantage API key found, testing with first symbol");
-          
-          // Test with just one symbol first  
-          const testSymbol = canadianMissing[0]; // e.g., "BANK"
-          const toSymbol = `${testSymbol}.TO`; // "BANK.TO"
-          
+        const chunks = chunk(canadianMissing, 10); // Process in small batches
+        for (const group of chunks) {
           try {
-            const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${toSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
-            console.log(`Testing Alpha Vantage with: ${toSymbol}`);
+            // Yahoo Finance expects .TO format
+            const symbolsWithTO = group.map(s => `${s}.TO`).join(',');
+            const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbolsWithTO)}`;
+            console.log(`Yahoo Finance request: ${symbolsWithTO}`);
             
-            const res = await fetch(url);
+            const res = await fetch(url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+            });
             const data = await res.json();
-            console.log(`Alpha Vantage response:`, JSON.stringify(data));
+            console.log(`Yahoo Finance response status: ${res.status}`);
             
-            if (data?.['Global Quote']) {
-              const quote = data['Global Quote'];
-              const price = Number(quote['05. price']);
-              console.log(`Found price for ${toSymbol}: $${price}`);
-              
-              if (Number.isFinite(price)) {
-                const prevClose = Number(quote['08. previous close']);
-                const change = Number(quote['09. change']);
-                const changePercent = Number(quote['10. change percent']?.replace('%', ''));
+            if (res.ok && data?.quoteResponse?.result) {
+              console.log(`Found ${data.quoteResponse.result.length} results from Yahoo Finance`);
+              for (const item of data.quoteResponse.result) {
+                const yahooSymbol = item?.symbol?.toUpperCase(); // e.g., "BANK.TO"
+                if (!yahooSymbol) continue;
                 
-                results[toSymbol] = {
-                  price,
-                  prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
-                  change: Number.isFinite(change) ? change : undefined,
-                  changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
-                };
-                console.log(`SUCCESS: Added ${toSymbol} = $${price}`);
+                const price = Number(item?.regularMarketPrice);
+                const prevClose = Number(item?.regularMarketPreviousClose);
+                const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : undefined;
+                const changePercent = Number.isFinite(prevClose) && prevClose !== 0 && Number.isFinite(change) ? (change / prevClose) * 100 : undefined;
+                
+                if (Number.isFinite(price)) {
+                  results[yahooSymbol] = { // Store exactly as Yahoo returns it
+                    price,
+                    prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
+                    change: Number.isFinite(change) ? change : undefined,
+                    changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
+                  };
+                  console.log(`Yahoo Finance: ${yahooSymbol} = $${price}`);
+                }
               }
             } else {
-              console.log(`No Global Quote found in response`);
+              console.log(`Yahoo Finance failed for group:`, group);
             }
           } catch (err) {
-            console.error(`Alpha Vantage error:`, err);
+            console.error(`Yahoo Finance error for group:`, err);
           }
         }
       }
       
-      // Twelve Data for US symbols
+      // Twelve Data for US symbols (if available)
       if (usMissing.length > 0 && TWELVEDATA_API_KEY) {
         console.log(`Using Twelve Data for ${usMissing.length} US symbols:`, usMissing.slice(0, 10));
         const chunks = chunk(usMissing, 30);
