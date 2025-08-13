@@ -114,29 +114,38 @@ serve(async (req) => {
         console.log("[ETF-STREAM] Test mode activated for tickers:", message.tickers);
         
         try {
-          // Use simplified test data since EODHD is rate limited
+          const eodhd_api_key = Deno.env.get('EODHD_API_KEY')!;
+          
+          if (!eodhd_api_key) {
+            socket.send(JSON.stringify({ type: 'error', message: 'EODHD API key not configured' }));
+            return;
+          }
+          
           socket.send(JSON.stringify({ 
             type: 'progress', 
-            message: `Starting simplified test for ${message.tickers.length} tickers (EODHD rate limited)`,
+            message: `Starting to fetch REAL data for ${message.tickers.length} tickers via EODHD`,
             total: message.tickers.length 
           }));
           
-          // Generate test data for each ticker
+          const etfDataMap = await fetchEODHDData(message.tickers, eodhd_api_key);
+          
           let processed = 0;
-          for (const ticker of message.tickers) {
+          
+          // Stream results as they're processed
+          for (const [ticker, data] of etfDataMap) {
             processed++;
             
-            // Send test data immediately
+            // Send progress update
             socket.send(JSON.stringify({
               type: 'data',
-              ticker: ticker,
+              ticker: data.ticker,
               data: {
-                name: `Test ${ticker} Name`,
-                yield: Math.random() * 10,
-                aum: Math.random() * 1000000000,
-                volume: Math.random() * 1000000,
-                return1y: Math.random() * 20 - 10,
-                price: Math.random() * 100 + 10
+                name: data.name,
+                yield: data.yield,
+                aum: data.aum,
+                volume: data.volume,
+                return1y: data.return1y,
+                price: data.price
               },
               progress: {
                 current: processed,
@@ -144,17 +153,43 @@ serve(async (req) => {
                 percentage: Math.round((processed / message.tickers.length) * 100)
               }
             }));
+          }
+          
+          // Now update the database with real test data
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          
+          let updated = 0;
+          for (const [ticker, data] of etfDataMap) {
+            const updateData: any = {};
+            if (data.yield !== undefined) updateData.yield_ttm = data.yield;
+            if (data.aum !== undefined) updateData.aum = data.aum;
+            if (data.volume !== undefined) updateData.avg_volume = data.volume;
+            if (data.return1y !== undefined) updateData.total_return_1y = data.return1y;
+            if (data.name) updateData.name = data.name;
             
-            // Small delay to simulate real API calls
-            await new Promise(resolve => setTimeout(resolve, 100));
+            if (Object.keys(updateData).length > 0) {
+              const { error } = await supabase
+                .from('etfs')
+                .update(updateData)
+                .eq('ticker', ticker);
+              
+              if (!error) updated++;
+            }
           }
           
           socket.send(JSON.stringify({
+            type: 'database_updated',
+            message: `Updated ${updated} ETFs in database with real EODHD data`
+          }));
+          
+          socket.send(JSON.stringify({
             type: 'complete',
-            message: `Successfully processed ${processed} test tickers`,
+            message: `Successfully processed ${processed} test tickers and updated ${updated} in database`,
             stats: {
               total: message.tickers.length,
-              updated: 0, // No database updates in test mode
+              updated: updated,
               processed
             }
           }));
