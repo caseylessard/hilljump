@@ -62,18 +62,37 @@ export type Database = {
           category: string | null
           country: string | null
           created_at: string
+          data_source: string | null
           distribution_frequency: string | null
+          eodhd_feed_eod: string | null
+          eodhd_symbol: string | null
+          eodhd_ws_url: string | null
           exchange: string
+          exchange_code: string | null
+          exchange_normalized: string | null
           expense_ratio: number
+          finnhub_feed_quote: string | null
+          finnhub_symbol: string | null
+          finnhub_ws_subscribe: string | null
+          finnhub_ws_url: string | null
           id: string
           logo_key: string | null
           manager: string | null
           max_drawdown_1y: number
+          mic_code: string | null
           name: string
+          polygon_feed: string | null
+          polygon_supported: boolean | null
+          polygon_ticker: string | null
+          provider_group: string | null
           strategy_label: string | null
           summary: string | null
           ticker: string
           total_return_1y: number
+          twelve_feed_quote: string | null
+          twelve_feed_timeseries: string | null
+          twelve_symbol: string | null
+          twelve_ws_url: string | null
           updated_at: string
           volatility_1y: number
           yield_ttm: number
@@ -84,18 +103,37 @@ export type Database = {
           category?: string | null
           country?: string | null
           created_at?: string
+          data_source?: string | null
           distribution_frequency?: string | null
+          eodhd_feed_eod?: string | null
+          eodhd_symbol?: string | null
+          eodhd_ws_url?: string | null
           exchange: string
+          exchange_code?: string | null
+          exchange_normalized?: string | null
           expense_ratio: number
+          finnhub_feed_quote?: string | null
+          finnhub_symbol?: string | null
+          finnhub_ws_subscribe?: string | null
+          finnhub_ws_url?: string | null
           id?: string
           logo_key?: string | null
           manager?: string | null
           max_drawdown_1y: number
+          mic_code?: string | null
           name: string
+          polygon_feed?: string | null
+          polygon_supported?: boolean | null
+          polygon_ticker?: string | null
+          provider_group?: string | null
           strategy_label?: string | null
           summary?: string | null
           ticker: string
           total_return_1y: number
+          twelve_feed_quote?: string | null
+          twelve_feed_timeseries?: string | null
+          twelve_symbol?: string | null
+          twelve_ws_url?: string | null
           updated_at?: string
           volatility_1y: number
           yield_ttm: number
@@ -106,18 +144,37 @@ export type Database = {
           category?: string | null
           country?: string | null
           created_at?: string
+          data_source?: string | null
           distribution_frequency?: string | null
+          eodhd_feed_eod?: string | null
+          eodhd_symbol?: string | null
+          eodhd_ws_url?: string | null
           exchange?: string
+          exchange_code?: string | null
+          exchange_normalized?: string | null
           expense_ratio?: number
+          finnhub_feed_quote?: string | null
+          finnhub_symbol?: string | null
+          finnhub_ws_subscribe?: string | null
+          finnhub_ws_url?: string | null
           id?: string
           logo_key?: string | null
           manager?: string | null
           max_drawdown_1y?: number
+          mic_code?: string | null
           name?: string
+          polygon_feed?: string | null
+          polygon_supported?: boolean | null
+          polygon_ticker?: string | null
+          provider_group?: string | null
           strategy_label?: string | null
           summary?: string | null
           ticker?: string
           total_return_1y?: number
+          twelve_feed_quote?: string | null
+          twelve_feed_timeseries?: string | null
+          twelve_symbol?: string | null
+          twelve_ws_url?: string | null
           updated_at?: string
           volatility_1y?: number
           yield_ttm?: number

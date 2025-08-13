@@ -16,6 +16,12 @@ export type ETF = {
   manager?: string; // e.g., 'YieldMax'
   strategyLabel?: string; // e.g., 'CC ETF - NVDA'
   logoKey?: string; // maps to a local asset key
+  // Data source information for improved price fetching
+  dataSource?: string; // e.g., 'polygon', 'twelvedata'
+  polygonSupported?: boolean; // whether ticker is supported by Polygon
+  twelveSymbol?: string; // symbol format for TwelveData API
+  finnhubSymbol?: string; // symbol format for Finnhub API
+  eodhSymbol?: string; // symbol format for EOD Historical Data API
 };
 
 export const SAMPLE_ETFS: ETF[] = [

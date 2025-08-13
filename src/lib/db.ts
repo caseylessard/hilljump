@@ -20,6 +20,12 @@ function mapRow(row: any): ETF {
     manager: row.manager ?? undefined,
     strategyLabel: row.strategy_label ?? undefined,
     logoKey: row.logo_key ?? undefined,
+    // Data source fields for improved price fetching
+    dataSource: row.data_source ?? undefined,
+    polygonSupported: row.polygon_supported ?? false,
+    twelveSymbol: row.twelve_symbol ?? undefined,
+    finnhubSymbol: row.finnhub_symbol ?? undefined,
+    eodhSymbol: row.eodhd_symbol ?? undefined,
   };
 }
 

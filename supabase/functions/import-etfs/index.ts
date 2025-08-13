@@ -115,6 +115,26 @@ serve(async (req) => {
         logo_key: (get('logo_key') || '').trim() || null,
         country: (get('country') || '').trim() || null,
         summary: (get('summary') || '').trim() || null,
+        // Data feed columns
+        twelve_symbol: (get('twelve_symbol') || '').trim() || null,
+        finnhub_symbol: (get('finnhub_symbol') || '').trim() || null,
+        eodhd_symbol: (get('eodhd_symbol') || '').trim() || null,
+        twelve_feed_quote: (get('twelve_feed_quote') || '').trim() || null,
+        twelve_feed_timeseries: (get('twelve_feed_timeseries') || '').trim() || null,
+        finnhub_feed_quote: (get('finnhub_feed_quote') || '').trim() || null,
+        eodhd_feed_eod: (get('eodhd_feed_eod') || '').trim() || null,
+        data_source: (get('data_source') || '').trim() || null,
+        polygon_supported: (get('polygon_supported') || '').trim().toLowerCase() === 'true',
+        polygon_ticker: (get('polygon_ticker') || '').trim() || null,
+        polygon_feed: (get('polygon_feed') || '').trim() || null,
+        exchange_normalized: (get('exchange_normalized') || '').trim() || null,
+        exchange_code: (get('exchange_code') || '').trim() || null,
+        twelve_ws_url: (get('twelve_ws_url') || '').trim() || null,
+        finnhub_ws_url: (get('finnhub_ws_url') || '').trim() || null,
+        finnhub_ws_subscribe: (get('finnhub_ws_subscribe') || '').trim() || null,
+        eodhd_ws_url: (get('eodhd_ws_url') || '').trim() || null,
+        mic_code: (get('mic_code') || '').trim() || null,
+        provider_group: (get('provider_group') || '').trim() || null,
       };
 
       // Determine if exists

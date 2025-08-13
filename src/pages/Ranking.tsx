@@ -4,7 +4,7 @@ import { ScoredETF, scoreETFs } from "@/lib/scoring";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScoringControls } from "@/components/dashboard/ScoringControls";
-import { fetchLivePrices, type LivePrice } from "@/lib/live";
+import { fetchLivePricesWithDataSources, type LivePrice } from "@/lib/live";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getETFs } from "@/lib/db";
@@ -95,7 +95,7 @@ const Ranking = () => {
 
     const run = async () => {
       try {
-        const prices = await fetchLivePrices(tickers, region);
+        const prices = await fetchLivePricesWithDataSources(tickers);
         if (cancelled) return;
         setLive(prices);
         toast({ title: "Live data", description: `Updated ${Object.keys(prices).length} tickers.` });

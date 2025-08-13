@@ -1,0 +1,20 @@
+-- Add new columns for data feeds and provider information
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS twelve_symbol text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS finnhub_symbol text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS eodhd_symbol text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS twelve_feed_quote text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS twelve_feed_timeseries text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS finnhub_feed_quote text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS eodhd_feed_eod text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS data_source text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS polygon_supported boolean DEFAULT false;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS polygon_ticker text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS polygon_feed text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS exchange_normalized text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS exchange_code text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS twelve_ws_url text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS finnhub_ws_url text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS finnhub_ws_subscribe text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS eodhd_ws_url text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS mic_code text;
+ALTER TABLE public.etfs ADD COLUMN IF NOT EXISTS provider_group text;
