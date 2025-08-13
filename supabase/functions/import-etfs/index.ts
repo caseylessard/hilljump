@@ -64,12 +64,15 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const csv: string = body.csv || '';
+    log('CSV received, length:', csv.length);
     if (!csv.trim()) throw new Error('No CSV provided');
 
     const lines = csv.split(/\r?\n/).filter((l: string) => l.trim().length > 0);
+    log('Lines found:', lines.length);
     if (lines.length < 2) throw new Error('CSV has no data');
 
     const headers = splitCSVLine(lines[0]).map((h) => h.trim());
+    log('Headers found:', headers);
     const rows = lines.slice(1).map((ln) => splitCSVLine(ln));
 
     const idx = (name: string) => headers.findIndex((h) => h.toLowerCase() === name.toLowerCase());
@@ -90,7 +93,10 @@ serve(async (req) => {
       };
 
       const ticker = (get('ticker') || '').toUpperCase().trim();
-      if (!ticker) continue;
+      if (!ticker) {
+        log('Skipping row without ticker:', row);
+        continue;
+      }
 
       const etf: Record<string, any> = {
         ticker,
@@ -108,6 +114,7 @@ serve(async (req) => {
         strategy_label: (get('strategy_label') || '').trim() || null,
         logo_key: (get('logo_key') || '').trim() || null,
         country: (get('country') || '').trim() || null,
+        summary: (get('summary') || '').trim() || null,
       };
 
       // Determine if exists
