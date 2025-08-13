@@ -83,6 +83,11 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     const underlying = UNDERLYING_MAP[etf.ticker];
     return underlying ? `${base} - ${underlying}` : base;
   }
+
+  // Helper to clean up ticker display (remove .TO suffix for Canadian funds)
+  const displayTicker = (ticker: string) => {
+    return ticker.endsWith('.TO') ? ticker.replace('.TO', '') : ticker;
+  }
   // Sorting state and helpers
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
   const [sortKey, setSortKey] = useState<SortKey>("yield");
@@ -223,7 +228,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 <TableCell>{idx + 1}</TableCell>
                 <TableCell>
                   <span className="inline-flex items-center">
-                    {etf.ticker} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
+                    {displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
                     {upWeek ? (
                       <ArrowUpRight className="ml-1 h-4 w-4 text-emerald-500" aria-label="Up last week" />
                     ) : (
@@ -354,7 +359,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                         </div>
                         <div>
                           <div className="text-2xl font-semibold inline-flex items-center gap-2">
-                            {selected.ticker}
+                            {displayTicker(selected.ticker)}
                             <span className="ml-1" aria-hidden>{countryFlag(selected)}</span>
                           </div>
                           <div className="text-sm font-medium">{manager}</div>
