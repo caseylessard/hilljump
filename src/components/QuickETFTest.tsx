@@ -70,7 +70,11 @@ const QuickETFTest: React.FC = () => {
         const message = JSON.parse(event.data);
         console.log('Test message:', message);
 
-        if (message.type === 'progress') {
+        if (message.type === 'connected') {
+          console.log('WebSocket connected successfully');
+        } else if (message.type === 'test_data') {
+          console.log('Test data received:', message);
+        } else if (message.type === 'progress') {
           setProgress((message.current / message.total) * 100);
         } else if (message.type === 'data') {
           setResults(prev => prev.map(result => 
@@ -86,7 +90,6 @@ const QuickETFTest: React.FC = () => {
           setProgress(prev => Math.min(prev + 10, 100));
         } else if (message.type === 'error') {
           console.error('Test error:', message.message);
-          // Mark any pending results as error
           setResults(prev => prev.map(result => 
             result.status === 'pending'
               ? {
@@ -97,13 +100,11 @@ const QuickETFTest: React.FC = () => {
                 }
               : result
           ));
+          setTesting(false);
         } else if (message.type === 'complete') {
           console.log('Test complete');
           setProgress(100);
-          setTimeout(() => {
-            setTesting(false);
-            ws.close();
-          }, 1000);
+          setTesting(false);
         }
       };
 
@@ -117,8 +118,15 @@ const QuickETFTest: React.FC = () => {
         setTesting(false);
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket closed');
+      ws.onclose = (event) => {
+        console.log('WebSocket closed', event.code, event.reason);
+        if (event.code !== 1000) {
+          setResults(prev => prev.map(result => ({
+            ...result,
+            status: 'error' as const,
+            error: `Connection closed: ${event.reason || 'Unknown reason'}`
+          })));
+        }
         setTesting(false);
       };
 

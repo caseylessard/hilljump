@@ -89,6 +89,13 @@ serve(async (req) => {
     console.log("[ETF-STREAM] WebSocket connection opened");
     socket.send(JSON.stringify({ type: 'connected', message: 'ETF stream connected' }));
     
+    // Send a test message to verify connection is working
+    socket.send(JSON.stringify({ 
+      type: 'test_data', 
+      message: 'WebSocket connection working',
+      timestamp: new Date().toISOString() 
+    }));
+    
     try {
       // Initialize Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
