@@ -11,6 +11,11 @@ import { ComparisonChart, type RangeKey } from "@/components/dashboard/Compariso
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { LivePrice } from "@/lib/live";
+import yieldmaxLogo from "@/assets/logos/yieldmax.png";
+import globalxLogo from "@/assets/logos/globalx.png";
+import jpmorganLogo from "@/assets/logos/jpmorgan.png";
+import amplifyLogo from "@/assets/logos/amplify.png";
+import roundhillLogo from "@/assets/logos/roundhill.svg";
 
 type Props = {
   items: ScoredETF[];
@@ -35,6 +40,43 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
     const ex = (exchange || "").toUpperCase();
     if (/(TSX|TSXV|NEO|CSE|TSE)/.test(ex)) return "🇨🇦";
     return "🇺🇸";
+  }
+
+  function getFundManager(etf: ScoredETF): string {
+    const n = (etf.name || "").toUpperCase();
+    if (n.startsWith("YIELDMAX")) return "YieldMax";
+    if (n.startsWith("GLOBAL X")) return "Global X";
+    if (n.startsWith("JPMORGAN")) return "JPMorgan";
+    if (n.startsWith("AMPLIFY")) return "Amplify";
+    if (n.startsWith("ROUNDHILL")) return "Roundhill";
+    if ((etf.category || "").toUpperCase().includes("YIELDMAX")) return "YieldMax";
+    return "ETF";
+  }
+
+  const MANAGER_LOGOS: Record<string, string> = {
+    "YIELDMAX": yieldmaxLogo,
+    "GLOBAL X": globalxLogo,
+    "JPMORGAN": jpmorganLogo,
+    "AMPLIFY": amplifyLogo,
+    "ROUNDHILL": roundhillLogo,
+  };
+
+  function getManagerLogo(manager: string): string | undefined {
+    const key = manager.toUpperCase();
+    return MANAGER_LOGOS[key];
+  }
+
+  function getEtfDescription(etf: ScoredETF): string {
+    const nm = (etf.name || "").toUpperCase();
+    const cat = (etf.category || "").toUpperCase();
+    let base = "ETF";
+    if (nm.includes("COVERED CALL") || nm.includes("OPTION INCOME") || cat.includes("COVERED CALL") || cat.includes("YIELDMAX")) {
+      base = "CC ETF";
+    } else if (nm.includes("EQUITY PREMIUM INCOME") || cat.includes("INCOME")) {
+      base = "Income ETF";
+    }
+    const underlying = UNDERLYING_MAP[etf.ticker];
+    return underlying ? `${base} - ${underlying}` : base;
   }
   // Sorting state and helpers
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
@@ -284,15 +326,37 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
             <div className="w-full overflow-hidden">
               <div className="flex items-center justify-between p-4 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-full border-2 border-foreground p-1">
-                    <Avatar className="h-16 w-16">
-                      <AvatarFallback className="text-xl font-bold">{selected.ticker.slice(0, 2)}</AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-semibold">{selected.ticker}</div>
-                    <div className="text-sm text-muted-foreground">{selected.name}</div>
-                  </div>
+                  {(() => {
+                    const manager = getFundManager(selected);
+                    const logo = getManagerLogo(manager);
+                    return (
+                      <>
+                        <div className="rounded-full border-2 border-foreground p-1">
+                          {logo ? (
+                            <img
+                              src={logo}
+                              alt={`${manager} ETF fund manager logo`}
+                              className="h-16 w-16 object-contain rounded-full bg-background"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <Avatar className="h-16 w-16">
+                              <AvatarFallback className="text-xl font-bold">{selected.ticker.slice(0, 2)}</AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-2xl font-semibold inline-flex items-center gap-2">
+                            {selected.ticker}
+                            <span className="ml-1" aria-hidden>{countryFlagFromExchange(selected.exchange)}</span>
+                          </div>
+                          <div className="text-sm font-medium">{manager}</div>
+                          <div className="text-sm text-muted-foreground">{getEtfDescription(selected)}</div>
+                        </div>
+                      </>
+                    );
+                  })()}
+
                 </div>
                 <div className="text-right">
                   {selectedRank != null && <div className="text-4xl font-extrabold">#{selectedRank}</div>}
