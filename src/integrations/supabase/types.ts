@@ -57,8 +57,8 @@ export type Database = {
       }
       etfs: {
         Row: {
-          aum: number
-          avg_volume: number
+          aum: number | null
+          avg_volume: number | null
           category: string | null
           country: string | null
           created_at: string
@@ -88,18 +88,18 @@ export type Database = {
           strategy_label: string | null
           summary: string | null
           ticker: string
-          total_return_1y: number
+          total_return_1y: number | null
           twelve_feed_quote: string | null
           twelve_feed_timeseries: string | null
           twelve_symbol: string | null
           twelve_ws_url: string | null
           updated_at: string
           volatility_1y: number
-          yield_ttm: number
+          yield_ttm: number | null
         }
         Insert: {
-          aum: number
-          avg_volume: number
+          aum?: number | null
+          avg_volume?: number | null
           category?: string | null
           country?: string | null
           created_at?: string
@@ -129,18 +129,18 @@ export type Database = {
           strategy_label?: string | null
           summary?: string | null
           ticker: string
-          total_return_1y: number
+          total_return_1y?: number | null
           twelve_feed_quote?: string | null
           twelve_feed_timeseries?: string | null
           twelve_symbol?: string | null
           twelve_ws_url?: string | null
           updated_at?: string
           volatility_1y: number
-          yield_ttm: number
+          yield_ttm?: number | null
         }
         Update: {
-          aum?: number
-          avg_volume?: number
+          aum?: number | null
+          avg_volume?: number | null
           category?: string | null
           country?: string | null
           created_at?: string
@@ -170,14 +170,14 @@ export type Database = {
           strategy_label?: string | null
           summary?: string | null
           ticker?: string
-          total_return_1y?: number
+          total_return_1y?: number | null
           twelve_feed_quote?: string | null
           twelve_feed_timeseries?: string | null
           twelve_symbol?: string | null
           twelve_ws_url?: string | null
           updated_at?: string
           volatility_1y?: number
-          yield_ttm?: number
+          yield_ttm?: number | null
         }
         Relationships: []
       }
