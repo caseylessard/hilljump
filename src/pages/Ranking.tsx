@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { fetchLatestDistributions, type Distribution } from "@/lib/dividends";
 import { UserBadge } from "@/components/UserBadge";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { supabase } from "@/integrations/supabase/client";
 const Ranking = () => {
   // Default weights for quick reference
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
@@ -22,6 +23,7 @@ const Ranking = () => {
   const { data: etfs = [], isLoading, error } = useQuery({ queryKey: ["etfs"], queryFn: getETFs, staleTime: 60_000 });
   const { profile } = useUserProfile();
   const region = (profile?.country ?? 'CA') as 'US' | 'CA';
+  const [subscribed, setSubscribed] = useState(false);
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, live), [etfs, weights, live]);
   const [filter, setFilter] = useState<string>("Top 100");
   const filtered: ScoredETF[] = useMemo(() => {
@@ -34,6 +36,17 @@ const Ranking = () => {
     if (filter === "Canadian Funds") return ranked.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
     return ranked;
   }, [ranked, filter]);
+
+  useEffect(() => {
+    // Load subscription status
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const uid = session?.user?.id;
+      if (!uid) { setSubscribed(false); return; }
+      const { data } = await supabase.from('subscribers').select('subscribed').eq('user_id', uid).maybeSingle();
+      setSubscribed(Boolean((data as any)?.subscribed));
+    })();
+  }, []);
 
   useEffect(() => {
     document.title = "HillJump — Top Dividend ETF Rankings";
@@ -160,18 +173,25 @@ const Ranking = () => {
             </div>
             <div className="flex items-center gap-2">
               {Object.keys(live).length > 0 && <span className="text-xs text-muted-foreground">Live: {Object.keys(live).length}</span>}
-              <Button variant="outline" onClick={() => setScoreOpen(true)}>Adjust Scoring</Button>
+              <Button variant="outline" onClick={() => setScoreOpen(true)} disabled={!subscribed} aria-disabled={!subscribed}>
+                Adjust Scoring
+              </Button>
             </div>
             <Dialog open={scoreOpen} onOpenChange={setScoreOpen}>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Adjust Scoring</DialogTitle>
                 </DialogHeader>
-                <ScoringControls onChange={setWeights} />
+                {/* Only render controls for subscribed users */}
+                {subscribed ? (
+                  <ScoringControls onChange={setWeights} />
+                ) : (
+                  <div className="text-sm text-muted-foreground">Subscribe to adjust scoring.</div>
+                )}
               </DialogContent>
             </Dialog>
           </div>
-          <ETFTable items={filtered} live={live} distributions={dists} />
+          <ETFTable items={filtered} live={live} distributions={dists} allowSorting={subscribed} />
         </section>
           <p className="text-muted-foreground text-xs">Not investment advice.</p>
         </main>

@@ -21,9 +21,10 @@ type Props = {
   items: ScoredETF[];
   live?: Record<string, LivePrice>;
   distributions?: Record<string, { amount: number; date: string; currency?: string }>;
+  allowSorting?: boolean;
 };
 
-export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
+export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true }: Props) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ScoredETF | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
@@ -88,9 +89,11 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
   const requestSort = (key: SortKey) => {
+    if (!allowSorting) return; // free users: no sorting changes
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir(key === "ticker" ? "asc" : "desc"); }
   };
+  const headerBtnClass = allowSorting ? "flex items-center gap-1" : "flex items-center gap-1 opacity-50 pointer-events-none";
 
   // Percent formatter that also handles fractional DB values (e.g., 0.12 -> 12%)
   const formatPct = (v: number, digits = 1) => {
@@ -145,57 +148,57 @@ export const ETFTable = ({ items, live = {}, distributions = {} }: Props) => {
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">
-              <button onClick={() => requestSort("rank")} className="flex items-center gap-1">
+              <button onClick={() => requestSort("rank")} className={headerBtnClass} aria-disabled={!allowSorting}>
                 # <span className="text-muted-foreground text-xs">{indicator("rank")}</span>
               </button>
             </TableHead>
             <TableHead>
-              <button onClick={() => requestSort("ticker")} className="flex items-center gap-1">
+              <button onClick={() => requestSort("ticker")} className={headerBtnClass} aria-disabled={!allowSorting}>
                 Ticker <span className="text-muted-foreground text-xs">{indicator("ticker")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("price")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("price")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 Price <span className="text-muted-foreground text-xs">{indicator("price")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("lastDist")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("lastDist")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 Last Dist. <span className="text-muted-foreground text-xs">{indicator("lastDist")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("drip4w")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("drip4w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 4W DRIP <span className="text-muted-foreground text-xs">{indicator("drip4w")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("drip12w")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("drip12w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 12W DRIP <span className="text-muted-foreground text-xs">{indicator("drip12w")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("drip52w")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("drip52w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 52W DRIP <span className="text-muted-foreground text-xs">{indicator("drip52w")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("yield")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("yield")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 Yield (TTM) <span className="text-muted-foreground text-xs">{indicator("yield")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("risk")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("risk")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 Risk <span className="text-muted-foreground text-xs">{indicator("risk")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("score")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("score")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 Score <span className="text-muted-foreground text-xs">{indicator("score")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("signal")} className="flex items-center gap-1 ml-auto">
+              <button onClick={() => requestSort("signal")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 Signal <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
               </button>
             </TableHead>

@@ -310,7 +310,7 @@ const Profile = () => {
         <h1 className="text-3xl font-bold">Profile</h1>
         {!userId ? (
           <Card className="p-6">
-            <p className="mb-4">Please sign in to manage your portfolio.</p>
+            <p className="mb-4">Please sign in to manage your profile and subscription.</p>
             <Button asChild><a href="/auth">Go to Auth</a></Button>
           </Card>
         ) : (
@@ -376,104 +376,111 @@ const Profile = () => {
               </div>
             </Card>
 
-            <Card className="p-4 grid gap-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Ranking Preferences</div>
-                  <div className="text-sm text-muted-foreground">Adjust weights and dividend stability for ETF rankings.</div>
-                </div>
-                <Button onClick={saveRanking}>Save Rankings</Button>
-              </div>
-              <div className="grid gap-4">
+            {subscribed && (
+              <Card className="p-4 grid gap-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Total Return Priority</span>
-                  <Badge variant="secondary">{weights.r}%</Badge>
+                  <div>
+                    <div className="font-medium">Ranking Preferences</div>
+                    <div className="text-sm text-muted-foreground">Adjust weights and dividend stability for ETF rankings.</div>
+                  </div>
+                  <Button onClick={saveRanking}>Save Rankings</Button>
                 </div>
-                <Slider value={[weights.r]} onValueChange={([v]) => setWeights((w) => ({ ...w, r: v }))} min={0} max={100} step={1} />
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Total Return Priority</span>
+                    <Badge variant="secondary">{weights.r}%</Badge>
+                  </div>
+                  <Slider value={[weights.r]} onValueChange={([v]) => setWeights((w) => ({ ...w, r: v }))} min={0} max={100} step={1} />
 
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-sm font-medium">Yield Emphasis</span>
-                  <Badge variant="secondary">{weights.y}%</Badge>
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-sm font-medium">Yield Emphasis</span>
+                    <Badge variant="secondary">{weights.y}%</Badge>
+                  </div>
+                  <Slider value={[weights.y]} onValueChange={([v]) => setWeights((w) => ({ ...w, y: v }))} min={0} max={100} step={1} />
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-sm font-medium">Risk Devaluation</span>
+                    <Badge variant="secondary">{weights.k}%</Badge>
+                  </div>
+                  <Slider value={[weights.k]} onValueChange={([v]) => setWeights((w) => ({ ...w, k: v }))} min={0} max={100} step={1} />
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-sm font-medium">Dividend Stability Preference</span>
+                    <Badge variant="secondary">{weights.d}%</Badge>
+                  </div>
+                  <Slider value={[weights.d]} onValueChange={([v]) => setWeights((w) => ({ ...w, d: v }))} min={0} max={100} step={1} />
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-sm font-medium">4W Performance Weight</span>
+                    <Badge variant="secondary">{weights.t4}%</Badge>
+                  </div>
+                  <Slider value={[weights.t4]} onValueChange={([v]) => setWeights((w) => ({ ...w, t4: v }))} min={0} max={100} step={1} />
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-sm font-medium">52W Performance Weight</span>
+                    <Badge variant="secondary">{weights.t52}%</Badge>
+                  </div>
+                  <Slider value={[weights.t52]} onValueChange={([v]) => setWeights((w) => ({ ...w, t52: v }))} min={0} max={100} step={1} />
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-sm font-medium">Home Country Bias</span>
+                    <Badge variant="secondary">{weights.h}%</Badge>
+                  </div>
+                  <Slider value={[weights.h]} onValueChange={([v]) => setWeights((w) => ({ ...w, h: v }))} min={0} max={100} step={1} />
                 </div>
-                <Slider value={[weights.y]} onValueChange={([v]) => setWeights((w) => ({ ...w, y: v }))} min={0} max={100} step={1} />
+              </Card>
+            )}
 
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-sm font-medium">Risk Devaluation</span>
-                  <Badge variant="secondary">{weights.k}%</Badge>
+
+            {subscribed && (
+              <Card className="p-4 grid gap-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
+                  <Input type="number" placeholder="Shares" value={shares} onChange={(e) => setShares(Number(e.target.value))} />
+                  <Button onClick={addOrUpdate}>Add / Update</Button>
                 </div>
-                <Slider value={[weights.k]} onValueChange={([v]) => setWeights((w) => ({ ...w, k: v }))} min={0} max={100} step={1} />
-
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-sm font-medium">Dividend Stability Preference</span>
-                  <Badge variant="secondary">{weights.d}%</Badge>
-                </div>
-                <Slider value={[weights.d]} onValueChange={([v]) => setWeights((w) => ({ ...w, d: v }))} min={0} max={100} step={1} />
-
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-sm font-medium">4W Performance Weight</span>
-                  <Badge variant="secondary">{weights.t4}%</Badge>
-                </div>
-                <Slider value={[weights.t4]} onValueChange={([v]) => setWeights((w) => ({ ...w, t4: v }))} min={0} max={100} step={1} />
-
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-sm font-medium">52W Performance Weight</span>
-                  <Badge variant="secondary">{weights.t52}%</Badge>
-                </div>
-                <Slider value={[weights.t52]} onValueChange={([v]) => setWeights((w) => ({ ...w, t52: v }))} min={0} max={100} step={1} />
-
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-sm font-medium">Home Country Bias</span>
-                  <Badge variant="secondary">{weights.h}%</Badge>
-                </div>
-                <Slider value={[weights.h]} onValueChange={([v]) => setWeights((w) => ({ ...w, h: v }))} min={0} max={100} step={1} />
-              </div>
-            </Card>
+              </Card>
+            )}
 
 
-            <Card className="p-4 grid gap-3">
-              <div className="grid grid-cols-3 gap-2">
-                <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
-                <Input type="number" placeholder="Shares" value={shares} onChange={(e) => setShares(Number(e.target.value))} />
-                <Button onClick={addOrUpdate}>Add / Update</Button>
-              </div>
-            </Card>
+            {subscribed && (
+              <Card className="p-4 overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ticker</TableHead>
+                      <TableHead className="text-right">Shares</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Value</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow>
+                    ) : positions.length === 0 ? (
+                      <TableRow><TableCell colSpan={5}>No positions yet.</TableCell></TableRow>
+                    ) : (
+                      positions.map((p) => {
+                        const price = (prices[p.ticker] ?? 0) as number;
+                        const value = price * (Number(p.shares) || 0);
+                        return (
+                          <TableRow key={p.id}>
+                            <TableCell>{p.ticker}</TableCell>
+                            <TableCell className="text-right">{Number(p.shares)}</TableCell>
+                            <TableCell className="text-right">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
+                            <TableCell className="text-right">{price ? `$${value.toFixed(2)}` : "-"}</TableCell>
+                            <TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button></TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+                <div className="mt-3 text-right font-semibold">Total: ${total.toFixed(2)}</div>
+              </Card>
+            )}
 
-
-            <Card className="p-4 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticker</TableHead>
-                    <TableHead className="text-right">Shares</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow>
-                  ) : positions.length === 0 ? (
-                    <TableRow><TableCell colSpan={5}>No positions yet.</TableCell></TableRow>
-                  ) : (
-                    positions.map((p) => {
-                      const price = (prices[p.ticker] ?? 0) as number;
-                      const value = price * (Number(p.shares) || 0);
-                      return (
-                        <TableRow key={p.id}>
-                          <TableCell>{p.ticker}</TableCell>
-                          <TableCell className="text-right">{Number(p.shares)}</TableCell>
-                          <TableCell className="text-right">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
-                          <TableCell className="text-right">{price ? `$${value.toFixed(2)}` : "-"}</TableCell>
-                          <TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button></TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-              <div className="mt-3 text-right font-semibold">Total: ${total.toFixed(2)}</div>
-            </Card>
             {isAdmin && (
               <Card className="p-4 grid gap-3 mt-4">
                 <div className="flex items-center justify-between">
