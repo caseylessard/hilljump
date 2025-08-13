@@ -38,7 +38,7 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
   // Get ETF data source information for smarter price fetching
   const { data: etfData, error: etfError } = await supabase
     .from('etfs')
-    .select('ticker, country, data_source, polygon_supported, twelve_symbol, finnhub_symbol, eodhd_symbol, yield_ttm, aum, avg_volume, total_return_1y')
+    .select('ticker, country, data_source, polygon_supported, twelve_symbol, finnhub_symbol, eodhd_symbol, yield_ttm, aum, avg_volume, total_return_1y, current_price, price_updated_at')
     .in('ticker', tickers);
   
   if (etfError) {
@@ -110,24 +110,24 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
       // Get the latest data from database (updated by WebSocket)
       const { data: dbData, error: dbError } = await supabase
         .from('etfs')
-        .select('ticker, yield_ttm, aum, avg_volume, total_return_1y')
+        .select('ticker, yield_ttm, aum, avg_volume, total_return_1y, current_price, price_updated_at')
         .in('ticker', eodhTickers);
       
       if (dbError) throw dbError;
       
       // Convert database data to LivePrice format
       dbData?.forEach((etf: any) => {
-        // Create a synthetic price from yield and return data for display
-        // This is placeholder logic - you might want to store actual prices in DB
-        const estimatedPrice = etf.yield_ttm ? (100 / Math.max(etf.yield_ttm, 1)) : 50;
+        // Use the actual price if available from WebSocket, otherwise estimate
+        const price = etf.current_price || (etf.yield_ttm ? (100 / Math.max(etf.yield_ttm, 1)) : 50);
         
         results[etf.ticker] = {
-          price: estimatedPrice,
+          price: price,
           // Add any other data we have from the database
           ...(etf.yield_ttm && { yieldTTM: etf.yield_ttm }),
           ...(etf.aum && { aum: etf.aum }),
           ...(etf.avg_volume && { volume: etf.avg_volume }),
-          ...(etf.total_return_1y && { totalReturn1Y: etf.total_return_1y })
+          ...(etf.total_return_1y && { totalReturn1Y: etf.total_return_1y }),
+          ...(etf.price_updated_at && { priceUpdatedAt: etf.price_updated_at })
         };
       });
       

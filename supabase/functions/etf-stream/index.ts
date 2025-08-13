@@ -169,6 +169,12 @@ serve(async (req) => {
             if (data.return1y !== undefined) updateData.total_return_1y = data.return1y;
             if (data.name) updateData.name = data.name;
             
+            // Store the current price and update timestamp
+            if (data.price !== undefined) {
+              updateData.current_price = data.price;
+              updateData.price_updated_at = new Date().toISOString();
+            }
+            
             if (Object.keys(updateData).length > 0) {
               const { error } = await supabase
                 .from('etfs')

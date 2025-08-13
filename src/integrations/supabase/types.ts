@@ -62,6 +62,7 @@ export type Database = {
           category: string | null
           country: string | null
           created_at: string
+          current_price: number | null
           data_source: string | null
           distribution_frequency: string | null
           eodhd_feed_eod: string | null
@@ -84,6 +85,7 @@ export type Database = {
           polygon_feed: string | null
           polygon_supported: boolean | null
           polygon_ticker: string | null
+          price_updated_at: string | null
           provider_group: string | null
           strategy_label: string | null
           summary: string | null
@@ -103,6 +105,7 @@ export type Database = {
           category?: string | null
           country?: string | null
           created_at?: string
+          current_price?: number | null
           data_source?: string | null
           distribution_frequency?: string | null
           eodhd_feed_eod?: string | null
@@ -125,6 +128,7 @@ export type Database = {
           polygon_feed?: string | null
           polygon_supported?: boolean | null
           polygon_ticker?: string | null
+          price_updated_at?: string | null
           provider_group?: string | null
           strategy_label?: string | null
           summary?: string | null
@@ -144,6 +148,7 @@ export type Database = {
           category?: string | null
           country?: string | null
           created_at?: string
+          current_price?: number | null
           data_source?: string | null
           distribution_frequency?: string | null
           eodhd_feed_eod?: string | null
@@ -166,6 +171,7 @@ export type Database = {
           polygon_feed?: string | null
           polygon_supported?: boolean | null
           polygon_ticker?: string | null
+          price_updated_at?: string | null
           provider_group?: string | null
           strategy_label?: string | null
           summary?: string | null
