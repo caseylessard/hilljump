@@ -90,7 +90,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   }
   // Sorting state and helpers
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
-  const [sortKey, setSortKey] = useState<SortKey>("yield");
+  const [sortKey, setSortKey] = useState<SortKey>("drip4w");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
   const requestSort = (key: SortKey) => {
