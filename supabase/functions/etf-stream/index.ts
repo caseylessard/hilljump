@@ -237,14 +237,20 @@ serve(async (req) => {
           let updated = 0;
           for (const [ticker, data] of etfDataMap) {
             const updateData: any = {};
-            if (data.yield !== undefined) updateData.yield_ttm = data.yield;
-            if (data.aum !== undefined) updateData.aum = data.aum;
-            if (data.volume !== undefined) updateData.avg_volume = data.volume;
-            if (data.return1y !== undefined) updateData.total_return_1y = data.return1y;
-            if (data.name) updateData.name = data.name;
+            // Only update with valid, non-dummy data
+            if (data.yield !== undefined && data.yield > 0 && data.yield < 200) updateData.yield_ttm = data.yield;
+            if (data.aum !== undefined && data.aum > 1000000) updateData.aum = data.aum; // Only AUM > $1M
+            if (data.volume !== undefined && data.volume > 100) updateData.avg_volume = data.volume; // Only volume > 100
+            if (data.return1y !== undefined && !isNaN(data.return1y)) updateData.total_return_1y = data.return1y;
+            if (data.name && data.name !== ticker) updateData.name = data.name;
             
-            // Store the current price and update timestamp
-            if (data.price !== undefined) {
+            // Store current price only if it's valid and not dummy data
+            if (data.price !== undefined && 
+                data.price > 0 && 
+                data.price !== 50.0 && 
+                data.price !== 50 && 
+                !isNaN(data.price) && 
+                data.price < 10000) { // Reasonable upper bound
               updateData.current_price = data.price;
               updateData.price_updated_at = new Date().toISOString();
             }

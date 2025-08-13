@@ -23,7 +23,7 @@ const Ranking = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
   const [distributions, setDistributions] = useState<Record<string, Distribution>>({});
-  const [filter, setFilter] = useState<string>("Top 100");
+  const [filter, setFilter] = useState<string>("All ETFs");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -38,14 +38,23 @@ const Ranking = () => {
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, livePrices), [etfs, weights, livePrices]);
   
   const filtered: ScoredETF[] = useMemo(() => {
-    if (filter === "Top 100") return ranked;
-    if (filter === "YieldMax") return ranked.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
-    if (filter === "Covered Call") return ranked.filter(e => e.category === "Covered Call");
-    if (filter === "Income") return ranked.filter(e => e.category === "Income");
-    if (filter === "Dividend") return ranked.filter(e => e.category === "Dividend");
-    if (filter === "US Funds") return ranked.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
-    if (filter === "Canadian Funds") return ranked.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
-    return ranked;
+    // Filter out ETFs with invalid data (null prices, zero yields, extremely low AUM)
+    const validETFs = ranked.filter(etf => {
+      // Exclude ETFs with clearly invalid data
+      if (etf.current_price === 50.0) return false; // Remove $50 dummy prices
+      if (etf.aum && etf.aum < 1000000) return false; // AUM less than $1M is likely invalid
+      if (etf.avgVolume && etf.avgVolume < 100) return false; // Very low volume indicates inactive ETF
+      return true;
+    });
+    
+    if (filter === "All ETFs") return validETFs;
+    if (filter === "YieldMax") return validETFs.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
+    if (filter === "Covered Call") return validETFs.filter(e => e.category === "Covered Call");
+    if (filter === "Income") return validETFs.filter(e => e.category === "Income");
+    if (filter === "Dividend") return validETFs.filter(e => e.category === "Dividend");
+    if (filter === "US Funds") return validETFs.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
+    if (filter === "Canadian Funds") return validETFs.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
+    return validETFs;
   }, [ranked, filter]);
 
   useEffect(() => {
@@ -77,7 +86,7 @@ const Ranking = () => {
         document.head.appendChild(m);
         return m as HTMLMetaElement;
       })();
-    meta.setAttribute('content', 'HillJump quick reference: Top 100 high-yield dividend ETFs ranked by risk-aware total return.');
+    meta.setAttribute('content', 'HillJump quick reference: All high-yield dividend ETFs ranked by risk-aware total return.');
   }, []);
 
   useEffect(() => {
@@ -163,7 +172,7 @@ const Ranking = () => {
                   <SelectValue placeholder="Filter" />
                 </SelectTrigger>
                 <SelectContent className="z-50 bg-background shadow-lg">
-                  <SelectItem value="Top 100">Top 100</SelectItem>
+                  <SelectItem value="All ETFs">All ETFs</SelectItem>
                   <SelectItem value="YieldMax">YieldMax</SelectItem>
                   <SelectItem value="Covered Call">Covered Call</SelectItem>
                   <SelectItem value="Income">Income</SelectItem>

@@ -130,5 +130,5 @@ export function scoreETFs(data: ETF[], weights: Weights, live?: Record<string, L
     };
   });
 
-  return scored.sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 100);
+  return scored.sort((a, b) => b.compositeScore - a.compositeScore);
 }

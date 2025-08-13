@@ -9,6 +9,7 @@ export type ETF = {
   volatility1Y: number; // percentage
   maxDrawdown1Y: number; // negative percentage
   aum: number; // Assets Under Management (USD)
+  current_price?: number; // Current market price
   category?: string;
   summary?: string; // plain language description of the ETF
   // Persisted metadata (optional)
