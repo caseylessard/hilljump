@@ -27,6 +27,7 @@ const Profile = () => {
   const [weights, setWeights] = useState({ r: 60, y: 20, k: 20, d: 50 });
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // SEO
   useEffect(() => {
@@ -139,6 +140,22 @@ const Profile = () => {
 
   const total = useMemo(() => positions.reduce((sum, p) => sum + (prices[p.ticker] ?? 0) * (Number(p.shares) || 0), 0), [positions, prices]);
 
+  useEffect(() => {
+    if (!userId) { setIsAdmin(false); return; }
+    (async () => {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      if (!error && Array.isArray(data)) {
+        const adm = (data as any[]).some((r: any) => String(r.role).toLowerCase() === 'admin');
+        setIsAdmin(adm);
+      } else {
+        setIsAdmin(false);
+      }
+    })();
+  }, [userId]);
+
   const addOrUpdate = async () => {
     if (!userId) return;
     const t = ticker.trim().toUpperCase();
@@ -229,7 +246,7 @@ const Profile = () => {
     }
     window.open((data as any).url, '_blank');
   };
-  const exportCAEtfs = async () => {
+  const exportEtfs = async () => {
     try {
       const columns = [
         'ticker','name','exchange','category','yield_ttm','total_return_1y','avg_volume','expense_ratio','volatility_1y','max_drawdown_1y','aum','manager','strategy_label','logo_key','country'
@@ -237,7 +254,6 @@ const Profile = () => {
       const { data, error } = await supabase
         .from('etfs')
         .select(columns.join(','))
-        .eq('country', 'CA')
         .order('ticker');
       if (error) throw error;
       const esc = (v: any) => {
@@ -251,17 +267,28 @@ const Profile = () => {
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'etfs_ca_template.csv';
+      a.download = 'etfs_export.csv';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: 'CSV downloaded', description: `${(data || []).length} Canadian ETFs exported` });
+      toast({ title: 'CSV downloaded', description: `${(data || []).length} ETFs exported` });
     } catch (e: any) {
       toast({ title: 'Export failed', description: e.message || String(e), variant: 'destructive' });
     }
   };
-  
+
+  const importEtfsFromFile = async (file: File) => {
+    try {
+      const text = await file.text();
+      const { data, error } = await supabase.functions.invoke('import-etfs', { body: { csv: text } });
+      if (error) throw error;
+      const res: any = data || {};
+      toast({ title: 'Import complete', description: `Inserted ${res.inserted || 0}, updated ${res.updated || 0}` });
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e.message || String(e), variant: 'destructive' });
+    }
+  };
   return (
     <div>
       <header className="border-b">
@@ -315,7 +342,31 @@ const Profile = () => {
                 </div>
               </div>
               <div className="text-sm text-muted-foreground">
-                Status: {approved ? <Badge variant="secondary">Approved</Badge> : <Badge variant="outline">Pending approval</Badge>}
+                Status: {approved ? (
+                  <>
+                    <Badge variant="secondary">Approved</Badge>
+                    {isAdmin && <Badge variant="outline" className="ml-2">Admin</Badge>}
+                  </>
+                ) : (
+                  <Badge variant="outline">Pending approval</Badge>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-4 grid gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Subscription</div>
+                  <div className="text-sm text-muted-foreground">Current: {subscribed ? (subscriptionTier ? subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1) : 'Active') : 'Free'}</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={refreshSubscription}>Refresh</Button>
+                  <Button onClick={manageSubscription}>Manage</Button>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                <Button onClick={() => upgrade('subscriber')}>Upgrade to Subscriber — $9/mo</Button>
+                <Button variant="secondary" onClick={() => upgrade('premium')}>Upgrade to Premium — $29/mo</Button>
               </div>
             </Card>
 
@@ -354,22 +405,6 @@ const Profile = () => {
               </div>
             </Card>
 
-            <Card className="p-4 grid gap-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Subscription</div>
-                  <div className="text-sm text-muted-foreground">Current: {subscribed ? (subscriptionTier ? subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1) : 'Active') : 'Free'}</div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={refreshSubscription}>Refresh</Button>
-                  <Button onClick={manageSubscription}>Manage</Button>
-                </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-2">
-                <Button onClick={() => upgrade('subscriber')}>Upgrade to Subscriber — $9/mo</Button>
-                <Button variant="secondary" onClick={() => upgrade('premium')}>Upgrade to Premium — $29/mo</Button>
-              </div>
-            </Card>
 
             <Card className="p-4 grid gap-3">
               <div className="grid grid-cols-3 gap-2">
@@ -379,15 +414,6 @@ const Profile = () => {
               </div>
             </Card>
 
-            <Card className="p-4 grid gap-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Export Canadian ETFs CSV</div>
-                  <div className="text-sm text-muted-foreground">Includes manager, strategy_label, logo_key, and country fields.</div>
-                </div>
-                <Button onClick={exportCAEtfs}>Download CSV</Button>
-              </div>
-            </Card>
 
             <Card className="p-4 overflow-x-auto">
               <Table>
@@ -424,7 +450,28 @@ const Profile = () => {
               </Table>
               <div className="mt-3 text-right font-semibold">Total: ${total.toFixed(2)}</div>
             </Card>
-          </>
+            {isAdmin && (
+              <Card className="p-4 grid gap-3 mt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Export/Import ETFs CSV</div>
+                    <div className="text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={exportEtfs}>Export CSV</Button>
+                    <label className="cursor-pointer">
+                      <input type="file" accept=".csv" className="hidden" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) importEtfsFromFile(file);
+                        e.currentTarget.value = '';
+                      }} />
+                      <span className="inline-flex items-center justify-center h-9 px-4 rounded-md border bg-background">Import CSV</span>
+                    </label>
+                  </div>
+                </div>
+              </Card>
+            )}
+           </>
         )}
         <p className="text-xs text-muted-foreground">Not investment advice.</p>
       </main>
