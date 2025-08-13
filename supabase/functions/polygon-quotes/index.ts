@@ -106,28 +106,69 @@ serve(async (req: Request) => {
       console.log(`Skipping Polygon for Canadian symbols, going straight to Twelve Data: ${canadianSymbols.join(', ')}`);
     }
 
-    // Use Twelve Data for all missing symbols (Canadian + any US that failed Polygon)
-    if (missingSymbols.length > 0 && TWELVEDATA_API_KEY) {
-      console.log(`Using Twelve Data for ${missingSymbols.length} symbols:`, missingSymbols.slice(0, 10));
-      const chunks = chunk(missingSymbols, 30); // keep URLs reasonable
-      for (const group of chunks) {
-        const url = new URL("https://api.twelvedata.com/quote");
-        url.searchParams.set("symbol", group.join(","));
-        url.searchParams.set("apikey", TWELVEDATA_API_KEY);
-
-        console.log(`Twelve Data request for symbols: ${group.join(",")}`);
-        const res = await fetch(url.toString());
-        const data = await res.json();
-        console.log(`Twelve Data response status: ${res.status}`);
-        
-        if (!res.ok) {
-          console.error("TwelveData error", res.status, data);
-          // Don't throw, just log and continue with other chunks
-          continue;
+    // Use Yahoo Finance for Canadian symbols and Twelve Data for US symbols
+    if (missingSymbols.length > 0) {
+      const canadianMissing = missingSymbols.filter(s => s.includes('.TO'));
+      const usMissing = missingSymbols.filter(s => !s.includes('.TO'));
+      
+      // Yahoo Finance for Canadian symbols
+      if (canadianMissing.length > 0) {
+        console.log(`Using Yahoo Finance for ${canadianMissing.length} Canadian symbols:`, canadianMissing.slice(0, 10));
+        const chunks = chunk(canadianMissing, 20);
+        for (const group of chunks) {
+          try {
+            const symbols = group.join(',');
+            const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            if (res.ok && data?.quoteResponse?.result) {
+              for (const item of data.quoteResponse.result) {
+                const sym = item?.symbol?.toUpperCase();
+                if (!sym) continue;
+                const price = Number(item?.regularMarketPrice);
+                const prevClose = Number(item?.regularMarketPreviousClose);
+                const change = Number.isFinite(price) && Number.isFinite(prevClose) ? price - prevClose : undefined;
+                const changePercent = Number.isFinite(prevClose) && prevClose !== 0 && Number.isFinite(change) ? (change / prevClose) * 100 : undefined;
+                
+                if (Number.isFinite(price)) {
+                  results[sym] = {
+                    price,
+                    prevClose: Number.isFinite(prevClose) ? prevClose : undefined,
+                    change: Number.isFinite(change) ? change : undefined,
+                    changePercent: Number.isFinite(changePercent) ? changePercent : undefined,
+                  };
+                  console.log(`Yahoo Finance: ${sym} = $${price}`);
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`Yahoo Finance error for group:`, err);
+          }
         }
+      }
+      
+      // Twelve Data for US symbols
+      if (usMissing.length > 0 && TWELVEDATA_API_KEY) {
+        console.log(`Using Twelve Data for ${usMissing.length} US symbols:`, usMissing.slice(0, 10));
+        const chunks = chunk(usMissing, 30);
+        for (const group of chunks) {
+          const url = new URL("https://api.twelvedata.com/quote");
+          url.searchParams.set("symbol", group.join(","));
+          url.searchParams.set("apikey", TWELVEDATA_API_KEY);
 
-        // Handle both shapes: { data: [ {symbol, close, previous_close, ...}, ... ] }
-        // and { AAPL: {...}, MSFT: {...} }
+          console.log(`Twelve Data request for symbols: ${group.join(",")}`);
+          const res = await fetch(url.toString());
+          const data = await res.json();
+          console.log(`Twelve Data response status: ${res.status}`);
+          
+          if (!res.ok) {
+            console.error("TwelveData error", res.status, data);
+            continue;
+          }
+
+          // Handle both shapes: { data: [ {symbol, close, previous_close, ...}, ... ] }
+          // and { AAPL: {...}, MSFT: {...} }
         if (Array.isArray((data as any)?.data)) {
           for (const item of (data as any).data) {
             if (!item || item?.status === "error" || !item?.close) {
@@ -180,12 +221,22 @@ serve(async (req: Request) => {
               console.log(`Invalid price data for ${sym}:`, item);
             }
           }
+          }
         }
+      } else if (usMissing.length > 0) {
+        console.log(`Missing Twelve Data API key, cannot fetch ${usMissing.length} US symbols`);
       }
-      console.log(`Twelve Data processed ${Object.keys(results).length} total symbols successfully`);
-      providerUsed = providerUsed === 'polygon' ? 'mixed' : 'twelvedata';
+      
+      console.log(`Processed ${Object.keys(results).length} total symbols successfully`);
+      if (canadianMissing.length > 0 && usMissing.length > 0) {
+        providerUsed = 'mixed';
+      } else if (canadianMissing.length > 0) {
+        providerUsed = providerUsed === 'polygon' ? 'mixed' : 'yahoo';
+      } else {
+        providerUsed = providerUsed === 'polygon' ? 'mixed' : 'twelvedata';
+      }
     } else if (missingSymbols.length > 0) {
-      console.log(`Missing Twelve Data API key, cannot fetch ${missingSymbols.length} symbols`);
+      console.log(`No API keys available for ${missingSymbols.length} symbols`);
     }
 
     console.log(`Final results: ${Object.keys(results).length} symbols from provider: ${providerUsed}`);
