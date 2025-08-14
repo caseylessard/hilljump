@@ -50,6 +50,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dividend_update_logs: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          error_message: string | null
+          id: string
+          inserted_events: number | null
+          start_time: string
+          status: string
+          total_etfs: number | null
+          updated_etfs: number | null
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          error_message?: string | null
+          id?: string
+          inserted_events?: number | null
+          start_time?: string
+          status?: string
+          total_etfs?: number | null
+          updated_etfs?: number | null
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          error_message?: string | null
+          id?: string
+          inserted_events?: number | null
+          start_time?: string
+          status?: string
+          total_etfs?: number | null
+          updated_etfs?: number | null
+        }
+        Relationships: []
+      }
       dividends: {
         Row: {
           amount: number
@@ -113,6 +149,7 @@ export type Database = {
           finnhub_ws_subscribe: string | null
           finnhub_ws_url: string | null
           id: string
+          last_dividend_update: string | null
           logo_key: string | null
           manager: string | null
           max_drawdown_1y: number
@@ -156,6 +193,7 @@ export type Database = {
           finnhub_ws_subscribe?: string | null
           finnhub_ws_url?: string | null
           id?: string
+          last_dividend_update?: string | null
           logo_key?: string | null
           manager?: string | null
           max_drawdown_1y: number
@@ -199,6 +237,7 @@ export type Database = {
           finnhub_ws_subscribe?: string | null
           finnhub_ws_url?: string | null
           id?: string
+          last_dividend_update?: string | null
           logo_key?: string | null
           manager?: string | null
           max_drawdown_1y?: number

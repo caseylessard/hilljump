@@ -7,7 +7,27 @@ import { Play, Square } from 'lucide-react';
 
 const QuickETFTest: React.FC = () => {
   const [updating, setUpdating] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Fetch last dividend update info
+  React.useEffect(() => {
+    const fetchLastUpdate = async () => {
+      const { data } = await supabase
+        .from('dividend_update_logs')
+        .select('end_time, status, updated_etfs, inserted_events')
+        .eq('status', 'completed')
+        .order('end_time', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (data?.end_time) {
+        setLastUpdate(data.end_time);
+      }
+    };
+    
+    fetchLastUpdate();
+  }, []);
 
   const updateDividends = async () => {
     setUpdating(true);
@@ -33,8 +53,11 @@ const QuickETFTest: React.FC = () => {
         console.log('Dividend update completed:', data);
         toast({
           title: "Update Complete",
-          description: `Updated ${data.updated || 0} ETFs with ${data.insertedEvents || 0} dividend events`,
+          description: `Updated ${data.updated || 0} ETFs with ${data.insertedEvents || 0} dividend events from ${data.totalETFs || 0} total ETFs`,
         });
+        
+        // Refresh last update time
+        setLastUpdate(new Date().toISOString());
       }
     } catch (err: any) {
       console.error('Error:', err);
@@ -63,10 +86,16 @@ const QuickETFTest: React.FC = () => {
           </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
           Fetches the latest dividend announcements and ex-dividend dates for all ETFs, including new distributions like MARO's August 15 announcement.
         </p>
+        
+        {lastUpdate && (
+          <div className="text-xs text-muted-foreground">
+            Last updated: {new Date(lastUpdate).toLocaleString()}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

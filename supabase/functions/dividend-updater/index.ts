@@ -22,6 +22,14 @@ serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
+    // Create log entry for this update run
+    const { data: logEntry } = await supabase
+      .from("dividend_update_logs")
+      .insert({ status: 'running' })
+      .select('id')
+      .single();
+    const logId = logEntry?.id;
+
     // 1) Load tickers from DB
     const { data: etfs, error: e1 } = await supabase.from("etfs").select("id, ticker");
     if (e1) throw e1;
@@ -106,11 +114,38 @@ serve(async (req: Request) => {
       );
     }
 
-    return new Response(JSON.stringify({ ok: true, updated, insertedEvents }), {
+    // Update log entry with completion status
+    if (logId) {
+      await supabase
+        .from("dividend_update_logs")
+        .update({ 
+          status: 'completed',
+          end_time: new Date().toISOString(),
+          total_etfs: tickers.length,
+          updated_etfs: updated,
+          inserted_events: insertedEvents
+        })
+        .eq('id', logId);
+    }
+
+    return new Response(JSON.stringify({ ok: true, updated, insertedEvents, totalETFs: tickers.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
     console.error("dividend-updater", e?.message || e);
+    
+    // Update log entry with error status
+    if (logId) {
+      await supabase
+        .from("dividend_update_logs")
+        .update({ 
+          status: 'error',
+          end_time: new Date().toISOString(),
+          error_message: String(e?.message || e)
+        })
+        .eq('id', logId);
+    }
+    
     return new Response(JSON.stringify({ error: String(e?.message || e) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
