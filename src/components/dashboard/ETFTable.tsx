@@ -6,6 +6,8 @@ import { ScoredETF } from "@/lib/scoring";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
@@ -89,7 +91,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     return ticker.endsWith('.TO') ? ticker.replace('.TO', '') : ticker;
   }
   // Sorting state and helpers
-  type SortKey = "rank" | "ticker" | "price" | "lastDist" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
+  type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
   const [sortKey, setSortKey] = useState<SortKey>("drip4w");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
@@ -113,6 +115,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
           case "ticker": return etf.ticker;
           case "price": return lp?.price ?? Number.NaN;
           case "lastDist": return distributions[etf.ticker]?.amount ?? Number.NaN;
+          case "nextDist": return Number.NaN; // Will be handled in a separate component for performance
           case "drip4w": return lp?.drip4wPercent ?? Number.NaN;
         case "drip12w": return lp?.drip12wPercent ?? Number.NaN;
         case "drip52w": return lp?.drip52wPercent ?? Number.NaN;
@@ -171,6 +174,11 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
             <TableHead className="text-right">
               <button onClick={() => requestSort("lastDist")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 Last Dist. <span className="text-muted-foreground text-xs">{indicator("lastDist")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("nextDist")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                Next Dist. <span className="text-muted-foreground text-xs">{indicator("nextDist")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
@@ -275,6 +283,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                       </div>
                     );
                   })()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <NextDistributionCell ticker={etf.ticker} />
                 </TableCell>
                 <TableCell className="text-right">
                   {(() => {
@@ -445,5 +456,40 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         </DialogContent>
       </Dialog>
     </Card>
+  );
+};
+
+// Separate component for next distribution to avoid performance issues with many queries
+const NextDistributionCell = ({ ticker }: { ticker: string }) => {
+  const today = new Date();
+  const { data: nextDividend } = useQuery({
+    queryKey: ['nextDividend', ticker],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('dividends')
+        .select('ex_date, pay_date, amount')
+        .eq('ticker', ticker)
+        .gte('ex_date', today.toISOString().split('T')[0])
+        .order('ex_date', { ascending: true })
+        .limit(1);
+      return data?.[0] || null;
+    }
+  });
+
+  if (!nextDividend) return <span>—</span>;
+  
+  const nextDate = nextDividend.pay_date || nextDividend.ex_date;
+  const dateStr = format(new Date(nextDate), "MM/dd");
+  const amountStr = new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 4,
+  }).format(nextDividend.amount);
+  
+  return (
+    <div className="inline-flex flex-col items-end leading-tight">
+      <span>{amountStr}</span>
+      <span className="text-muted-foreground text-xs">{dateStr}</span>
+    </div>
   );
 };
