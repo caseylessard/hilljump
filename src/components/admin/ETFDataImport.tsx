@@ -89,7 +89,7 @@ export const ETFDataImport = () => {
           </label>
           <Textarea
             id="csv-data"
-            placeholder="Paste your CSV data here (with headers: ticker,provider,manager,exchange,country,currency,underlying,active,fund,strategy,industry)"
+            placeholder="Paste your CSV data here (with headers: ticker,manager,exchange,country,currency,underlying,active,fund,strategy,industry)"
             value={csvData}
             onChange={(e) => setCsvData(e.target.value)}
             rows={10}
