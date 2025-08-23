@@ -47,6 +47,34 @@ const Index = () => {
   // Fetch yields from Yahoo Finance using the cached hook
   const { data: yfinanceYields = {}, isLoading: yieldsLoading, error: yieldsError } = useCachedYields(etfs.map(e => e.ticker));
   
+  // Manually trigger yields if empty
+  useEffect(() => {
+    if (etfs.length > 0 && Object.keys(yfinanceYields).length === 0 && !yieldsLoading) {
+      console.log('🔍 Manually triggering Yahoo Finance yields for', etfs.length, 'tickers...');
+      
+      const fetchYields = async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+            body: { 
+              tickers: etfs.map(e => e.ticker).slice(0, 20), // Test with first 20 tickers
+              updateDatabase: true 
+            }
+          });
+          
+          if (error) {
+            console.error('❌ Yahoo Finance yields error:', error);
+          } else {
+            console.log('✅ Yahoo Finance yields success:', data);
+          }
+        } catch (err) {
+          console.error('❌ Yahoo Finance yields failed:', err);
+        }
+      };
+      
+      fetchYields();
+    }
+  }, [etfs.length, yfinanceYields, yieldsLoading]);
+  
   // Debug yields
   useEffect(() => {
     if (etfs.length > 0) {
