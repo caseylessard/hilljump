@@ -136,7 +136,7 @@ serve(async (req) => {
         // Map CSV columns to database columns
         const etf = {
           ticker: row[headers.indexOf('ticker')],
-          provider: row[headers.indexOf('provider')] || null,
+          provider_group: row[headers.indexOf('provider')] || null,
           manager: row[headers.indexOf('manager')] || null,
           exchange: row[headers.indexOf('exchange')],
           country: row[headers.indexOf('country')] || null,
