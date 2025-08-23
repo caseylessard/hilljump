@@ -19,17 +19,11 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔄 Starting Tiingo yield update process - basic test');
+    console.log('🔄 Starting Tiingo yield update process');
     
-    // Basic environment check
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const tiingoApiKey = Deno.env.get('TIINGO_API_KEY');
-
-    console.log('📊 Environment variables check:');
-    console.log(`- SUPABASE_URL: ${supabaseUrl ? 'Found' : 'Missing'}`);
-    console.log(`- SUPABASE_SERVICE_ROLE_KEY: ${supabaseKey ? 'Found' : 'Missing'}`);
-    console.log(`- TIINGO_API_KEY: ${tiingoApiKey ? 'Found' : 'Missing'}`);
 
     if (!supabaseUrl || !supabaseKey || !tiingoApiKey) {
       const missingVars = [];
@@ -41,25 +35,114 @@ serve(async (req) => {
       throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
     }
 
-    console.log('✅ All environment variables found');
-    console.log(`🔑 Tiingo API key preview: ${tiingoApiKey.substring(0, 8)}...`);
+    // Initialize Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Simple success response for testing
-    const testResult = {
+    // Get active ETFs
+    console.log('📊 Fetching active ETFs...');
+    const { data: etfs, error: etfError } = await supabase
+      .from('etfs')
+      .select('ticker')
+      .eq('active', true);
+
+    if (etfError) {
+      console.error('❌ Error fetching ETFs:', etfError);
+      throw new Error(`Failed to fetch ETFs: ${etfError.message}`);
+    }
+
+    console.log(`📈 Found ${etfs?.length || 0} active ETFs to process`);
+
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    // Process ETFs in batches of 5 to avoid rate limits
+    const batchSize = 5;
+    for (let i = 0; i < (etfs?.length || 0); i += batchSize) {
+      const batch = etfs!.slice(i, i + batchSize);
+      console.log(`🔄 Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} ETFs)`);
+
+      const promises = batch.map(async (etf) => {
+        try {
+          // Fetch fundamentals from Tiingo
+          const url = `https://api.tiingo.com/tiingo/fundamentals/${etf.ticker}/daily?token=${tiingoApiKey}`;
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            console.warn(`⚠️ Tiingo API error for ${etf.ticker}: ${response.status}`);
+            return { ticker: etf.ticker, success: false, error: `API error: ${response.status}` };
+          }
+
+          const data = await response.json();
+          
+          // Extract yield data from the response
+          let divYield = null;
+          if (data && data[0] && data[0].statementData && data[0].statementData.divYield) {
+            divYield = data[0].statementData.divYield;
+          }
+
+          // Update ETF with yield data
+          if (divYield !== null) {
+            const { error: updateError } = await supabase
+              .from('etfs')
+              .update({
+                yield: divYield,
+                last_yield_update: new Date().toISOString()
+              })
+              .eq('ticker', etf.ticker);
+
+            if (updateError) {
+              console.error(`❌ Database update error for ${etf.ticker}:`, updateError);
+              return { ticker: etf.ticker, success: false, error: updateError.message };
+            }
+
+            console.log(`✅ Updated ${etf.ticker} with yield: ${divYield}%`);
+            return { ticker: etf.ticker, success: true, yield: divYield };
+          } else {
+            console.warn(`⚠️ No yield data found for ${etf.ticker}`);
+            return { ticker: etf.ticker, success: false, error: 'No yield data available' };
+          }
+        } catch (error: any) {
+          console.error(`❌ Error processing ${etf.ticker}:`, error);
+          return { ticker: etf.ticker, success: false, error: error.message };
+        }
+      });
+
+      const batchResults = await Promise.all(promises);
+      
+      // Count results
+      batchResults.forEach(result => {
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+          errors.push(`${result.ticker}: ${result.error}`);
+        }
+      });
+
+      // Rate limiting delay between batches
+      if (i + batchSize < (etfs?.length || 0)) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    const result = {
       success: true,
-      message: 'Function is working - environment variables are properly configured',
+      message: 'Tiingo yield update completed',
       timestamp: new Date().toISOString(),
-      environmentCheck: {
-        supabaseUrl: supabaseUrl ? 'Found' : 'Missing',
-        supabaseKey: supabaseKey ? 'Found' : 'Missing', 
-        tiingoApiKey: tiingoApiKey ? 'Found' : 'Missing'
+      summary: {
+        totalETFs: etfs?.length || 0,
+        successCount,
+        errorCount,
+        errors: errors.slice(0, 10) // Limit error list
       }
     };
 
-    console.log('🎉 Basic function test completed successfully');
+    console.log('🎉 Tiingo yield update process completed');
+    console.log(`📊 Success: ${successCount}, Errors: ${errorCount}`);
 
     return new Response(
-      JSON.stringify(testResult),
+      JSON.stringify(result),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
