@@ -220,8 +220,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     const drip26w = getDripPercent(ticker, "26w");
     const drip52w = getDripPercent(ticker, "52w");
     
-    // Sum: (4W DRIP * 13) + (13W DRIP * 4) + (26W DRIP * 2) + (52W DRIP * 1)
-    return (drip4w * 13) + (drip13w * 4) + (drip26w * 2) + (drip52w * 1);
+    // SUM: ((4W percentage *13) + (13W percentage * 4) + (26W percentage *2) + (52W percentage))/4
+    return ((drip4w * 13) + (drip13w * 4) + (drip26w * 2) + (drip52w * 1)) / 4;
   };
 
   const rows = useMemo(() => {
