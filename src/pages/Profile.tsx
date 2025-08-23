@@ -235,6 +235,47 @@ const Profile = () => {
     toast({ title: 'Ranking preferences saved' });
   };
 
+  const applyPreset = async (presetName: 'balanced' | 'income_first' | 'total_return') => {
+    if (!userId) return;
+    
+    // Map presets to the simplified weights structure used by the old UI
+    const presetMappings = {
+      balanced: { r: 15, y: 25, k: 20, d: 20, t4: 8, t52: 2, h: 6 },
+      income_first: { r: 5, y: 35, k: 20, d: 25, t4: 3, t52: 2, h: 6 },
+      total_return: { r: 30, y: 15, k: 20, d: 10, t4: 10, t52: 10, h: 6 }
+    };
+    
+    const newWeights = presetMappings[presetName];
+    setWeights(newWeights);
+    
+    // Save immediately to database
+    const { error } = await supabase
+      .from('user_preferences')
+      .upsert({
+        user_id: userId,
+        return_weight: newWeights.r,
+        yield_weight: newWeights.y,
+        risk_weight: newWeights.k,
+        dividend_stability: newWeights.d,
+        period_4w_weight: newWeights.t4,
+        period_52w_weight: newWeights.t52,
+        home_country_bias: newWeights.h,
+      });
+      
+    if (error) {
+      toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    
+    const presetNames = {
+      balanced: 'Balanced Income',
+      income_first: 'Income-First',
+      total_return: 'Total-Return Tilt'
+    };
+    
+    toast({ title: 'Preset applied', description: `${presetNames[presetName]} preferences saved successfully.` });
+  };
+
   const refreshSubscription = async () => {
     const { data, error } = await supabase.functions.invoke('check-subscription');
     if (error) {
@@ -448,52 +489,46 @@ const Profile = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium">Ranking Preferences</div>
-                    <div className="text-sm text-muted-foreground">Adjust weights and dividend stability for ETF rankings.</div>
+                    <div className="text-sm text-muted-foreground">Choose your preferred ETF scoring approach from recommended presets.</div>
                   </div>
-                  <Button onClick={saveRanking}>Save Rankings</Button>
                 </div>
-                <div className="grid gap-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Total Return Priority</span>
-                    <Badge variant="secondary">{weights.r}%</Badge>
-                  </div>
-                  <Slider value={[weights.r]} onValueChange={([v]) => setWeights((w) => ({ ...w, r: v }))} min={0} max={100} step={1} />
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-medium">Yield Emphasis</span>
-                    <Badge variant="secondary">{weights.y}%</Badge>
-                  </div>
-                  <Slider value={[weights.y]} onValueChange={([v]) => setWeights((w) => ({ ...w, y: v }))} min={0} max={100} step={1} />
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-medium">Risk Devaluation</span>
-                    <Badge variant="secondary">{weights.k}%</Badge>
-                  </div>
-                  <Slider value={[weights.k]} onValueChange={([v]) => setWeights((w) => ({ ...w, k: v }))} min={0} max={100} step={1} />
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-medium">Dividend Stability Preference</span>
-                    <Badge variant="secondary">{weights.d}%</Badge>
-                  </div>
-                  <Slider value={[weights.d]} onValueChange={([v]) => setWeights((w) => ({ ...w, d: v }))} min={0} max={100} step={1} />
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-medium">4W Performance Weight</span>
-                    <Badge variant="secondary">{weights.t4}%</Badge>
-                  </div>
-                  <Slider value={[weights.t4]} onValueChange={([v]) => setWeights((w) => ({ ...w, t4: v }))} min={0} max={100} step={1} />
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-medium">52W Performance Weight</span>
-                    <Badge variant="secondary">{weights.t52}%</Badge>
-                  </div>
-                  <Slider value={[weights.t52]} onValueChange={([v]) => setWeights((w) => ({ ...w, t52: v }))} min={0} max={100} step={1} />
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-medium">Home Country Bias</span>
-                    <Badge variant="secondary">{weights.h}%</Badge>
-                  </div>
-                  <Slider value={[weights.h]} onValueChange={([v]) => setWeights((w) => ({ ...w, h: v }))} min={0} max={100} step={1} />
+                <div className="grid gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="p-4 h-auto flex-col items-start text-left"
+                    onClick={() => applyPreset('balanced')}
+                  >
+                    <div className="font-medium">A) Balanced Income (Recommended)</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Yield 25% • Dividend Stability 20% • Risk 20% • Total Return 15% • Momentum 10%
+                    </div>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="p-4 h-auto flex-col items-start text-left"
+                    onClick={() => applyPreset('income_first')}
+                  >
+                    <div className="font-medium">B) Income-First</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Yield 35% • Dividend Stability 25% • Risk 20% • Total Return 5% • Momentum 5%
+                    </div>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="p-4 h-auto flex-col items-start text-left"
+                    onClick={() => applyPreset('total_return')}
+                  >
+                    <div className="font-medium">C) Total-Return Tilt</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Total Return 30% • Momentum 20% • Risk 20% • Yield 15% • Dividend Stability 10%
+                    </div>
+                  </Button>
+                </div>
+                
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  <strong>Note:</strong> Post-score modifiers are automatically applied (home bias ≤6pts, currency match +2pts, weekly distributions +2pts, monthly +1pt, leverage penalty -8pts, small/young fund penalties, illiquidity penalties).
                 </div>
               </Card>
             )}
