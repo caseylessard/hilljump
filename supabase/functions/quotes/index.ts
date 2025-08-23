@@ -1,6 +1,44 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
+async function fetchEODHDPrice(symbol: string): Promise<number | null> {
+  const apiKey = Deno.env.get('EODHD_API_KEY');
+  if (!apiKey) {
+    console.warn('EODHD_API_KEY not found, falling back to Stooq');
+    return fetchStooqPrice(symbol);
+  }
+
+  try {
+    // For Canadian tickers, use the Toronto exchange format
+    let eodhSymbol = symbol;
+    if (symbol.endsWith('.TO')) {
+      eodhSymbol = symbol; // EODHD uses .TO format directly
+    }
+
+    const url = `https://eodhd.com/api/real-time/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
+    console.log(`Fetching EODHD price for: ${eodhSymbol}`);
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`EODHD API error for ${eodhSymbol}: ${response.status}`);
+      return fetchStooqPrice(symbol);
+    }
+
+    const data = await response.json();
+    
+    if (data.close && typeof data.close === 'number' && data.close > 0) {
+      console.log(`✅ EODHD ${eodhSymbol}: $${data.close}`);
+      return data.close;
+    }
+
+    console.warn(`Invalid EODHD data for ${eodhSymbol}:`, data);
+    return fetchStooqPrice(symbol);
+  } catch (error) {
+    console.error(`EODHD fetch error for ${symbol}:`, error);
+    return fetchStooqPrice(symbol);
+  }
+}
+
 async function fetchStooqPrice(symbol: string): Promise<number | null> {
   const tryFetch = async (s: string) => {
     const url = `https://stooq.com/q/l/?s=${encodeURIComponent(s)}&f=sd2t2ohlcv&h&e=csv`;
@@ -33,7 +71,15 @@ serve(async (req: Request) => {
       tickers.map(async (t: string) => {
         const sym = String(t || "").toUpperCase();
         if (!sym) return;
-        const p = await fetchStooqPrice(sym);
+        
+        // Use EODHD for Canadian tickers (.TO, .CN, etc.), Stooq for others
+        let p: number | null = null;
+        if (sym.endsWith('.TO') || sym.endsWith('.CN') || sym.endsWith('.VN')) {
+          p = await fetchEODHDPrice(sym);
+        } else {
+          p = await fetchStooqPrice(sym);
+        }
+        
         if (p != null) prices[sym] = p;
       })
     );
