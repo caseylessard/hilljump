@@ -10,6 +10,7 @@ import { UserBadge } from "@/components/UserBadge";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Loader2 } from "lucide-react";
+import Navigation from "@/components/Navigation";
 import QuickETFTest from "@/components/QuickETFTest";
 import { ETFDataImport } from "@/components/admin/ETFDataImport";
 import { DividendDataImport } from "@/components/admin/DividendDataImport";
@@ -369,14 +370,7 @@ const Profile = () => {
   };
   return (
     <div>
-      <header className="border-b">
-        <div className="container flex items-center justify-between py-4">
-          <a href="/" className="font-bold text-lg tracking-tight" aria-label="HillJump home">HillJump</a>
-          <nav className="flex items-center gap-2" aria-label="Primary">
-            <UserBadge />
-          </nav>
-        </div>
-      </header>
+      <Navigation />
 
       <main className="container py-8 grid gap-6">
         <h1 className="text-3xl font-bold">Profile</h1>

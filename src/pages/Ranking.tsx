@@ -14,6 +14,7 @@ import { getETFs } from '@/lib/db';
 import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
+import Navigation from '@/components/Navigation';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -131,29 +132,10 @@ const Ranking = () => {
   }, [etfs]);
 
   return (
-    <div>
+    <div className="min-h-screen">
+      <Navigation />
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 ambient-spotlight pointer-events-none" aria-hidden="true" />
-        <div className="container flex items-center justify-between py-4">
-          <a href="/" className="font-bold text-lg tracking-tight" aria-label="HillJump home">
-            HillJump
-          </a>
-          <nav className="flex items-center gap-2" aria-label="Primary">
-            <Button variant="ghost" asChild>
-              <a href="/">Dividends</a>
-            </Button>
-            <Button variant="ghost" asChild>
-              <a href="/test-stream">Stream Test</a>
-            </Button>
-            <Button variant="ghost" asChild>
-              <a href="/options">Options</a>
-            </Button>
-            <Button variant="ghost" asChild>
-              <a href="/crypto">Crypto</a>
-            </Button>
-            <UserBadge />
-          </nav>
-        </div>
         <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">
           <div className="space-y-3">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Dividend ETF Rankings</h1>

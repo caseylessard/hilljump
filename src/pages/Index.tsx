@@ -16,6 +16,7 @@ import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { UserBadge } from "@/components/UserBadge";
 import { updateCanadianPrices } from "@/utils/canadianPriceUpdater";
+import Navigation from "@/components/Navigation";
 
 const Index = () => {
   const { toast } = useToast();
@@ -180,27 +181,9 @@ const Index = () => {
 
   return (
     <div onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })} style={{ ['--mx' as any]: `${mouse.x}px`, ['--my' as any]: `${mouse.y}px` }}>
+      <Navigation />
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 ambient-spotlight pointer-events-none" aria-hidden="true" />
-
-        {/* Top navigation bar */}
-        <div className="container flex items-center justify-between py-4">
-          <a href="/" className="font-bold text-lg tracking-tight" aria-label="HillJump home">
-            HillJump
-          </a>
-          <nav className="flex items-center gap-2" aria-label="Primary">
-            <Button variant="ghost" asChild>
-              <a href="#scoring">Scoring</a>
-            </Button>
-            <Button variant="ghost" asChild>
-              <a href="#ranking">Ranking</a>
-            </Button>
-            <Button variant="ghost" asChild>
-              <a href="/teststream">Admin</a>
-            </Button>
-            <UserBadge />
-          </nav>
-        </div>
 
         {/* Hero section */}
         <div className="container py-10 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">

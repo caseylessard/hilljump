@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { UserBadge } from "@/components/UserBadge";
+import Navigation from "@/components/Navigation";
 
 const Auth = () => {
   const { toast } = useToast();
@@ -59,16 +60,7 @@ const Auth = () => {
 
   return (
     <div>
-      <header className="border-b">
-        <div className="container flex items-center justify-between py-4">
-          <a href="/" className="font-bold text-lg tracking-tight" aria-label="HillJump home">HillJump</a>
-          <nav className="flex items-center gap-2" aria-label="Primary">
-            <Button variant="ghost" asChild><a href="/">Ranking</a></Button>
-            <Button variant="ghost" asChild><a href="/scoring">Scoring</a></Button>
-            <Button variant="ghost" asChild><a href="/profile">Profile</a></Button>
-          </nav>
-        </div>
-      </header>
+      <Navigation />
 
       <main className="container py-10 max-w-md">
         <Card className="p-6">
