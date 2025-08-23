@@ -28,6 +28,15 @@ const Index = () => {
   // Fetch real ETF data from database
   const { data: etfs = [], isLoading } = useCachedETFs();
 
+  // Debug ETFs loading
+  useEffect(() => {
+    console.log('🔍 ETFs debug:', {
+      etfsLength: etfs.length,
+      isLoading,
+      firstFewETFs: etfs.slice(0, 3).map(e => ({ ticker: e.ticker, name: e.name }))
+    });
+  }, [etfs, isLoading]);
+
   // Fetch dividend distributions for ETFs
   const { data: distributions = {} } = useQuery({
     queryKey: ["distributions", etfs.map(e => e.ticker)],
