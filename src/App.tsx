@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Ranking from "./pages/Ranking";
-import TestStream from "./pages/TestStream";
+
 
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
@@ -22,7 +22,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Ranking />} />
-          <Route path="/test-stream" element={<TestStream />} />
+          
           <Route path="/options" element={<Options />} />
           <Route path="/crypto" element={<Crypto />} />
           <Route path="/profile" element={<Profile />} />
