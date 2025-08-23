@@ -73,15 +73,15 @@ const Ranking = () => {
       return cachedRanking;
     }
     
-    const newRanking = scoreETFs(etfs, weights, livePrices);
-    
-    // Cache the new ranking if we have ETF data
-    if (etfs.length > 0 && newRanking.length > 0) {
-      setCachedRanking(newRanking);
-    }
-    
-    return newRanking;
+    return scoreETFs(etfs, weights, livePrices);
   }, [etfs, weights, livePrices, cachedRanking]);
+
+  // Cache the ranking when it changes
+  useEffect(() => {
+    if (etfs.length > 0 && ranked.length > 0) {
+      setCachedRanking(ranked);
+    }
+  }, [ranked, etfs.length]);
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (null prices, zero yields, extremely low AUM)
