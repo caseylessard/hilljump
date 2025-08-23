@@ -112,8 +112,8 @@ export function scoreETFsWithPrefs(
 
   const returns1y = data.map(d => safe(d.totalReturn1Y, 0));      // %
   const yieldsTtm = data.map(d => safe((d as any).yieldForward ?? d.yieldTTM, 0)); // prefer forward if present
-  const vols1y    = data.map(d => safe(d.volatility1Y, 0));       // %
-  const mdd1yAbs  = data.map(d => Math.abs(safe(d.maxDrawdown1Y, 0))); // treat as positive magnitude
+  const vols1y    = data.map(d => safe(d.volatility1Y, 15));       // % default to 15%
+  const mdd1yAbs  = data.map(d => Math.abs(safe(d.maxDrawdown1Y, -10))); // treat as positive magnitude, default -10%
   const eratio    = data.map(d => safe(d.expenseRatio, 0));       // %
   const spreads   = data.map(d => safe((d as any).spreadPct, NaN));     // % (optional)
   const aums      = data.map(d => safe(d.aum, 0));
@@ -180,6 +180,18 @@ export function scoreETFsWithPrefs(
     // Risk adjustment (lower is better). Combine vol + drawdown, then invert.
     const riskBlend = clamp(0.5 * volNormRaw + 0.5 * mddNormRaw, 0, 1); // 0 good, 1 bad
     const riskAdj = 1 - riskBlend;                                      // higher better
+    
+    // Debug logging for first ETF
+    if (i === 0) {
+      console.log('🔍 Risk calculation debug for', d.ticker, {
+        volatility1Y: d.volatility1Y,
+        maxDrawdown1Y: d.maxDrawdown1Y,
+        volNormRaw,
+        mddNormRaw,
+        riskBlend,
+        riskScore: riskBlend
+      });
+    }
     const feeScore = 1 - expenseNormRaw;                                 // lower ER better
     const liqScore = clamp(0.8 * volumeNorm + 0.2 * spreadNorm, 0, 1);   // spread helps if available
     const sizeAgeScore = clamp(0.7 * aumNorm + 0.3 * ageNorm, 0, 1);
