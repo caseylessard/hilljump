@@ -58,7 +58,7 @@ export const useCachedYields = (tickers: string[]) => {
       const cacheKey = `yields-${tickers.sort().join(',')}`;
       
       return getCachedData(
-        'yield-1d',
+        'yield',
         async () => {
           console.log('🔍 Fetching Yahoo Finance yields for', tickers.length, 'tickers...');
           
