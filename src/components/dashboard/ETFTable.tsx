@@ -416,7 +416,12 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 <TableCell className="text-right">
                   <DRIPCell ticker={etf.ticker} period="52w" />
                 </TableCell>
-                <TableCell className="text-right">{formatPct(etf.yieldTTM, 1)}</TableCell>
+                <TableCell className="text-right">
+                  {(() => {
+                    console.log('🔍 Yield debug for', etf.ticker, 'yieldTTM:', etf.yieldTTM);
+                    return formatPct(etf.yieldTTM, 1);
+                  })()}
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="inline-flex flex-col items-end leading-tight">
                     <span>{Math.round(etf.riskScore * 100)}%</span>
