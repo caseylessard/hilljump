@@ -41,10 +41,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   };
 
   function countryFlag(etf: ScoredETF) {
-    const c = (etf.country || "").toUpperCase();
-    if (c === "CA") return "🇨🇦";
-    const ex = (etf.exchange || "").toUpperCase();
-    if (/(TSX|TSXV|NEO|CSE|TSE)/.test(ex)) return "🇨🇦";
+    // Base flag on currency, not country/exchange
+    const currency = etf.currency || 'USD';
+    if (currency === 'CAD') return "🇨🇦";
     return "🇺🇸";
   }
 
@@ -89,7 +88,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
 
   // Helper to clean up ticker display (remove .TO suffix for Canadian funds)
   const displayTicker = (ticker: string) => {
-    return ticker.endsWith('.TO') ? ticker.replace('.TO', '') : ticker;
+    return ticker.replace(/\.(TO|NE)$/, '');
   }
   // Sorting state and helpers
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip12w" | "drip52w" | "yield" | "risk" | "score" | "signal";
@@ -268,14 +267,15 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 </TableCell>
                 <TableCell className="text-right">
                   {(() => {
-                    // Use full ticker for distributions lookup too
+                    // Use full ticker for distributions lookup
                     const dist = distributions[etf.ticker];
                     if (!dist) return "—";
-                    const amountStr = new Intl.NumberFormat("en", {
-                      style: "currency",
-                      currency: dist.currency || "USD",
-                      maximumFractionDigits: 4,
-                    }).format(dist.amount);
+                    
+                    // Use currency from distribution or default based on ticker
+                    const currency = dist.currency || (etf.currency === 'CAD' ? 'CAD' : 'USD');
+                    const symbol = currency === 'CAD' ? 'CA$' : '$';
+                    
+                    const amountStr = `${symbol}${dist.amount.toFixed(3)}`;
                     const dateStr = format(new Date(dist.date), "MM/dd");
                     return (
                       <div className="inline-flex flex-col items-end leading-tight">
