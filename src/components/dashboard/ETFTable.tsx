@@ -367,7 +367,14 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                   <DRIPCell ticker={etf.ticker} period="52w" />
                 </TableCell>
                 <TableCell className="text-right">{formatPct(etf.yieldTTM, 1)}</TableCell>
-                <TableCell className="text-right">{Math.round(etf.riskScore * 100)}%</TableCell>
+                <TableCell className="text-right">
+                  <div className="inline-flex flex-col items-end leading-tight">
+                    <span>{Math.round(etf.riskScore * 100)}%</span>
+                    <span className="text-muted-foreground text-xs" title={`Vol: ${Math.round(etf.volNorm * 100)}% | DD: ${Math.round(etf.drawdownNorm * 100)}%`}>
+                      {Math.round((etf.volNorm + etf.drawdownNorm) / 2 * 100)}% blend
+                    </span>
+                  </div>
+                </TableCell>
                 <TableCell className="text-right font-semibold">{(etf.compositeScore * 100).toFixed(0)}</TableCell>
                 <TableCell className="text-right">
                   {buy ? (
@@ -482,6 +489,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                   <div>
                     <div className="text-sm text-muted-foreground">Risk Score</div>
                     <div className="text-lg font-medium">{Math.round(selected.riskScore * 100)}%</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Vol: {Math.round(selected.volNorm * 100)}% | Drawdown: {Math.round(selected.drawdownNorm * 100)}%
+                    </div>
                   </div>
                 </div>
               </div>
