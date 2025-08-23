@@ -186,6 +186,23 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     return `${scaled.toFixed(digits)}%`;
   };
   const rows = useMemo(() => {
+    const getDripPercent = (ticker: string, period: '4w' | '12w' | '52w'): number => {
+      // First check dripData (from calculate-drip edge function)
+      const tickerData = dripData[ticker];
+      if (tickerData) {
+        const percentKey = `drip${period}Percent`;
+        const percent = tickerData[percentKey];
+        if (percent !== undefined && percent !== 0) {
+          return percent;
+        }
+      }
+      
+      // Fallback to live data
+      const liveItem = live[ticker];
+      const periodKey = period as '4w' | '12w' | '52w';
+      return liveItem?.[`drip${periodKey}Percent` as keyof LivePrice] as number ?? Number.NaN;
+    };
+
     const getVal = (etf: ScoredETF): number | string => {
       // Look up live data using the full ticker (including .TO for Canadian ETFs)
       const lp = live[etf.ticker];
@@ -194,9 +211,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
           case "price": return lp?.price ?? Number.NaN;
           case "lastDist": return distributions[etf.ticker]?.amount ?? Number.NaN;
           case "nextDist": return Number.NaN; // Will be handled in a separate component for performance
-          case "drip4w": return lp?.drip4wPercent ?? Number.NaN;
-        case "drip12w": return lp?.drip12wPercent ?? Number.NaN;
-        case "drip52w": return lp?.drip52wPercent ?? Number.NaN;
+          case "drip4w": return getDripPercent(etf.ticker, "4w");
+        case "drip12w": return getDripPercent(etf.ticker, "12w");
+        case "drip52w": return getDripPercent(etf.ticker, "52w");
         case "yield": { const y = etf.yieldTTM; return Math.abs(y) <= 1 ? y * 100 : y; }
         case "risk": return etf.riskScore;
         case "score": return etf.compositeScore;
@@ -225,8 +242,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         }
         
         // Secondary: 52w DRIP descending
-        const dripA = live[a.ticker]?.drip52wPercent ?? Number.NaN;
-        const dripB = live[b.ticker]?.drip52wPercent ?? Number.NaN;
+        const dripA = getDripPercent(a.ticker, "52w");
+        const dripB = getDripPercent(b.ticker, "52w");
         if (!Number.isNaN(dripA) && !Number.isNaN(dripB) && dripA !== dripB) {
           return dripB - dripA; // descending
         }
@@ -249,7 +266,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       return sortDir === "asc" ? an - bn : bn - an;
     };
     return [...items].sort(cmp);
-  }, [items, sortKey, sortDir, live]);
+  }, [items, sortKey, sortDir, live, dripData]);
 
   return (
     <Card className="p-4 overflow-x-auto">
