@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.calculate-drip]
 verify_jwt = false
+
+[functions.get-single-price]
+verify_jwt = false
