@@ -31,26 +31,33 @@ serve(async (req) => {
 
     console.log('🔄 Starting Tiingo yield update process');
 
-    // Check if update has already run today
-    const today = new Date().toISOString().split('T')[0];
-    const { data: existingLog, error: logCheckError } = await supabase
-      .from('daily_update_logs')
-      .select('id')
-      .eq('run_date', today)
-      .eq('status', 'completed')
-      .single();
+    // Check if this is a test run (limit to 5 ETFs for testing)
+    const isTestRun = true; // Set to false for production runs
 
-    if (existingLog && !logCheckError) {
-      console.log('✅ Yield update already completed today');
-      return new Response(
-        JSON.stringify({ 
-          message: 'Update already completed today', 
-          date: today 
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    // Check if update has already run today (skip check in test mode)
+    if (!isTestRun) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: existingLog, error: logCheckError } = await supabase
+        .from('daily_update_logs')
+        .select('id')
+        .eq('run_date', today)
+        .eq('status', 'completed')
+        .single();
+
+      if (existingLog && !logCheckError) {
+        console.log('✅ Yield update already completed today');
+        return new Response(
+          JSON.stringify({ 
+            message: 'Update already completed today', 
+            date: today 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    } else {
+      console.log('🧪 Test mode: Skipping daily completion check');
     }
 
     // Create log entry
@@ -69,9 +76,6 @@ serve(async (req) => {
 
     console.log(`📊 Created log entry: ${logEntry.id}`);
 
-    // Check if this is a test run (limit to 5 ETFs for testing)
-    const isTestRun = true; // Set to false for production runs
-    
     // Fetch active ETFs
     const { data: etfs, error: etfsError } = await supabase
       .from('etfs')
