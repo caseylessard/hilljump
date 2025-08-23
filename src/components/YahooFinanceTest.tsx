@@ -12,52 +12,27 @@ export const YahooFinanceTest = () => {
     
     try {
       const ticker = 'PLTY';
-      const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail,financialData,defaultKeyStatistics`;
       
-      console.log('📊 Fetching Yahoo Finance data for', ticker);
-      console.log('🔗 URL:', url);
+      console.log('📊 Fetching Yahoo Finance data for', ticker, 'via edge function');
       
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json'
-        }
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { data, error } = await supabase.functions.invoke('yahoo-finance-test', {
+        body: { ticker }
       });
       
-      console.log('📈 Response status:', response.status);
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        setResult(`❌ Edge function error: ${error.message}`);
+        return;
+      }
       
-      if (response.ok) {
-        const data = await response.json();
-        
-        console.log('✅ Raw Yahoo Finance response for PLTY:');
+      if (data.success) {
+        console.log('✅ Yahoo Finance response received via edge function:');
         console.log(JSON.stringify(data, null, 2));
-        
-        const quoteSummary = data?.quoteSummary?.result?.[0];
-        const summaryDetail = quoteSummary?.summaryDetail;
-        const financialData = quoteSummary?.financialData;
-        const defaultKeyStatistics = quoteSummary?.defaultKeyStatistics;
-        
-        const analysis = {
-          ticker: ticker,
-          summaryDetail: summaryDetail,
-          financialData: financialData,
-          defaultKeyStatistics: defaultKeyStatistics,
-          dividendYield: {
-            raw: summaryDetail?.dividendYield?.raw,
-            fmt: summaryDetail?.dividendYield?.fmt,
-            percentage: summaryDetail?.dividendYield?.raw ? (summaryDetail.dividendYield.raw * 100).toFixed(2) + '%' : 'N/A'
-          },
-          trailingAnnualDividendRate: summaryDetail?.trailingAnnualDividendRate?.raw,
-          trailingAnnualDividendYield: summaryDetail?.trailingAnnualDividendYield?.raw,
-          price: summaryDetail?.regularMarketPrice?.raw || financialData?.currentPrice?.raw,
-          volume: summaryDetail?.volume?.raw,
-          marketCap: summaryDetail?.marketCap?.raw
-        };
-        
-        setResult(JSON.stringify(analysis, null, 2));
-        
+        setResult(JSON.stringify(data, null, 2));
       } else {
-        setResult(`❌ HTTP ${response.status}: ${response.statusText}`);
+        setResult(`❌ Yahoo Finance API error: ${data.error}`);
       }
       
     } catch (error: any) {
