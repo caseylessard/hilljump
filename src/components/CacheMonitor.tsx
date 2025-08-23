@@ -2,12 +2,22 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getCacheStats, debugCache, resetCache } from '@/lib/cacheUtils';
+import { getCacheStats, debugCache, resetCache, warmSpecificCache } from '@/lib/cacheUtils';
 import { CACHE_TTLS } from '@/lib/cache';
 
 export const CacheMonitor = () => {
   const [stats, setStats] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isWarming, setIsWarming] = useState(false);
+
+  const handleWarmCache = async () => {
+    setIsWarming(true);
+    try {
+      await warmSpecificCache('all');
+    } finally {
+      setIsWarming(false);
+    }
+  };
 
   useEffect(() => {
     const updateStats = () => {
@@ -101,24 +111,33 @@ export const CacheMonitor = () => {
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={debugCache}
-                  className="text-xs h-7"
-                >
-                  Debug
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={resetCache}
-                  className="text-xs h-7"
-                >
-                  Clear
-                </Button>
-              </div>
+               <div className="flex gap-2 pt-2">
+                 <Button 
+                   variant="outline" 
+                   size="sm" 
+                   onClick={debugCache}
+                   className="text-xs h-7"
+                 >
+                   Debug
+                 </Button>
+                 <Button 
+                   variant="outline" 
+                   size="sm" 
+                   onClick={handleWarmCache}
+                   disabled={isWarming}
+                   className="text-xs h-7"
+                 >
+                   {isWarming ? 'Loading...' : 'Reload'}
+                 </Button>
+                 <Button 
+                   variant="outline" 
+                   size="sm" 
+                   onClick={resetCache}
+                   className="text-xs h-7"
+                 >
+                   Clear
+                 </Button>
+               </div>
             </>
           )}
         </CardContent>
