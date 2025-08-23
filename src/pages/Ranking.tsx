@@ -18,12 +18,34 @@ import Navigation from '@/components/Navigation';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
+// Load cached state from localStorage
+const loadCachedState = () => {
+  try {
+    const cached = localStorage.getItem('ranking-state');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return {
+        weights: parsed.weights || { return: 0.6, yield: 0.2, risk: 0.2 },
+        filter: parsed.filter || "All ETFs"
+      };
+    }
+  } catch (e) {
+    console.warn('Failed to load cached ranking state:', e);
+  }
+  return {
+    weights: { return: 0.6, yield: 0.2, risk: 0.2 },
+    filter: "All ETFs"
+  };
+};
+
+const cachedState = loadCachedState();
+
 const Ranking = () => {
-  const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
+  const [weights, setWeights] = useState(cachedState.weights);
   const [showDialog, setShowDialog] = useState(false);
   const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
   const [distributions, setDistributions] = useState<Record<string, Distribution>>({});
-  const [filter, setFilter] = useState<string>("All ETFs");
+  const [filter, setFilter] = useState<string>(cachedState.filter);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -130,6 +152,15 @@ const Ranking = () => {
     run();
     return () => { cancelled = true; };
   }, [etfs]);
+
+  // Save state to localStorage whenever weights or filter changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('ranking-state', JSON.stringify({ weights, filter }));
+    } catch (e) {
+      console.warn('Failed to save ranking state to localStorage:', e);
+    }
+  }, [weights, filter]);
 
   return (
     <div className="min-h-screen">
