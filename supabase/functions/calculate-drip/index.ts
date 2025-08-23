@@ -109,15 +109,13 @@ serve(async (req) => {
         }
 
         // Calculate DRIP for all periods
-        const periods = [
-          { key: '4w', label: '4W' },
-          { key: '12w', label: '12W' }, 
-          { key: '52w', label: '52W' }
-        ]
+        const periods = ['4w', '12w', '52w']
+        const periodLabels = { '4w': '4W', '12w': '12W', '52w': '52W' }
         
         const result: any = { ticker, currentPrice }
 
-        for (const { key: period, label } of periods) {
+        for (const period of periods) {
+          const label = periodLabels[period as keyof typeof periodLabels]
           const startDate = dates[period as keyof typeof dates].toISOString().split('T')[0]
           
           console.log(`  🔍 Fetching ${label} dividends for ${ticker} since ${startDate}`)
