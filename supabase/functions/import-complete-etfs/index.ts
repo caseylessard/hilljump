@@ -150,9 +150,7 @@ serve(async (req) => {
           // Set default values for required fields
           expense_ratio: 0.01, // Default 1%
           volatility_1y: 15, // Default 15%
-          max_drawdown_1y: -10, // Default -10%
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          max_drawdown_1y: -10 // Default -10%
         }
 
         // Insert the ETF
