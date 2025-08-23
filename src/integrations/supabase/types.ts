@@ -89,6 +89,7 @@ export type Database = {
       dividends: {
         Row: {
           amount: number
+          cadence: string | null
           cash_currency: string
           created_at: string
           etf_id: string
@@ -99,6 +100,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          cadence?: string | null
           cash_currency?: string
           created_at?: string
           etf_id: string
@@ -109,6 +111,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          cadence?: string | null
           cash_currency?: string
           created_at?: string
           etf_id?: string

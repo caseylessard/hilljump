@@ -7,6 +7,7 @@ import { TrendingUp, Database, Clock, Zap } from 'lucide-react';
 import { useETFStream } from '@/hooks/useETFStream';
 import ETFStreamPanel from '@/components/admin/ETFStreamPanel';
 import { ETFDataImport } from '@/components/admin/ETFDataImport';
+import { DividendDataImport } from '@/components/admin/DividendDataImport';
 
 const TestStreamPage: React.FC = () => {
   const [testResults, setTestResults] = React.useState<any[]>([]);
@@ -134,6 +135,8 @@ const TestStreamPage: React.FC = () => {
       </div>
 
       <ETFDataImport />
+
+      <DividendDataImport />
 
       <ETFStreamPanel />
 
