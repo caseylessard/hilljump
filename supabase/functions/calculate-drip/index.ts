@@ -29,6 +29,27 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    // First, fetch live prices for all tickers
+    console.log('📊 Fetching live prices for DRIP calculations...')
+    const { data: quotesData, error: quotesError } = await supabase.functions.invoke('quotes', {
+      body: { tickers }
+    })
+
+    if (quotesError) {
+      console.error('❌ Failed to fetch live prices:', quotesError)
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Failed to fetch live prices for DRIP calculations',
+        details: quotesError.message 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const livePrices = quotesData?.prices || {}
+    console.log(`✅ Fetched ${Object.keys(livePrices).length} live prices`)
+
     const dripData: Record<string, any> = {}
     let processedCount = 0
     let errorCount = 0
@@ -38,20 +59,27 @@ serve(async (req) => {
       try {
         console.log(`[${processedCount + 1}/${tickers.length}] 📊 Processing ${ticker}...`)
         
-        // Get current price from database
-        const { data: etfData, error: etfError } = await supabase
-          .from('etfs')
-          .select('current_price, currency, total_return_1y')
-          .eq('ticker', ticker)
-          .single()
+        // Get current price from live prices first, then database as fallback
+        let currentPrice = livePrices[ticker]
+        
+        if (!currentPrice) {
+          // Fallback: try database price
+          const { data: etfData, error: etfError } = await supabase
+            .from('etfs')
+            .select('current_price, currency, total_return_1y')
+            .eq('ticker', ticker)
+            .single()
 
-        let currentPrice = etfData?.current_price
-
-        // If no database price, try to estimate from total return
-        if (!currentPrice && etfData?.total_return_1y) {
-          // Use a reasonable estimated price based on average ETF price
-          currentPrice = 25.0 // Conservative estimate
-          console.log(`⚠️ Using estimated price for ${ticker}: $${currentPrice}`)
+          currentPrice = etfData?.current_price
+          
+          // If still no price, try to estimate from total return
+          if (!currentPrice && etfData?.total_return_1y) {
+            // Use a reasonable estimated price based on average ETF price
+            currentPrice = 25.0 // Conservative estimate
+            console.log(`⚠️ Using estimated price for ${ticker}: $${currentPrice}`)
+          }
+        } else {
+          console.log(`✅ Using live price for ${ticker}: $${currentPrice}`)
         }
 
         if (!currentPrice || currentPrice <= 0) {
