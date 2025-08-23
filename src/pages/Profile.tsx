@@ -122,13 +122,13 @@ const Profile = () => {
         .maybeSingle();
       if (!error && data) {
         setWeights({
-          r: Number((data as any).return_weight) || 60,
-          y: Number((data as any).yield_weight) || 20,
+          r: Number((data as any).return_weight) || 15,
+          y: Number((data as any).yield_weight) || 25,
           k: Number((data as any).risk_weight) || 20,
-          d: Number((data as any).dividend_stability) || 50,
-          t4: Number((data as any).period_4w_weight) || 0,
-          t52: Number((data as any).period_52w_weight) || 0,
-          h: Number((data as any).home_country_bias) || 0,
+          d: Number((data as any).dividend_stability) || 20,
+          t4: Number((data as any).period_4w_weight) || 8,
+          t52: Number((data as any).period_52w_weight) || 2,
+          h: Number((data as any).home_country_bias) || 6,
         });
       }
     })();
@@ -498,7 +498,7 @@ const Profile = () => {
                     className="p-4 h-auto flex-col items-start text-left"
                     onClick={() => applyPreset('balanced')}
                   >
-                    <div className="font-medium">A) Balanced Income (Recommended)</div>
+                    <div className="font-medium">Balanced Income (Default)</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       Yield 25% • Dividend Stability 20% • Risk 20% • Total Return 15% • Momentum 10%
                     </div>
@@ -509,7 +509,7 @@ const Profile = () => {
                     className="p-4 h-auto flex-col items-start text-left"
                     onClick={() => applyPreset('income_first')}
                   >
-                    <div className="font-medium">B) Income-First</div>
+                    <div className="font-medium">Income-First</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       Yield 35% • Dividend Stability 25% • Risk 20% • Total Return 5% • Momentum 5%
                     </div>
@@ -520,7 +520,7 @@ const Profile = () => {
                     className="p-4 h-auto flex-col items-start text-left"
                     onClick={() => applyPreset('total_return')}
                   >
-                    <div className="font-medium">C) Total-Return Tilt</div>
+                    <div className="font-medium">Total-Return Tilt</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       Total Return 30% • Momentum 20% • Risk 20% • Yield 15% • Dividend Stability 10%
                     </div>
