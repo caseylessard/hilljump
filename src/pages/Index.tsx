@@ -18,6 +18,7 @@ import { UserBadge } from "@/components/UserBadge";
 import { useCachedETFs, useCachedPrices, useCachedYields } from "@/hooks/useCachedETFData";
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
+import { YahooFinanceTest } from "@/components/YahooFinanceTest";
 
 const Index = () => {
   const { toast } = useToast();
@@ -208,6 +209,8 @@ const Index = () => {
           <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
           <ETFTable items={topETFs} live={livePrices} distributions={distributions} />
         </section>
+
+        <YahooFinanceTest />
       </main>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
