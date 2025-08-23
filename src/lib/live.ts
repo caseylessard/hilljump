@@ -102,8 +102,11 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
     }
   }
   
-  // For EODHD tickers, use the database data that's updated by WebSocket
+  // For EODHD tickers, try database first, then fallback to live quotes
   if (eodhTickers.length > 0) {
+    const tickersWithPrices: string[] = [];
+    const tickersNeedingPrices: string[] = [];
+    
     try {
       console.log('Using database data for EODHD tickers:', eodhTickers);
       
@@ -115,9 +118,8 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
       
       if (dbError) throw dbError;
       
-      // Convert database data to LivePrice format
+      // Convert database data to LivePrice format and track which need prices
       dbData?.forEach((etf: any) => {
-        // Only include ETFs with valid price data
         if (etf.current_price && etf.current_price > 0) {
           results[etf.ticker] = {
             price: etf.current_price,
@@ -128,28 +130,41 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
             ...(etf.total_return_1y && { totalReturn1Y: etf.total_return_1y }),
             ...(etf.price_updated_at && { priceUpdatedAt: etf.price_updated_at })
           };
+          tickersWithPrices.push(etf.ticker);
+        } else {
+          tickersNeedingPrices.push(etf.ticker);
         }
-        // ETFs without valid prices are excluded from live price data
       });
       
-      console.log(`Retrieved database data for ${Object.keys(results).length} EODHD tickers`);
+      console.log(`Retrieved database data for ${tickersWithPrices.length} EODHD tickers`);
+      console.log(`${tickersNeedingPrices.length} EODHD tickers need live prices:`, tickersNeedingPrices);
+      
     } catch (error) {
       console.warn('Database fetch failed for EODHD tickers:', eodhTickers, error);
-      
-      // Fallback: try the quotes function anyway
+      // If database fetch fails, all tickers need live prices
+      tickersNeedingPrices.push(...eodhTickers);
+    }
+    
+    // For tickers without database prices, fetch live prices
+    if (tickersNeedingPrices.length > 0) {
       try {
+        console.log('Fetching live prices for tickers without database data:', tickersNeedingPrices);
         const { data, error } = await supabase.functions.invoke("quotes", {
-          body: { tickers: eodhTickers },
+          body: { tickers: tickersNeedingPrices },
         });
         if (error) throw error;
-        const eodhData = (data?.prices as Record<string, number>) || {};
+        const liveData = (data?.prices as Record<string, number>) || {};
         
-        // Convert to LivePrice format
-        Object.entries(eodhData).forEach(([ticker, price]) => {
-          results[ticker] = { price };
+        // Convert to LivePrice format and add to results
+        Object.entries(liveData).forEach(([ticker, price]) => {
+          if (price > 0) {
+            results[ticker] = { price };
+          }
         });
+        
+        console.log(`Fetched live prices for ${Object.keys(liveData).length} tickers`);
       } catch (fallbackError) {
-        console.warn('EODHD quotes fallback also failed:', fallbackError);
+        console.warn('Live quotes fallback failed:', fallbackError);
       }
     }
   }
