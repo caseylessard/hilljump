@@ -17,6 +17,7 @@ import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { UserBadge } from "@/components/UserBadge";
 import { updateCanadianPrices } from "@/utils/canadianPriceUpdater";
 import Navigation from "@/components/Navigation";
+import { CacheMonitor } from "@/components/CacheMonitor";
 
 const Index = () => {
   const { toast } = useToast();
@@ -27,14 +28,25 @@ const Index = () => {
   // Fetch real ETF data from database
   const { data: etfs = [], isLoading } = useQuery({ 
     queryKey: ["etfs"], 
-    queryFn: getETFs, 
+    queryFn: async () => {
+      const { getCachedData } = await import('@/lib/cache');
+      return getCachedData('ranking', getETFs, 'all-etfs');
+    },
     staleTime: 60_000 
   });
 
   // Fetch dividend distributions for ETFs
   const { data: distributions = {} } = useQuery({
     queryKey: ["distributions", etfs.map(e => e.ticker)],
-    queryFn: () => fetchLatestDistributions(etfs.map(e => e.ticker)),
+    queryFn: async () => {
+      const { getCachedData } = await import('@/lib/cache');
+      const cacheKey = etfs.map(e => e.ticker).sort().join(',');
+      return getCachedData(
+        'lastDist',
+        () => fetchLatestDistributions(etfs.map(e => e.ticker)),
+        cacheKey
+      );
+    },
     enabled: etfs.length > 0,
     staleTime: 300_000 // 5 minutes
   });
@@ -43,25 +55,31 @@ const Index = () => {
   const { data: yfinanceYields = {} } = useQuery({
     queryKey: ["yfinance-yields", etfs.map(e => e.ticker)],
     queryFn: async () => {
-      try {
-        console.log('🔍 Fetching Yahoo Finance yields for', etfs.length, 'tickers...');
-        const { data, error } = await supabase.functions.invoke('yfinance-yields', {
-          body: { tickers: etfs.map(e => e.ticker) }
-        });
-        if (error) {
-          console.error('❌ Yahoo Finance yields error:', error);
-          throw error;
-        }
-        console.log('✅ Yahoo Finance yields received:', data?.yields);
-        return data?.yields || {};
-      } catch (error) {
-        console.error('❌ Failed to fetch Yahoo Finance yields:', error);
-        return {};
-      }
+      const { getCachedData } = await import('@/lib/cache');
+      const cacheKey = etfs.map(e => e.ticker).sort().join(',');
+      
+      return getCachedData(
+        'yield',
+        async () => {
+          try {
+            console.log('🔍 Fetching Yahoo Finance yields for', etfs.length, 'tickers...');
+            const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+              body: { tickers: etfs.map(e => e.ticker) }
+            });
+
+            if (error) throw error;
+            return data || {};
+          } catch (error) {
+            console.error('❌ Yahoo Finance yields failed:', error);
+            return {};
+          }
+        },
+        cacheKey
+      );
     },
     enabled: etfs.length > 0,
     staleTime: 1800_000 // 30 minutes
-  });
+   });
 
   // Fetch live prices for real ETFs
   useEffect(() => {
@@ -71,10 +89,13 @@ const Index = () => {
     const run = async () => {
       try {
         const tickers = etfs.map(e => e.ticker);
-        const prices = await fetchLivePricesWithDataSources(tickers);
+        
+        const { getCachedETFPrices } = await import('@/lib/cache');
+        const prices = await getCachedETFPrices(tickers);
+        
         if (cancelled) return;
         setLivePrices(prices);
-        console.log(`Updated ${Object.keys(prices).length} live prices`);
+        console.log(`Updated ${Object.keys(prices).length} live prices from cache`);
       } catch (e) {
         console.error('Live price fetch error:', e);
         // Don't show toast on every error to avoid spam
@@ -224,6 +245,7 @@ const Index = () => {
       </main>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <CacheMonitor />
     </div>
   );
 };

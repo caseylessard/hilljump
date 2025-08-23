@@ -35,7 +35,7 @@ const Profile = () => {
   const [username, setUsername] = useState<string>("");
   const [approved, setApproved] = useState<boolean>(false);
   const [country, setCountry] = useState<'US' | 'CA'>('CA');
-  const [weights, setWeights] = useState({ r: 60, y: 20, k: 20, d: 50, t4: 0, t52: 0, h: 0 });
+  const [weights, setWeights] = useState({ r: 15, y: 25, k: 20, d: 20, t4: 8, t52: 2, h: 6 });
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
