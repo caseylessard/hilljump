@@ -13,18 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")
-    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-    
-    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-      throw new Error("Missing Supabase environment variables")
-    }
-    
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { persistSession: false }
-    })
-
-    const { tickers, updateDatabase = true } = await req.json()
+    const { tickers } = await req.json()
     
     if (!tickers || !Array.isArray(tickers)) {
       return new Response(JSON.stringify({ error: 'Invalid tickers array' }), {
@@ -33,12 +22,13 @@ serve(async (req) => {
       })
     }
 
-    const yields: Record<string, number> = {}
-    let dbUpdates = 0
-    console.log(`📊 Fetching yields for ${tickers.length} tickers`)
+    console.log(`📊 Fetching yields for ${tickers.length} tickers from Yahoo Finance`)
 
-    // Process in smaller batches to avoid overwhelming Yahoo Finance
-    const batchSize = 10
+    const yields: Record<string, number> = {}
+    let successCount = 0
+
+    // Process tickers in small batches to avoid rate limiting
+    const batchSize = 5
     for (let i = 0; i < tickers.length; i += batchSize) {
       const batch = tickers.slice(i, i + batchSize)
       
@@ -46,7 +36,7 @@ serve(async (req) => {
         try {
           console.log(`🔍 Fetching yield for ${ticker}`)
           
-          // Yahoo Finance API endpoint for key statistics
+          // Yahoo Finance API endpoint
           const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail`
           const response = await fetch(url, {
             headers: {
@@ -59,66 +49,48 @@ serve(async (req) => {
             const data = await response.json()
             const summaryDetail = data?.quoteSummary?.result?.[0]?.summaryDetail
             
-            if (summaryDetail?.dividendYield?.raw) {
+            if (summaryDetail?.dividendYield?.raw && typeof summaryDetail.dividendYield.raw === 'number') {
               // Convert from decimal to percentage (e.g., 0.05 -> 5.0)
               const yieldValue = summaryDetail.dividendYield.raw * 100
               yields[ticker] = yieldValue
-              
-              // Update database if requested
-              if (updateDatabase) {
-                const { error: updateError } = await supabase
-                  .from('etfs')
-                  .update({ 
-                    yield_ttm: yieldValue,
-                    price_updated_at: new Date().toISOString()
-                  })
-                  .eq('ticker', ticker)
-                
-                if (!updateError) {
-                  dbUpdates++
-                  console.log(`✅ Updated ${ticker}: ${yieldValue.toFixed(2)}%`)
-                } else {
-                  console.log(`❌ DB update failed for ${ticker}:`, updateError.message)
-                }
-              } else {
-                console.log(`✅ Found yield for ${ticker}: ${yieldValue.toFixed(2)}%`)
-              }
+              successCount++
+              console.log(`✅ ${ticker}: ${yieldValue.toFixed(2)}%`)
             } else {
-              console.log(`❌ No dividend yield found for ${ticker}`)
+              console.log(`❌ No yield data for ${ticker}`)
             }
           } else {
-            console.log(`❌ HTTP error for ${ticker}: ${response.status}`)
+            console.log(`❌ HTTP ${response.status} for ${ticker}`)
           }
           
-          // Small delay to avoid rate limiting
+          // Small delay between requests
           await new Promise(resolve => setTimeout(resolve, 200))
           
         } catch (error) {
-          console.log(`❌ Error fetching yield for ${ticker}:`, error.message)
-          // Continue with other tickers
+          console.log(`❌ Error fetching ${ticker}:`, error.message)
         }
       }
       
       // Pause between batches
       if (i + batchSize < tickers.length) {
+        console.log(`⏸️ Pausing between batches...`)
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
     }
 
-    console.log(`📈 Yield fetch complete. Found yields for ${Object.keys(yields).length} tickers, updated ${dbUpdates} in database`)
+    console.log(`📈 Completed: ${successCount}/${tickers.length} yields fetched`)
 
     return new Response(JSON.stringify({ 
-      yields, 
-      dbUpdates,
+      yields,
+      success: true,
       totalProcessed: tickers.length,
-      success: true 
+      successfullyFetched: successCount
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
-    console.error('Yahoo Finance yields error:', error)
+    console.error('❌ Yahoo Finance error:', error)
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
       details: error.message 
