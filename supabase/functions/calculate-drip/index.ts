@@ -103,49 +103,57 @@ serve(async (req) => {
         // Get dividends for the past periods
         const now = new Date()
         const dates = {
-          '4w': new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000),  // 4 weeks
-          '12w': new Date(now.getTime() - 84 * 24 * 60 * 60 * 1000), // 12 weeks  
-          '52w': new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000) // 52 weeks
+          '4w': new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000),   // 4 weeks (28 days)
+          '12w': new Date(now.getTime() - 84 * 24 * 60 * 60 * 1000),  // 12 weeks (84 days)  
+          '52w': new Date(now.getTime() - 364 * 24 * 60 * 60 * 1000)  // 52 weeks (364 days)
         }
 
-        const periods = ['4w', '12w', '52w']
+        // Calculate DRIP for all periods
+        const periods = [
+          { key: '4w', label: '4W' },
+          { key: '12w', label: '12W' }, 
+          { key: '52w', label: '52W' }
+        ]
+        
         const result: any = { ticker, currentPrice }
 
-        for (const period of periods) {
+        for (const { key: period, label } of periods) {
           const startDate = dates[period as keyof typeof dates].toISOString().split('T')[0]
+          
+          console.log(`  🔍 Fetching ${label} dividends for ${ticker} since ${startDate}`)
           
           // Get dividends in this period
           const { data: dividends, error: divError } = await supabase
             .from('dividends')
-            .select('amount, ex_date')
+            .select('amount, ex_date, pay_date')
             .eq('ticker', ticker)
             .gte('ex_date', startDate)
             .order('ex_date', { ascending: true })
 
           if (divError) {
-            console.log(`❌ Error fetching dividends for ${ticker} (${period}):`, divError.message)
+            console.log(`❌ Error fetching ${label} dividends for ${ticker}:`, divError.message)
             result[`drip${period}Percent`] = 0
             result[`drip${period}Dollar`] = 0
             continue
           }
 
           if (!dividends || dividends.length === 0) {
-            // No dividends in this period
+            console.log(`  📊 No ${label} dividends found for ${ticker}`)
             result[`drip${period}Percent`] = 0
             result[`drip${period}Dollar`] = 0
             continue
           }
 
           // Sum total dividends in period
-          const totalDividends = dividends.reduce((sum, div) => sum + Number(div.amount), 0)
+          const totalDividends = dividends.reduce((sum, div) => sum + Number(div.amount || 0), 0)
           
           // Calculate DRIP return percentage
-          const dripPercent = (totalDividends / currentPrice) * 100
+          const dripPercent = totalDividends > 0 ? (totalDividends / currentPrice) * 100 : 0
           
-          result[`drip${period}Percent`] = dripPercent
-          result[`drip${period}Dollar`] = totalDividends
+          result[`drip${period}Percent`] = Math.round(dripPercent * 100) / 100 // Round to 2 decimals
+          result[`drip${period}Dollar`] = Math.round(totalDividends * 10000) / 10000 // Round to 4 decimals
           
-          console.log(`  📈 ${ticker} ${period}: $${totalDividends.toFixed(4)} = ${dripPercent.toFixed(2)}%`)
+          console.log(`  📈 ${ticker} ${label}: ${dividends.length} dividends, $${totalDividends.toFixed(4)} = ${dripPercent.toFixed(2)}%`)
         }
 
         dripData[ticker] = result
