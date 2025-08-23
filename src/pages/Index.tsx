@@ -15,36 +15,18 @@ import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { UserBadge } from "@/components/UserBadge";
-import { updateCanadianPrices } from "@/utils/canadianPriceUpdater";
+import { useCachedETFs, useCachedPrices, useCachedYields } from "@/hooks/useCachedETFData";
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
-import { warmSpecificCache } from "@/lib/cacheUtils";
 
 const Index = () => {
   const { toast } = useToast();
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
-
-  // Reload cache on component mount
-  useEffect(() => {
-    const reloadCache = async () => {
-      console.log('🔄 Reloading cache...');
-      await warmSpecificCache('all');
-      console.log('✅ Cache reloaded successfully');
-    };
-    reloadCache();
-  }, []);
   
   // Fetch real ETF data from database
-  const { data: etfs = [], isLoading } = useQuery({ 
-    queryKey: ["etfs"], 
-    queryFn: async () => {
-      const { getCachedData } = await import('@/lib/cache');
-      return getCachedData('ranking', getETFs, 'all-etfs');
-    },
-    staleTime: 60_000 
-  });
+  const { data: etfs = [], isLoading } = useCachedETFs();
 
   // Fetch dividend distributions for ETFs
   const { data: distributions = {} } = useQuery({
@@ -62,35 +44,8 @@ const Index = () => {
     staleTime: 300_000 // 5 minutes
   });
 
-  // Fetch yields from Yahoo Finance
-  const { data: yfinanceYields = {} } = useQuery({
-    queryKey: ["yfinance-yields", etfs.map(e => e.ticker)],
-    queryFn: async () => {
-      const { getCachedData } = await import('@/lib/cache');
-      const cacheKey = etfs.map(e => e.ticker).sort().join(',');
-      
-      return getCachedData(
-        'yield',
-        async () => {
-          try {
-            console.log('🔍 Fetching Yahoo Finance yields for', etfs.length, 'tickers...');
-            const { data, error } = await supabase.functions.invoke('yfinance-yields', {
-              body: { tickers: etfs.map(e => e.ticker) }
-            });
-
-            if (error) throw error;
-            return data || {};
-          } catch (error) {
-            console.error('❌ Yahoo Finance yields failed:', error);
-            return {};
-          }
-        },
-        cacheKey
-      );
-    },
-    enabled: etfs.length > 0,
-    staleTime: 1800_000 // 30 minutes
-   });
+  // Fetch yields from Yahoo Finance using the cached hook
+  const { data: yfinanceYields = {} } = useCachedYields(etfs.map(e => e.ticker));
 
   // Fetch live prices for real ETFs
   useEffect(() => {
@@ -115,30 +70,7 @@ const Index = () => {
 
     run();
     return () => { cancelled = true; };
-  }, [etfs]); // Remove toast from dependencies to prevent loops
-
-  // Update Canadian prices when component loads
-  useEffect(() => {
-    const updatePrices = async () => {
-      try {
-        console.log('Starting Canadian price update...');
-        const result = await updateCanadianPrices();
-        if (result.success) {
-          console.log('✅ Canadian prices updated successfully:', result.message);
-          // Don't reload - let live data refresh naturally
-        } else {
-          console.error('❌ Canadian price update failed:', result.message);
-        }
-      } catch (error) {
-        console.error('❌ Canadian price update error:', error);
-      }
-    };
-    
-    // Always try to update prices when ETFs are loaded
-    if (etfs.length > 0) {
-      updatePrices();
-    }
-  }, [etfs.length]); // Simplified dependency
+  }, [etfs]);
 
   useEffect(() => {
     // SEO: Title, description, canonical
