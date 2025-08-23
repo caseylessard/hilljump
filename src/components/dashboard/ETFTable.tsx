@@ -213,7 +213,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       }
     };
     const cmp = (a: ScoredETF, b: ScoredETF) => {
-      // Default multi-field sort: Score (desc), then 52w DRIP (desc)
+      // Default multi-field sort: Score (desc), then 52w DRIP (desc), then ticker (asc)
       if (sortKey === "score" || sortKey === "rank") {
         // Primary: Score descending
         const scoreA = a.compositeScore;
@@ -225,10 +225,12 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         // Secondary: 52w DRIP descending
         const dripA = live[a.ticker]?.drip52wPercent ?? Number.NaN;
         const dripB = live[b.ticker]?.drip52wPercent ?? Number.NaN;
-        if (Number.isNaN(dripA) && Number.isNaN(dripB)) return 0;
-        if (Number.isNaN(dripA)) return 1;
-        if (Number.isNaN(dripB)) return -1;
-        return dripB - dripA; // descending
+        if (!Number.isNaN(dripA) && !Number.isNaN(dripB) && dripA !== dripB) {
+          return dripB - dripA; // descending
+        }
+        
+        // Tertiary: Ticker alphabetically ascending (for consistent ordering when scores/drips are equal)
+        return a.ticker.localeCompare(b.ticker);
       }
       
       // Single-field sort for other columns
