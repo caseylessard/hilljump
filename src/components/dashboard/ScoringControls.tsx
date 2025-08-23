@@ -42,11 +42,6 @@ export const ScoringControls = ({ onChange }: Props) => {
         </div>
         <Slider value={[w.k]} onValueChange={([v]) => setW(prev => ({ ...prev, k: v }))} min={0} max={100} step={1} />
       </div>
-      <div className="pt-4">
-        <Button variant="hero" asChild>
-          <a href="#ranking">Adjust Scoring</a>
-        </Button>
-      </div>
     </Card>
   );
 };
