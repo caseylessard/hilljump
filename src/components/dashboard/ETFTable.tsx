@@ -412,7 +412,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                             <span className="ml-1" aria-hidden>{countryFlag(selected)}</span>
                           </div>
                           <div className="text-sm font-medium">{manager} ({selected.exchange})</div>
-                          <div className="text-sm text-muted-foreground">{selected.summary || getEtfDescription(selected)}</div>
+                          <div className="text-sm text-muted-foreground">{selected.fund || getEtfDescription(selected)}</div>
                         </div>
                       </>
                     );
