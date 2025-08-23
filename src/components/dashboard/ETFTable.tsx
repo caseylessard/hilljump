@@ -185,40 +185,35 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     const scaled = Math.abs(v) <= 1 ? v * 100 : v;
     return `${scaled.toFixed(digits)}%`;
   };
-  const rows = useMemo(() => {
-    const getDripPercent = (ticker: string, period: '4w' | '12w' | '52w'): number => {
-      // First check dripData (from calculate-drip edge function)
-      const tickerData = dripData[ticker];
-      if (tickerData) {
-        const percentKey = `drip${period}Percent`;
-        const percent = tickerData[percentKey];
-        if (percent !== undefined && percent !== 0) {
-          // Debug logging
-          if (period === '52w' && ticker === 'MSTY') {
-            console.log(`🔍 MSTY 52w DRIP from dripData: ${percent}%`);
-          }
-          if (period === '52w' && ticker === 'AIPI') {
-            console.log(`🔍 AIPI 52w DRIP from dripData: ${percent}%`);
-          }
-          return percent;
-        }
-      }
-      
-      // Fallback to live data
-      const liveItem = live[ticker];
-      const periodKey = period as '4w' | '12w' | '52w';
-      const livePercent = liveItem?.[`drip${periodKey}Percent` as keyof LivePrice] as number ?? Number.NaN;
-      
-      // Debug logging
-      if (period === '52w' && (ticker === 'MSTY' || ticker === 'AIPI')) {
-        console.log(`🔍 ${ticker} 52w DRIP from live: ${livePercent}%`);
-        console.log(`🔍 ${ticker} dripData exists:`, !!tickerData);
-        console.log(`🔍 ${ticker} dripData keys:`, tickerData ? Object.keys(tickerData) : 'none');
-      }
-      
-      return livePercent;
-    };
 
+  // Helper functions for DRIP calculations
+  const getDripPercent = (ticker: string, period: '4w' | '12w' | '52w'): number => {
+    // First check dripData (from calculate-drip edge function)
+    const tickerData = dripData[ticker];
+    if (tickerData) {
+      const percentKey = `drip${period}Percent`;
+      const percent = tickerData[percentKey];
+      if (percent !== undefined && percent !== 0) {
+        return percent;
+      }
+    }
+    
+    // Fallback to live data
+    const liveItem = live[ticker];
+    const periodKey = period as '4w' | '12w' | '52w';
+    return liveItem?.[`drip${periodKey}Percent` as keyof LivePrice] as number ?? 0;
+  };
+
+  const getDripWeightedSum = (ticker: string): number => {
+    const drip4w = getDripPercent(ticker, "4w");
+    const drip12w = getDripPercent(ticker, "12w");
+    const drip52w = getDripPercent(ticker, "52w");
+    
+    // Sum: (4W DRIP * 13) + (12W DRIP * 4.3333333) + (52W DRIP * 1)
+    return (drip4w * 13) + (drip12w * 4.3333333) + (drip52w * 1);
+  };
+
+  const rows = useMemo(() => {
     const getVal = (etf: ScoredETF): number | string => {
       // Look up live data using the full ticker (including .TO for Canadian ETFs)
       const lp = live[etf.ticker];
@@ -232,7 +227,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         case "drip52w": return getDripPercent(etf.ticker, "52w");
         case "yield": { const y = etf.yieldTTM; return Math.abs(y) <= 1 ? y * 100 : y; }
         case "risk": return etf.riskScore;
-        case "score": return etf.compositeScore;
+        case "score": return getDripWeightedSum(etf.ticker); // Use weighted DRIP sum instead of score
         case "signal": {
           const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
           const r28d = (Math.pow(1 + daily, 28) - 1) * 100;
@@ -242,44 +237,19 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         }
         case "rank":
         default:
-          return etf.compositeScore;
+          return getDripWeightedSum(etf.ticker); // Use weighted DRIP sum as default
       }
     };
     const cmp = (a: ScoredETF, b: ScoredETF) => {
-      // Default multi-field sort: Score (desc), then 52w DRIP (desc), then ticker (asc)
+      // Use weighted DRIP sum for default sort (score/rank columns)
       if (sortKey === "score" || sortKey === "rank") {
-        // Primary: Score descending (skip if both scores are 0)
-        const scoreA = a.compositeScore;
-        const scoreB = b.compositeScore;
+        const sumA = getDripWeightedSum(a.ticker);
+        const sumB = getDripWeightedSum(b.ticker);
         
-        // Debug logging for key comparisons
-        if ((a.ticker === 'MSTY' && b.ticker === 'AIPI') || (a.ticker === 'AIPI' && b.ticker === 'MSTY')) {
-          console.log(`🔍 Comparing ${a.ticker} vs ${b.ticker}:`);
-          console.log(`  Scores: ${a.ticker}=${scoreA}, ${b.ticker}=${scoreB}`);
+        // Sort by weighted DRIP sum descending, then ticker ascending as tiebreaker
+        if (sumA !== sumB) {
+          return sumB - sumA; // descending
         }
-        
-        if (scoreA !== 0 || scoreB !== 0) {
-          if (scoreA !== scoreB) {
-            return scoreB - scoreA; // descending
-          }
-        }
-        
-        // Secondary: 52w DRIP descending
-        const dripA = getDripPercent(a.ticker, "52w");
-        const dripB = getDripPercent(b.ticker, "52w");
-        
-        // Debug logging for key comparisons
-        if ((a.ticker === 'MSTY' && b.ticker === 'AIPI') || (a.ticker === 'AIPI' && b.ticker === 'MSTY')) {
-          console.log(`  DRIPs: ${a.ticker}=${dripA}%, ${b.ticker}=${dripB}%`);
-          console.log(`  isNaN check: ${a.ticker}=${Number.isNaN(dripA)}, ${b.ticker}=${Number.isNaN(dripB)}`);
-          console.log(`  Final result: ${dripB - dripA} (${dripB} - ${dripA})`);
-        }
-        
-        if (!Number.isNaN(dripA) && !Number.isNaN(dripB) && dripA !== dripB) {
-          return dripB - dripA; // descending
-        }
-        
-        // Tertiary: Ticker alphabetically ascending (for consistent ordering when scores/drips are equal)
         return a.ticker.localeCompare(b.ticker);
       }
       
@@ -455,7 +425,15 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-semibold">{(etf.compositeScore * 100).toFixed(0)}</TableCell>
+                <TableCell className="text-right font-semibold">
+                  {(() => {
+                    const drip4w = getDripPercent(etf.ticker, "4w");
+                    const drip12w = getDripPercent(etf.ticker, "12w");
+                    const drip52w = getDripPercent(etf.ticker, "52w");
+                    const weightedSum = (drip4w * 13) + (drip12w * 4.3333333) + (drip52w * 1);
+                    return weightedSum.toFixed(0);
+                  })()}
+                </TableCell>
                 <TableCell className="text-right">
                   {buy ? (
                     <Badge className="bg-emerald-500 text-white">BUY</Badge>
