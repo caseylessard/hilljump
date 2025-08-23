@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Loader2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { YahooFinanceTest } from "@/components/YahooFinanceTest";
+import { FinnhubYieldsTest } from "@/components/FinnhubYieldsTest";
 import { ETFDataImport } from "@/components/admin/ETFDataImport";
 import { DividendDataImport } from "@/components/admin/DividendDataImport";
 import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
@@ -416,7 +416,7 @@ const Profile = () => {
       <main className="container py-8 grid gap-6">
         <h1 className="text-3xl font-bold">Profile</h1>
         
-        <YahooFinanceTest />
+        <FinnhubYieldsTest />
         
         {!userId ? (
           <Card className="p-6">
