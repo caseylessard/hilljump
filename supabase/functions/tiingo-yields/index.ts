@@ -110,20 +110,28 @@ serve(async (req) => {
           
           const tiingoUrl = `https://api.tiingo.com/tiingo/fundamentals/${etf.ticker}/daily?token=${tiingoApiKey}`;
           
+          console.log(`📡 Calling Tiingo API: ${tiingoUrl.replace(tiingoApiKey, 'XXXXX')}`);
+          
           const response = await fetch(tiingoUrl);
+          
+          console.log(`📊 ${etf.ticker} - Response status: ${response.status} ${response.statusText}`);
           
           if (!response.ok) {
             if (response.status === 404) {
               console.log(`⚠️ ${etf.ticker}: Not found in Tiingo database`);
               continue;
             }
+            const errorText = await response.text();
+            console.error(`❌ ${etf.ticker} - Tiingo API error: ${response.status} ${response.statusText} - ${errorText}`);
             throw new Error(`Tiingo API error: ${response.status} ${response.statusText}`);
           }
 
           const data: TiingoFundamentals[] = await response.json();
           
+          console.log(`📈 ${etf.ticker} - Received data:`, JSON.stringify(data).substring(0, 200) + '...');
+          
           if (!data || data.length === 0 || !data[0].divYield) {
-            console.log(`⚠️ ${etf.ticker}: No yield data available`);
+            console.log(`⚠️ ${etf.ticker}: No yield data available in response`);
             continue;
           }
 
@@ -132,6 +140,8 @@ serve(async (req) => {
 
           // Convert from decimal to percentage if needed (Tiingo returns as decimal)
           const yieldPercentage = yieldValue > 1 ? yieldValue : yieldValue * 100;
+
+          console.log(`💰 ${etf.ticker}: Converting yield ${yieldValue} to ${yieldPercentage.toFixed(2)}%`);
 
           // Update ETF yield data
           const { error: updateError } = await supabase
@@ -143,7 +153,7 @@ serve(async (req) => {
             .eq('ticker', etf.ticker);
 
           if (updateError) {
-            console.error(`❌ Failed to update ${etf.ticker}:`, updateError);
+            console.error(`❌ Failed to update ${etf.ticker} in database:`, updateError);
             errorCount++;
           } else {
             console.log(`✅ ${etf.ticker}: Updated yield to ${yieldPercentage.toFixed(2)}%`);
@@ -154,7 +164,7 @@ serve(async (req) => {
           await new Promise(resolve => setTimeout(resolve, 1000));
 
         } catch (error: any) {
-          console.error(`❌ Error processing ${etf.ticker}:`, error);
+          console.error(`❌ Error processing ${etf.ticker}:`, error.message);
           errorCount++;
         }
       }
