@@ -13,27 +13,54 @@ export const YahooFinanceTest = () => {
     try {
       const ticker = 'PLTY';
       
-      console.log('📊 Fetching Yahoo Finance data for', ticker, 'via edge function');
+      console.log('📊 Testing with existing yfinance-yields function for', ticker);
       
       const { supabase } = await import('@/integrations/supabase/client');
       
-      const { data, error } = await supabase.functions.invoke('yahoo-finance-test', {
-        body: { ticker }
+      // Try the existing yfinance-yields function first
+      const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+        body: { tickers: [ticker] }
       });
       
       if (error) {
-        console.error('❌ Edge function error:', error);
-        setResult(`❌ Edge function error: ${error.message}`);
+        console.error('❌ yfinance-yields function error:', error);
+        
+        // Fallback to the new yahoo-finance-test function
+        console.log('📊 Trying yahoo-finance-test function...');
+        
+        const { data: testData, error: testError } = await supabase.functions.invoke('yahoo-finance-test', {
+          body: { ticker }
+        });
+        
+        if (testError) {
+          console.error('❌ yahoo-finance-test function error:', testError);
+          setResult(`❌ Both functions failed:\n1. yfinance-yields: ${error.message}\n2. yahoo-finance-test: ${testError.message}`);
+          return;
+        }
+        
+        if (testData?.success) {
+          console.log('✅ Yahoo Finance response via yahoo-finance-test:');
+          console.log(JSON.stringify(testData, null, 2));
+          setResult(JSON.stringify(testData, null, 2));
+        } else {
+          setResult(`❌ yahoo-finance-test error: ${testData?.error || 'Unknown error'}`);
+        }
         return;
       }
       
-      if (data.success) {
-        console.log('✅ Yahoo Finance response received via edge function:');
-        console.log(JSON.stringify(data, null, 2));
-        setResult(JSON.stringify(data, null, 2));
-      } else {
-        setResult(`❌ Yahoo Finance API error: ${data.error}`);
-      }
+      console.log('✅ yfinance-yields response:');
+      console.log(JSON.stringify(data, null, 2));
+      
+      const analysis = {
+        ticker: ticker,
+        success: true,
+        timestamp: new Date().toISOString(),
+        source: 'yfinance-yields',
+        yields: data?.yields || {},
+        pltyYield: data?.yields?.[ticker] || 'Not found'
+      };
+      
+      setResult(JSON.stringify(analysis, null, 2));
       
     } catch (error: any) {
       console.error('❌ Error:', error);

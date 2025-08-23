@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.yfinance-yields]
 verify_jwt = false
 
+[functions.yahoo-finance-test]
+verify_jwt = false
+
 [functions.update-canadian-prices]
 verify_jwt = false
 
