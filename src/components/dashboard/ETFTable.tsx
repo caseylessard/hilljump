@@ -215,11 +215,13 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     const cmp = (a: ScoredETF, b: ScoredETF) => {
       // Default multi-field sort: Score (desc), then 52w DRIP (desc), then ticker (asc)
       if (sortKey === "score" || sortKey === "rank") {
-        // Primary: Score descending
+        // Primary: Score descending (skip if both scores are 0)
         const scoreA = a.compositeScore;
         const scoreB = b.compositeScore;
-        if (scoreA !== scoreB) {
-          return scoreB - scoreA; // descending
+        if (scoreA !== 0 || scoreB !== 0) {
+          if (scoreA !== scoreB) {
+            return scoreB - scoreA; // descending
+          }
         }
         
         // Secondary: 52w DRIP descending
