@@ -51,25 +51,41 @@ export const useCachedYields = (tickers: string[]) => {
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      const cacheKey = tickers.sort().join(',');
-      return getCachedData(
-        'yield',
-        async () => {
-          try {
-            console.log('🔍 Fetching Yahoo Finance yields for', tickers.length, 'tickers...');
-            const { data, error } = await supabase.functions.invoke('yfinance-yields', {
-              body: { tickers }
-            });
+      // Batch process in smaller chunks to avoid overwhelming the API
+      const batchSize = 25;
+      const batches = [];
+      for (let i = 0; i < tickers.length; i += batchSize) {
+        batches.push(tickers.slice(i, i + batchSize));
+      }
+      
+      const results: Record<string, any> = {};
+      
+      for (const batch of batches) {
+        const cacheKey = batch.sort().join(',');
+        
+        try {
+          const batchResults = await getCachedData(
+            'yield',
+            async () => {
+              console.log('🔍 Fetching Yahoo Finance yields for batch of', batch.length, 'tickers...');
+              const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+                body: { tickers: batch }
+              });
 
-            if (error) throw error;
-            return data?.yields || {};
-          } catch (error) {
-            console.error('❌ Yahoo Finance yields failed:', error);
-            return {};
-          }
-        },
-        cacheKey
-      );
+              if (error) throw error;
+              return data?.yields || {};
+            },
+            cacheKey
+          );
+          
+          Object.assign(results, batchResults);
+        } catch (error) {
+          console.error('❌ Yahoo Finance yields batch failed:', error);
+          // Continue with other batches on error
+        }
+      }
+      
+      return results;
     },
     enabled: tickers.length > 0,
     staleTime: 24 * 60 * 60 * 1000, // 1 day
@@ -92,20 +108,55 @@ export const useCachedDRIP = (tickers: string[]) => {
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      const cacheKey = tickers.sort().join(',');
-      return getCachedData(
-        'drip4w',
-        async () => {
-          const { data, error } = await supabase.functions.invoke('calculate-drip', {
-            body: { tickers }
-          });
-          if (error) throw new Error(error.message);
-          return data;
-        },
-        cacheKey
-      );
+      // Pre-filter tickers that have active ETF records to avoid processing inactive ones
+      const { data: activeETFs } = await supabase
+        .from('etfs')
+        .select('ticker')
+        .in('ticker', tickers)
+        .eq('active', true);
+      
+      const activeTickers = activeETFs?.map(etf => etf.ticker) || [];
+      
+      if (activeTickers.length === 0) return {};
+      
+      // Batch process in smaller chunks to reduce server load
+      const batchSize = 30;
+      const batches = [];
+      for (let i = 0; i < activeTickers.length; i += batchSize) {
+        batches.push(activeTickers.slice(i, i + batchSize));
+      }
+      
+      const results: Record<string, any> = {};
+      
+      for (const batch of batches) {
+        const cacheKey = `drip-${batch.sort().join(',')}`;
+        
+        try {
+          const batchResults = await getCachedData(
+            'drip4w',
+            async () => {
+              console.log('🧮 Fetching DRIP data for', batch.length, 'tickers...');
+              const { data, error } = await supabase.functions.invoke('calculate-drip', {
+                body: { tickers: batch }
+              });
+              if (error) throw new Error(error.message);
+              return data?.dripData || {};
+            },
+            cacheKey
+          );
+          
+          Object.assign(results, batchResults);
+          console.log('✅ DRIP data loaded:', Object.keys(batchResults || {}).length, 'entries');
+        } catch (error) {
+          console.error('❌ DRIP batch failed:', error);
+          // Continue with other batches on error
+        }
+      }
+      
+      return results;
     },
     enabled: tickers.length > 0,
     staleTime: 60 * 60 * 1000, // 1 hour
+    refetchOnWindowFocus: false, // Prevent unnecessary refetches
   });
 };

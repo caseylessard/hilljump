@@ -29,23 +29,47 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // First, fetch live prices for all tickers
-    console.log('📊 Fetching live prices for DRIP calculations...')
-    const { data: quotesData, error: quotesError } = await supabase.functions.invoke('quotes', {
-      body: { tickers }
-    })
+    // Pre-filter tickers to only process those with ETF data and recent dividends
+    const { data: etfsWithData, error: etfError } = await supabase
+      .from('etfs')
+      .select('ticker, current_price, currency')
+      .in('ticker', tickers)
+      .eq('active', true)
+      .not('current_price', 'is', null)
 
-    if (quotesError) {
-      console.error('❌ Failed to fetch live prices:', quotesError)
+    if (etfError) {
+      console.error('❌ Failed to fetch ETF data:', etfError)
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Failed to fetch live prices for DRIP calculations',
-        details: quotesError.message 
+        error: 'Failed to fetch ETF data for DRIP calculations',
+        details: etfError.message 
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
+
+    const validTickers = etfsWithData?.map(etf => etf.ticker) || []
+    console.log(`📊 Processing ${validTickers.length} valid tickers (filtered from ${tickers.length})`)
+
+    if (validTickers.length === 0) {
+      return new Response(JSON.stringify({
+        success: true,
+        dripData: {},
+        processed: 0,
+        errors: 0,
+        total: 0,
+        message: 'No valid tickers found for DRIP calculation'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Fetch live prices only for valid tickers
+    console.log('📊 Fetching live prices for DRIP calculations...')
+    const { data: quotesData, error: quotesError } = await supabase.functions.invoke('quotes', {
+      body: { tickers: validTickers }
+    })
 
     const livePrices = quotesData?.prices || {}
     console.log(`✅ Fetched ${Object.keys(livePrices).length} live prices`)
@@ -54,10 +78,10 @@ serve(async (req) => {
     let processedCount = 0
     let errorCount = 0
 
-    // Calculate DRIP percentages for each ticker
-    for (const ticker of tickers) {
+    // Calculate DRIP percentages for each valid ticker
+    for (const ticker of validTickers) {
       try {
-        console.log(`[${processedCount + 1}/${tickers.length}] 📊 Processing ${ticker}...`)
+        console.log(`[${processedCount + 1}/${validTickers.length}] 📊 Processing ${ticker}...`)
         
         // Get current price from live prices first, then database as fallback
         let currentPrice = livePrices[ticker]
@@ -181,7 +205,7 @@ serve(async (req) => {
       dripData,
       processed: processedCount,
       errors: errorCount,
-      total: tickers.length
+      total: validTickers.length
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
