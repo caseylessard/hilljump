@@ -6,21 +6,23 @@ export async function updateCanadianPrices(): Promise<{
   results?: any;
 }> {
   try {
+    console.log('🇨🇦 Calling update-canadian-prices function...');
     const { data, error } = await supabase.functions.invoke('update-canadian-prices');
     
     if (error) {
+      console.error('❌ Function invocation error:', error);
       throw new Error(error.message);
     }
     
-    console.log('Canadian prices updated:', data);
+    console.log('✅ Canadian prices response:', data);
     return {
-      success: true,
-      message: data.message || 'Canadian prices updated successfully',
+      success: data?.success !== false,
+      message: data?.message || 'Canadian prices updated successfully',
       results: data
     };
     
   } catch (error) {
-    console.error('Failed to update Canadian prices:', error);
+    console.error('❌ Failed to update Canadian prices:', error);
     return {
       success: false,
       message: `Failed to update Canadian prices: ${error.message}`

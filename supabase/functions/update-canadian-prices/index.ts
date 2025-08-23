@@ -13,76 +13,104 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🇨🇦 Starting Canadian ETF price update...')
+    
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase credentials')
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Get Canadian ETF tickers from database
+    console.log('📊 Fetching Canadian ETF tickers...')
     const { data: canadianETFs, error: fetchError } = await supabase
       .from('etfs')
-      .select('id, ticker, name')
+      .select('id, ticker, name, active')
       .or('ticker.like.%.TO,ticker.like.%.NE')
       .eq('active', true)
 
     if (fetchError) {
+      console.error('❌ Failed to fetch Canadian ETFs:', fetchError)
       throw new Error(`Failed to fetch Canadian ETFs: ${fetchError.message}`)
     }
 
     if (!canadianETFs || canadianETFs.length === 0) {
-      console.log('No Canadian ETFs found')
+      console.log('⚠️ No Canadian ETFs found in database')
       return new Response(JSON.stringify({ 
         message: 'No Canadian ETFs found',
-        updated: 0 
+        updated: 0,
+        total: 0
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    console.log(`Found ${canadianETFs.length} Canadian ETFs to update`)
+    console.log(`📈 Found ${canadianETFs.length} Canadian ETFs to update`)
     const results = []
     let successCount = 0
     let errorCount = 0
 
-    // Fetch prices from Yahoo Finance and update database
-    for (const etf of canadianETFs) {
+    // Process each ETF with proper error handling
+    for (let i = 0; i < canadianETFs.length; i++) {
+      const etf = canadianETFs[i]
+      
       try {
-        console.log(`Fetching price for ${etf.ticker}...`)
+        console.log(`[${i+1}/${canadianETFs.length}] 💰 Fetching ${etf.ticker}...`)
         
         // Yahoo Finance API endpoint for real-time quotes
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${etf.ticker}?interval=1d&range=1d`
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${etf.ticker}?interval=1d&range=2d`
         const response = await fetch(yahooUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Cache-Control': 'no-cache'
+          },
+          timeout: 5000
         })
 
         if (!response.ok) {
-          throw new Error(`Yahoo API returned ${response.status}`)
+          throw new Error(`Yahoo Finance API error: ${response.status} ${response.statusText}`)
         }
 
         const data = await response.json()
-        const result = data?.chart?.result?.[0]
         
-        if (!result) {
-          throw new Error('No chart data returned')
+        if (!data || !data.chart || !data.chart.result || data.chart.result.length === 0) {
+          throw new Error('No chart data in response')
+        }
+
+        const result = data.chart.result[0]
+        
+        if (data.chart.error) {
+          throw new Error(`Yahoo Finance error: ${data.chart.error.description}`)
         }
 
         // Get current price from the most recent data point
-        const currentPrice = result.meta?.regularMarketPrice || 
-                           result.meta?.previousClose ||
-                           (result.indicators?.quote?.[0]?.close?.slice(-1)[0])
+        let currentPrice = result.meta?.regularMarketPrice || 
+                          result.meta?.previousClose
 
+        // Fallback to last close price if regular market price not available
         if (!currentPrice || currentPrice <= 0) {
-          throw new Error('No valid price found')
+          const quotes = result.indicators?.quote?.[0]
+          if (quotes?.close?.length > 0) {
+            // Get the most recent non-null close price
+            const closes = quotes.close.filter(c => c != null && c > 0)
+            if (closes.length > 0) {
+              currentPrice = closes[closes.length - 1]
+            }
+          }
         }
 
-        // Get additional data if available
-        const previousClose = result.meta?.previousClose
-        const change = currentPrice && previousClose ? currentPrice - previousClose : null
-        const changePercent = change && previousClose ? (change / previousClose) * 100 : null
+        if (!currentPrice || currentPrice <= 0) {
+          throw new Error(`No valid price found. Meta: ${JSON.stringify(result.meta)}`)
+        }
 
         // Update database with fetched price
+        console.log(`💾 Updating ${etf.ticker} with price $${currentPrice}...`)
         const { error: updateError } = await supabase
           .from('etfs')
           .update({
@@ -95,21 +123,16 @@ serve(async (req) => {
           throw new Error(`Database update failed: ${updateError.message}`)
         }
 
-        console.log(`✅ Updated ${etf.ticker}: $${currentPrice}`)
+        console.log(`✅ ${etf.ticker}: $${currentPrice.toFixed(4)}`)
         results.push({
           ticker: etf.ticker,
           price: currentPrice,
-          change: change,
-          changePercent: changePercent,
           status: 'success'
         })
         successCount++
 
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 200))
-
       } catch (error) {
-        console.error(`❌ Failed to update ${etf.ticker}:`, error.message)
+        console.error(`❌ ${etf.ticker}: ${error.message}`)
         results.push({
           ticker: etf.ticker,
           error: error.message,
@@ -117,23 +140,31 @@ serve(async (req) => {
         })
         errorCount++
       }
+
+      // Rate limiting: small delay between requests
+      if (i < canadianETFs.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 150))
+      }
     }
 
-    console.log(`Price update complete: ${successCount} successful, ${errorCount} errors`)
+    const message = `Updated ${successCount}/${canadianETFs.length} Canadian ETF prices`
+    console.log(`🎉 ${message}. Errors: ${errorCount}`)
 
     return new Response(JSON.stringify({
-      message: `Updated ${successCount} Canadian ETF prices`,
+      success: true,
+      message,
       total: canadianETFs.length,
       successful: successCount,
       errors: errorCount,
-      results: results
+      results
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
-    console.error('Canadian price update error:', error)
+    console.error('💥 Canadian price update failed:', error)
     return new Response(JSON.stringify({ 
+      success: false,
       error: 'Failed to update Canadian prices',
       details: error.message 
     }), {

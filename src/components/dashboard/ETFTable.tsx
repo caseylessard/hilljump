@@ -42,20 +42,21 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       if (items.length === 0) return;
       
       try {
+        console.log('🧮 Fetching DRIP data for', items.length, 'tickers...');
         const tickers = items.map(item => item.ticker);
         const { data, error } = await supabase.functions.invoke('calculate-drip', {
           body: { tickers }
         });
         
         if (error) {
-          console.error('DRIP calculation error:', error);
+          console.error('❌ DRIP calculation error:', error);
           return;
         }
         
-        setDripData(data.dripData || {});
-        console.log('DRIP data fetched:', data.dripData);
+        console.log('✅ DRIP data received:', data);
+        setDripData(data?.dripData || {});
       } catch (error) {
-        console.error('Failed to fetch DRIP data:', error);
+        console.error('❌ Failed to fetch DRIP data:', error);
       }
     };
 

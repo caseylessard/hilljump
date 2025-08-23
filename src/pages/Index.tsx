@@ -42,11 +42,21 @@ const Index = () => {
   const { data: yfinanceYields = {} } = useQuery({
     queryKey: ["yfinance-yields", etfs.map(e => e.ticker)],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('yfinance-yields', {
-        body: { tickers: etfs.map(e => e.ticker) }
-      });
-      if (error) throw error;
-      return data.yields || {};
+      try {
+        console.log('🔍 Fetching Yahoo Finance yields for', etfs.length, 'tickers...');
+        const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+          body: { tickers: etfs.map(e => e.ticker) }
+        });
+        if (error) {
+          console.error('❌ Yahoo Finance yields error:', error);
+          throw error;
+        }
+        console.log('✅ Yahoo Finance yields received:', data?.yields);
+        return data?.yields || {};
+      } catch (error) {
+        console.error('❌ Failed to fetch Yahoo Finance yields:', error);
+        return {};
+      }
     },
     enabled: etfs.length > 0,
     staleTime: 1800_000 // 30 minutes
@@ -78,26 +88,24 @@ const Index = () => {
   useEffect(() => {
     const updatePrices = async () => {
       try {
+        console.log('Starting Canadian price update...');
         const result = await updateCanadianPrices();
         if (result.success) {
-          console.log('Canadian prices updated:', result.message);
-          // Refresh ETF data after price update
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
+          console.log('✅ Canadian prices updated successfully:', result.message);
+          // Don't reload - let live data refresh naturally
         } else {
-          console.warn('Canadian price update failed:', result.message);
+          console.error('❌ Canadian price update failed:', result.message);
         }
       } catch (error) {
-        console.warn('Canadian price update error:', error);
+        console.error('❌ Canadian price update error:', error);
       }
     };
     
-    // Only update prices once when component first loads
+    // Always try to update prices when ETFs are loaded
     if (etfs.length > 0) {
       updatePrices();
     }
-  }, [etfs.length > 0]); // Trigger once when ETFs are loaded
+  }, [etfs.length]); // Simplified dependency
 
   useEffect(() => {
     // SEO: Title, description, canonical
