@@ -101,12 +101,14 @@ serve(async (req) => {
           dripData[ticker] = {
             ticker,
             currentPrice: null,
-            drip4wPercent: 0,
-            drip4wDollar: 0,
-            drip12wPercent: 0,
-            drip12wDollar: 0,
-            drip52wPercent: 0,
-            drip52wDollar: 0,
+          drip4wPercent: 0,
+          drip4wDollar: 0,
+          drip13wPercent: 0,
+          drip13wDollar: 0,
+          drip26wPercent: 0,
+          drip26wDollar: 0,
+          drip52wPercent: 0,
+          drip52wDollar: 0,
             error: 'No price data available'
           }
           errorCount++
@@ -117,13 +119,14 @@ serve(async (req) => {
         const now = new Date()
         const dates = {
           '4w': new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000),   // 4 weeks (28 days)
-          '12w': new Date(now.getTime() - 84 * 24 * 60 * 60 * 1000),  // 12 weeks (84 days)  
+          '13w': new Date(now.getTime() - 91 * 24 * 60 * 60 * 1000),  // 13 weeks (91 days)
+          '26w': new Date(now.getTime() - 182 * 24 * 60 * 60 * 1000), // 26 weeks (182 days)
           '52w': new Date(now.getTime() - 364 * 24 * 60 * 60 * 1000)  // 52 weeks (364 days)
         }
 
         // Calculate DRIP for all periods
-        const periods = ['4w', '12w', '52w']
-        const periodLabels = { '4w': '4W', '12w': '12W', '52w': '52W' }
+        const periods = ['4w', '13w', '26w', '52w']
+        const periodLabels = { '4w': '4W', '13w': '13W', '26w': '26W', '52w': '52W' }
         
         const result: any = { ticker, currentPrice }
 
@@ -177,8 +180,10 @@ serve(async (req) => {
           currentPrice: null,
           drip4wPercent: 0,
           drip4wDollar: 0,
-          drip12wPercent: 0,
-          drip12wDollar: 0,
+          drip13wPercent: 0,
+          drip13wDollar: 0,
+          drip26wPercent: 0,
+          drip26wDollar: 0,
           drip52wPercent: 0,
           drip52wDollar: 0,
           error: error.message

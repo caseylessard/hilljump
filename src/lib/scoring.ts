@@ -18,9 +18,10 @@ export type ScoredETF = ETF & {
   volNorm: number;
   drawdownNorm: number;
   // DRIP-normalized scores (0..1)
-  drip4wNorm: number;
-  drip12wNorm: number;
-  drip52wNorm: number;
+    drip4wNorm: number;
+    drip13wNorm: number;
+    drip26wNorm: number;
+    drip52wNorm: number;
   dripWeightedNorm: number;
   // Signal derived from DRIP momentum
   buySignal: boolean;
@@ -124,9 +125,13 @@ export function scoreETFsWithPrefs(
     const lp = live?.[d.ticker];
     return safe(lp?.drip4wPercent, approxPeriodFromAnnual(returns1y[i], 28));
   });
-  const drip12w = data.map((d, i) => {
+  const drip13w = data.map((d, i) => {
     const lp = live?.[d.ticker];
-    return safe(lp?.drip12wPercent, approxPeriodFromAnnual(returns1y[i], 90));
+    return safe(lp?.drip13wPercent, approxPeriodFromAnnual(returns1y[i], 91));
+  });
+  const drip26w = data.map((d, i) => {
+    const lp = live?.[d.ticker];
+    return safe(lp?.drip26wPercent, approxPeriodFromAnnual(returns1y[i], 182));
   });
   const drip52w = data.map((d, i) => {
     const lp = live?.[d.ticker];
@@ -153,7 +158,8 @@ export function scoreETFsWithPrefs(
   })();
 
   const d4Stats  = wins ? winsorStats(drip4w)  : { low: Math.min(...drip4w),  high: Math.max(...drip4w),  span: Math.max(...drip4w)  - Math.min(...drip4w)  || 1 };
-  const d12Stats = wins ? winsorStats(drip12w) : { low: Math.min(...drip12w), high: Math.max(...drip12w), span: Math.max(...drip12w) - Math.min(...drip12w) || 1 };
+  const d13Stats = wins ? winsorStats(drip13w) : { low: Math.min(...drip13w), high: Math.max(...drip13w), span: Math.max(...drip13w) - Math.min(...drip13w) || 1 };
+  const d26Stats = wins ? winsorStats(drip26w) : { low: Math.min(...drip26w), high: Math.max(...drip26w), span: Math.max(...drip26w) - Math.min(...drip26w) || 1 };
   const d52Stats = wins ? winsorStats(drip52w) : { low: Math.min(...drip52w), high: Math.max(...drip52w), span: Math.max(...drip52w) - Math.min(...drip52w) || 1 };
 
   const scored = data.map((d, i) => {
@@ -196,16 +202,17 @@ export function scoreETFsWithPrefs(
     const liqScore = clamp(0.8 * volumeNorm + 0.2 * spreadNorm, 0, 1);   // spread helps if available
     const sizeAgeScore = clamp(0.7 * aumNorm + 0.3 * ageNorm, 0, 1);
 
-    // Momentum (DRIP-based): 12w (primary), then 4w, small 52w
+    // Momentum (DRIP-based): 13w (primary), then 4w, small 26w, 52w
     const drip4wNorm = normWins(drip4w[i], d4Stats);
-    const drip12wNorm = normWins(drip12w[i], d12Stats);
+    const drip13wNorm = normWins(drip13w[i], d13Stats);
+    const drip26wNorm = normWins(drip26w[i], d26Stats);
     const drip52wNorm = normWins(drip52w[i], d52Stats);
-    const momentum13w = drip12wNorm;
+    const momentum13w = drip13wNorm;
     const momentum52w = drip52wNorm;
-    const dripWeightedNorm = clamp(0.6 * drip12wNorm + 0.3 * drip4wNorm + 0.1 * drip52wNorm, 0, 1);
+    const dripWeightedNorm = clamp(0.5 * drip13wNorm + 0.3 * drip4wNorm + 0.1 * drip26wNorm + 0.1 * drip52wNorm, 0, 1);
 
-    // Buy signal: positive 12w and 4w DRIP
-    const buySignal = (drip12w[i] ?? 0) > 0 && (drip4w[i] ?? 0) > 0;
+    // Signal: positive short and medium term
+    const buySignal = (drip13w[i] ?? 0) > 0 && (drip4w[i] ?? 0) > 0;
     const signalBoost = buySignal ? 0.05 : -0.05; // ±5pts in 0..1 space
 
     // --- Core weighted score (0..1)
@@ -279,7 +286,8 @@ export function scoreETFsWithPrefs(
       volNorm: volNormRaw,
       drawdownNorm: mddNormRaw,
       drip4wNorm,
-      drip12wNorm,
+      drip13wNorm,
+      drip26wNorm,
       drip52wNorm,
       dripWeightedNorm,
       buySignal,

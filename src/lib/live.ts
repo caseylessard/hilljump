@@ -10,10 +10,14 @@ export type LivePrice = {
   dividends4w?: number;
   drip4wDollar?: number;
   drip4wPercent?: number;
-  price12wStart?: number;
-  dividends12w?: number;
-  drip12wDollar?: number;
-  drip12wPercent?: number;
+  price13wStart?: number;
+  dividends13w?: number;
+  drip13wDollar?: number;
+  drip13wPercent?: number;
+  price26wStart?: number;
+  dividends26w?: number;
+  drip26wDollar?: number;
+  drip26wPercent?: number;
   price52wStart?: number;
   dividends52w?: number;
   drip52wDollar?: number;
