@@ -15,6 +15,7 @@ import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { UserBadge } from "@/components/UserBadge";
+import { updateCanadianPrices } from "@/utils/canadianPriceUpdater";
 
 const Index = () => {
   const { toast } = useToast();
@@ -72,6 +73,31 @@ const Index = () => {
     run();
     return () => { cancelled = true; };
   }, [etfs]); // Remove toast from dependencies to prevent loops
+
+  // Update Canadian prices when component loads
+  useEffect(() => {
+    const updatePrices = async () => {
+      try {
+        const result = await updateCanadianPrices();
+        if (result.success) {
+          console.log('Canadian prices updated:', result.message);
+          // Refresh ETF data after price update
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          console.warn('Canadian price update failed:', result.message);
+        }
+      } catch (error) {
+        console.warn('Canadian price update error:', error);
+      }
+    };
+    
+    // Only update prices once when component first loads
+    if (etfs.length > 0) {
+      updatePrices();
+    }
+  }, [etfs.length > 0]); // Trigger once when ETFs are loaded
 
   useEffect(() => {
     // SEO: Title, description, canonical

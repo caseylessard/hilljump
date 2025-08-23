@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -32,7 +32,75 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   const [selected, setSelected] = useState<ScoredETF | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
   const [range, setRange] = useState<RangeKey>("1Y");
+  const [nextDividends, setNextDividends] = useState<Record<string, any>>({});
+  const [dripData, setDripData] = useState<Record<string, any>>({});
   const fmtCompact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+  
+  // Fetch DRIP data for all tickers
+  useEffect(() => {
+    const fetchDripData = async () => {
+      if (items.length === 0) return;
+      
+      try {
+        const tickers = items.map(item => item.ticker);
+        const { data, error } = await supabase.functions.invoke('calculate-drip', {
+          body: { tickers }
+        });
+        
+        if (error) {
+          console.error('DRIP calculation error:', error);
+          return;
+        }
+        
+        setDripData(data.dripData || {});
+        console.log('DRIP data fetched:', data.dripData);
+      } catch (error) {
+        console.error('Failed to fetch DRIP data:', error);
+      }
+    };
+
+    fetchDripData();
+  }, [items]);
+  const DRIPCell = ({ ticker, period }: { ticker: string; period: '4w' | '12w' | '52w' }) => {
+    const tickerData = dripData[ticker];
+    if (!tickerData) {
+      // Fallback to live data if available
+      const liveItem = live[ticker];
+      const periodKey = period as '4w' | '12w' | '52w';
+      const d = liveItem?.[`drip${periodKey}Dollar` as keyof LivePrice];
+      const p = liveItem?.[`drip${periodKey}Percent` as keyof LivePrice];
+      
+      if (d == null && p == null) return <span>—</span>;
+      
+      const up = (p as number ?? 0) >= 0;
+      return (
+        <div className="inline-flex flex-col items-end leading-tight">
+          <span>{d != null ? `$${(d as number).toFixed(2)}` : "—"}</span>
+          <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
+            {p != null ? `${up ? "+" : ""}${(p as number).toFixed(1)}%` : "—"}
+          </span>
+        </div>
+      );
+    }
+    
+    const percentKey = `drip${period}Percent`;
+    const dollarKey = `drip${period}Dollar`;
+    
+    const percent = tickerData[percentKey];
+    const dollar = tickerData[dollarKey];
+    
+    if (percent === undefined || percent === 0) return <span>—</span>;
+    
+    const up = percent >= 0;
+    return (
+      <div className="inline-flex flex-col items-end leading-tight">
+        <span>${dollar.toFixed(3)}</span>
+        <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
+          {up ? "+" : ""}{percent.toFixed(1)}%
+        </span>
+      </div>
+    );
+  };
   const UNDERLYING_MAP: Record<string, string> = {
     TSLY: "TSLA",
     NVDY: "NVDA",
@@ -289,49 +357,13 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                   <NextDistributionCell ticker={etf.ticker} />
                 </TableCell>
                 <TableCell className="text-right">
-                  {(() => {
-                    const d = liveItem?.drip4wDollar; const p = liveItem?.drip4wPercent;
-                    if (d == null && p == null) return "—";
-                    const up = (p ?? 0) >= 0;
-                    return (
-                      <div className="inline-flex flex-col items-end leading-tight">
-                        <span>{d != null ? `$${d.toFixed(2)}` : "—"}</span>
-                        <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
-                          {p != null ? `${up ? "+" : ""}${p.toFixed(1)}%` : "—"}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                  <DRIPCell ticker={etf.ticker} period="4w" />
                 </TableCell>
                 <TableCell className="text-right">
-                  {(() => {
-                    const d = liveItem?.drip12wDollar; const p = liveItem?.drip12wPercent;
-                    if (d == null && p == null) return "—";
-                    const up = (p ?? 0) >= 0;
-                    return (
-                      <div className="inline-flex flex-col items-end leading-tight">
-                        <span>{d != null ? `$${d.toFixed(2)}` : "—"}</span>
-                        <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
-                          {p != null ? `${up ? "+" : ""}${p.toFixed(1)}%` : "—"}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                  <DRIPCell ticker={etf.ticker} period="12w" />
                 </TableCell>
                 <TableCell className="text-right">
-                  {(() => {
-                    const d = liveItem?.drip52wDollar; const p = liveItem?.drip52wPercent;
-                    if (d == null && p == null) return "—";
-                    const up = (p ?? 0) >= 0;
-                    return (
-                      <div className="inline-flex flex-col items-end leading-tight">
-                        <span>{d != null ? `$${d.toFixed(2)}` : "—"}</span>
-                        <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
-                          {p != null ? `${up ? "+" : ""}${p.toFixed(1)}%` : "—"}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                  <DRIPCell ticker={etf.ticker} period="52w" />
                 </TableCell>
                 <TableCell className="text-right">{formatPct(etf.yieldTTM, 1)}</TableCell>
                 <TableCell className="text-right">{Math.round(etf.riskScore * 100)}%</TableCell>

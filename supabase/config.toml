@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.yfinance-yields]
 verify_jwt = false
+
+[functions.update-canadian-prices]
+verify_jwt = false
+
+[functions.calculate-drip]
+verify_jwt = false
