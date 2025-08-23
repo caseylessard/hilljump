@@ -162,6 +162,7 @@ export type Database = {
           total_return_1y: number | null
           twelve_symbol: string | null
           underlying: string | null
+          updated_at: string | null
           volatility_1y: number
           yield_ttm: number | null
         }
@@ -196,6 +197,7 @@ export type Database = {
           total_return_1y?: number | null
           twelve_symbol?: string | null
           underlying?: string | null
+          updated_at?: string | null
           volatility_1y: number
           yield_ttm?: number | null
         }
@@ -230,6 +232,7 @@ export type Database = {
           total_return_1y?: number | null
           twelve_symbol?: string | null
           underlying?: string | null
+          updated_at?: string | null
           volatility_1y?: number
           yield_ttm?: number | null
         }
