@@ -54,35 +54,25 @@ export const useCachedYields = (tickers: string[]) => {
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      // First, try to get fresh data from database (populated by daily Yahoo Finance updates)
-      const cacheKey = `yields-${tickers.sort().join(',')}`;
+      console.log('🔍 Fetching Yahoo Finance yields for', tickers.length, 'tickers...');
       
-      return getCachedData(
-        'yield',
-        async () => {
-          console.log('🔍 Fetching Yahoo Finance yields for', tickers.length, 'tickers...');
-          
-          // Call the yfinance function with database update enabled
-          const { data, error } = await supabase.functions.invoke('yfinance-yields', {
-            body: { 
-              tickers: tickers,
-              updateDatabase: true 
-            }
-          });
+      // Call the yfinance function directly 
+      const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+        body: { tickers: tickers }
+      });
 
-          if (error) throw error;
-          
-          console.log('✅ Yahoo Finance yields updated in database:', data?.dbUpdates || 0, 'records');
-          return data?.yields || {};
-        },
-        cacheKey
-      );
+      if (error) {
+        console.error('❌ Yahoo Finance error:', error);
+        throw error;
+      }
+      
+      console.log('✅ Yahoo Finance yields fetched:', data?.successfullyFetched || 0, 'out of', data?.totalProcessed || 0);
+      return data?.yields || {};
     },
     enabled: tickers.length > 0,
-    staleTime: 24 * 60 * 60 * 1000, // 1 day
+    staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: true,
-    refetchInterval: 24 * 60 * 60 * 1000, // Auto-refetch every 24 hours
   });
 };
 
