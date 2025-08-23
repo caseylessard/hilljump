@@ -478,13 +478,13 @@ const Profile = () => {
                   <Slider value={[weights.d]} onValueChange={([v]) => setWeights((w) => ({ ...w, d: v }))} min={0} max={100} step={1} />
 
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-medium">4W Performance Weight</span>
+                    <span className="text-sm font-medium">1M Performance Weight</span>
                     <Badge variant="secondary">{weights.t4}%</Badge>
                   </div>
                   <Slider value={[weights.t4]} onValueChange={([v]) => setWeights((w) => ({ ...w, t4: v }))} min={0} max={100} step={1} />
 
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-medium">52W Performance Weight</span>
+                    <span className="text-sm font-medium">1Y Performance Weight</span>
                     <Badge variant="secondary">{weights.t52}%</Badge>
                   </div>
                   <Slider value={[weights.t52]} onValueChange={([v]) => setWeights((w) => ({ ...w, t52: v }))} min={0} max={100} step={1} />
