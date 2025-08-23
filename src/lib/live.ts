@@ -31,7 +31,39 @@ export async function fetchLivePrices(tickers: string[], region: 'US' | 'CA' = '
     body: { tickers, include28d: true, includeDRIP: true, region },
   });
   if (error) throw error;
-  return (data?.prices as Record<string, LivePrice>) || {};
+  
+  const prices = (data?.prices as Record<string, LivePrice>) || {};
+  
+  // Update database with fetched prices and yield data
+  if (Object.keys(prices).length > 0) {
+    try {
+      const updates = Object.entries(prices).map(([ticker, priceData]) => ({
+        ticker,
+        current_price: priceData.price,
+        price_updated_at: new Date().toISOString(),
+        // Update yield if available from API response
+        ...(data?.yields?.[ticker] && { yield_ttm: data.yields[ticker] })
+      }));
+
+      // Batch update the database
+      for (const update of updates) {
+        await supabase
+          .from('etfs')
+          .update({
+            current_price: update.current_price,
+            price_updated_at: update.price_updated_at,
+            ...(update.yield_ttm && { yield_ttm: update.yield_ttm })
+          })
+          .eq('ticker', update.ticker);
+      }
+      
+      console.log(`Updated database with ${updates.length} live prices`);
+    } catch (updateError) {
+      console.warn('Failed to update database with live prices:', updateError);
+    }
+  }
+  
+  return prices;
 }
 
 export async function fetchLivePricesWithDataSources(tickers: string[]): Promise<Record<string, LivePrice>> {

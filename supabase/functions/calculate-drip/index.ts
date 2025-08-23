@@ -29,13 +29,12 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Pre-filter tickers to only process those with ETF data and recent dividends
+    // Pre-filter tickers to only process those with ETF data (remove price requirement temporarily)
     const { data: etfsWithData, error: etfError } = await supabase
       .from('etfs')
       .select('ticker, current_price, currency')
       .in('ticker', tickers)
       .eq('active', true)
-      .not('current_price', 'is', null)
 
     if (etfError) {
       console.error('❌ Failed to fetch ETF data:', etfError)
