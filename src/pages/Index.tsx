@@ -45,7 +45,21 @@ const Index = () => {
   });
 
   // Fetch yields from Yahoo Finance using the cached hook
-  const { data: yfinanceYields = {} } = useCachedYields(etfs.map(e => e.ticker));
+  const { data: yfinanceYields = {}, isLoading: yieldsLoading, error: yieldsError } = useCachedYields(etfs.map(e => e.ticker));
+  
+  // Debug yields
+  useEffect(() => {
+    if (etfs.length > 0) {
+      console.log('🔍 Yields debug:', {
+        etfCount: etfs.length,
+        tickers: etfs.slice(0, 5).map(e => e.ticker),
+        yieldsLoading,
+        yieldsError,
+        yieldsCount: Object.keys(yfinanceYields).length,
+        yieldsSample: Object.entries(yfinanceYields).slice(0, 3)
+      });
+    }
+  }, [etfs.length, yieldsLoading, yieldsError, yfinanceYields]);
 
   // Fetch live prices for real ETFs
   useEffect(() => {
