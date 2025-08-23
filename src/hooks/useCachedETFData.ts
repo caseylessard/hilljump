@@ -49,29 +49,42 @@ export const useCachedDistributions = (tickers: string[]) => {
 };
 
 export const useCachedYields = (tickers: string[]) => {
+  console.log('🔍 useCachedYields hook called with tickers:', tickers.length);
+  
   return useQuery({
-    queryKey: ["cached-yields", tickers.sort().join(',')],
+    queryKey: ["yields", tickers.slice(0, 5).join(',')], // Use first 5 tickers only for testing
     queryFn: async () => {
-      if (tickers.length === 0) return {};
+      console.log('🔍 Starting Yahoo Finance fetch for tickers:', tickers.slice(0, 5));
       
-      console.log('🔍 Fetching Yahoo Finance yields for', tickers.length, 'tickers...');
-      
-      // Call the yfinance function directly 
-      const { data, error } = await supabase.functions.invoke('yfinance-yields', {
-        body: { tickers: tickers }
-      });
-
-      if (error) {
-        console.error('❌ Yahoo Finance error:', error);
-        throw error;
+      if (tickers.length === 0) {
+        console.log('❌ No tickers provided');
+        return {};
       }
       
-      console.log('✅ Yahoo Finance yields fetched:', data?.successfullyFetched || 0, 'out of', data?.totalProcessed || 0);
-      return data?.yields || {};
+      // Test with just a few tickers first
+      const testTickers = tickers.slice(0, 5);
+      console.log('🔍 Fetching Yahoo Finance yields for', testTickers.length, 'tickers:', testTickers);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+          body: { tickers: testTickers }
+        });
+
+        if (error) {
+          console.error('❌ Yahoo Finance function error:', error);
+          return {};
+        }
+        
+        console.log('✅ Yahoo Finance response:', data);
+        return data?.yields || {};
+      } catch (err) {
+        console.error('❌ Yahoo Finance fetch error:', err);
+        return {};
+      }
     },
     enabled: tickers.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 1000, // 1 second for testing
+    refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
 };
