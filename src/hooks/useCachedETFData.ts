@@ -25,6 +25,9 @@ export const useCachedPrices = (tickers: string[]) => {
     },
     enabled: tickers.length > 0,
     staleTime: 15 * 60 * 1000, // 15 minutes
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    refetchOnMount: true, // Only refetch on component mount
+    refetchInterval: 15 * 60 * 1000, // Auto-refetch every 15 minutes
   });
 };
 

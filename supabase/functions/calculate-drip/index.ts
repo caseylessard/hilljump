@@ -65,14 +65,17 @@ serve(async (req) => {
       })
     }
 
-    // Fetch live prices only for valid tickers
-    console.log('📊 Fetching live prices for DRIP calculations...')
-    const { data: quotesData, error: quotesError } = await supabase.functions.invoke('quotes', {
-      body: { tickers: validTickers }
-    })
-
-    const livePrices = quotesData?.prices || {}
-    console.log(`✅ Fetched ${Object.keys(livePrices).length} live prices`)
+    // Use cached prices from database instead of live API calls
+    console.log('📊 Using cached prices from database for DRIP calculations...')
+    
+    const cachedPrices: Record<string, number> = {}
+    for (const etf of etfsWithData || []) {
+      if (etf.current_price && etf.current_price > 0) {
+        cachedPrices[etf.ticker] = Number(etf.current_price)
+      }
+    }
+    
+    console.log(`✅ Using ${Object.keys(cachedPrices).length} cached prices from database`)
 
     const dripData: Record<string, any> = {}
     let processedCount = 0
@@ -83,27 +86,14 @@ serve(async (req) => {
       try {
         console.log(`[${processedCount + 1}/${validTickers.length}] 📊 Processing ${ticker}...`)
         
-        // Get current price from live prices first, then database as fallback
-        let currentPrice = livePrices[ticker]
+        // Use cached price from database (no API calls during DRIP calculation)
+        let currentPrice = cachedPrices[ticker]
         
         if (!currentPrice) {
-          // Fallback: try database price
-          const { data: etfData, error: etfError } = await supabase
-            .from('etfs')
-            .select('current_price, currency, total_return_1y')
-            .eq('ticker', ticker)
-            .single()
-
-          currentPrice = etfData?.current_price
-          
-          // If still no price, try to estimate from total return
-          if (!currentPrice && etfData?.total_return_1y) {
-            // Use a reasonable estimated price based on average ETF price
-            currentPrice = 25.0 // Conservative estimate
-            console.log(`⚠️ Using estimated price for ${ticker}: $${currentPrice}`)
-          }
+          console.log(`⚠️ No cached price for ${ticker}, using fallback estimate`)
+          currentPrice = 25.0 // Conservative estimate for missing prices
         } else {
-          console.log(`✅ Using live price for ${ticker}: $${currentPrice}`)
+          console.log(`✅ Using cached price for ${ticker}: $${currentPrice}`)
         }
 
         if (!currentPrice || currentPrice <= 0) {
