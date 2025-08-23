@@ -26,7 +26,9 @@ const loadCachedState = () => {
       const parsed = JSON.parse(cached);
       return {
         weights: parsed.weights || { return: 0.6, yield: 0.2, risk: 0.2 },
-        filter: parsed.filter || "All ETFs"
+        filter: parsed.filter || "All ETFs",
+        cachedRanking: parsed.cachedRanking || null,
+        lastRankingUpdate: parsed.lastRankingUpdate || null
       };
     }
   } catch (e) {
@@ -34,7 +36,9 @@ const loadCachedState = () => {
   }
   return {
     weights: { return: 0.6, yield: 0.2, risk: 0.2 },
-    filter: "All ETFs"
+    filter: "All ETFs",
+    cachedRanking: null,
+    lastRankingUpdate: null
   };
 };
 
@@ -48,6 +52,7 @@ const Ranking = () => {
   const [filter, setFilter] = useState<string>(cachedState.filter);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [cachedRanking, setCachedRanking] = useState<ScoredETF[]>(cachedState.cachedRanking || []);
 
   const { toast } = useToast();
   const { profile } = useUserProfile();
@@ -57,7 +62,26 @@ const Ranking = () => {
     staleTime: 60_000 
   });
 
-  const ranked: ScoredETF[] = useMemo(() => scoreETFs(etfs, weights, livePrices), [etfs, weights, livePrices]);
+  const ranked: ScoredETF[] = useMemo(() => {
+    // Use cached ranking if it's recent (within 15 minutes) and no live data yet
+    const now = Date.now();
+    const cacheAge = cachedState.lastRankingUpdate ? now - cachedState.lastRankingUpdate : Infinity;
+    const isCacheRecent = cacheAge < 15 * 60 * 1000; // 15 minutes
+    const hasLiveData = Object.keys(livePrices).length > 0;
+    
+    if (isCacheRecent && !hasLiveData && cachedRanking.length > 0) {
+      return cachedRanking;
+    }
+    
+    const newRanking = scoreETFs(etfs, weights, livePrices);
+    
+    // Cache the new ranking if we have ETF data
+    if (etfs.length > 0 && newRanking.length > 0) {
+      setCachedRanking(newRanking);
+    }
+    
+    return newRanking;
+  }, [etfs, weights, livePrices, cachedRanking]);
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (null prices, zero yields, extremely low AUM)
@@ -153,14 +177,20 @@ const Ranking = () => {
     return () => { cancelled = true; };
   }, [etfs]);
 
-  // Save state to localStorage whenever weights or filter changes
+  // Save state to localStorage whenever weights, filter, or ranking changes
   useEffect(() => {
     try {
-      localStorage.setItem('ranking-state', JSON.stringify({ weights, filter }));
+      const stateToSave = {
+        weights,
+        filter,
+        cachedRanking,
+        lastRankingUpdate: Date.now()
+      };
+      localStorage.setItem('ranking-state', JSON.stringify(stateToSave));
     } catch (e) {
       console.warn('Failed to save ranking state to localStorage:', e);
     }
-  }, [weights, filter]);
+  }, [weights, filter, cachedRanking]);
 
   return (
     <div className="min-h-screen">
