@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertCircle, Check, Upload } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
+import { resetCache } from '@/lib/cacheUtils';
 
 export const ETFDataImport = () => {
   const [csvData, setCsvData] = useState('');
@@ -58,8 +59,9 @@ export const ETFDataImport = () => {
         errors: data.errors
       });
       
-      // Clear the textarea on success
+      // Clear the textarea and cache on success
       setCsvData('');
+      resetCache();
       
     } catch (error: any) {
       setResult({

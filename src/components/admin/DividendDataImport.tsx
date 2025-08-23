@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { resetCache } from '@/lib/cacheUtils';
 
 export const DividendDataImport = () => {
   const [csvData, setCsvData] = useState('');
@@ -64,8 +65,9 @@ export const DividendDataImport = () => {
         errors: data.errors
       });
       
-      // Clear the textarea on success
+      // Clear the textarea and cache on success
       setCsvData('');
+      resetCache();
       
     } catch (error: any) {
       setResult({
