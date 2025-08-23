@@ -416,12 +416,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 <TableCell className="text-right">
                   <DRIPCell ticker={etf.ticker} period="52w" />
                 </TableCell>
-                <TableCell className="text-right">
-                  {(() => {
-                    console.log('🔍 Yield debug for', etf.ticker, 'yieldTTM:', etf.yieldTTM);
-                    return formatPct(etf.yieldTTM, 1);
-                  })()}
-                </TableCell>
+                <TableCell className="text-right">{formatPct(etf.yieldTTM, 1)}</TableCell>
                 <TableCell className="text-right">
                   <div className="inline-flex flex-col items-end leading-tight">
                     <span>{Math.round(etf.riskScore * 100)}%</span>
@@ -431,13 +426,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                   </div>
                 </TableCell>
                 <TableCell className="text-right font-semibold">
-                  {(() => {
-                    const drip4w = getDripPercent(etf.ticker, "4w");
-                    const drip12w = getDripPercent(etf.ticker, "12w");
-                    const drip52w = getDripPercent(etf.ticker, "52w");
-                    const weightedSum = (drip4w * 13) + (drip12w * 4.3333333) + (drip52w * 1);
-                    return weightedSum.toFixed(0);
-                  })()}
+                  {(etf.compositeScore * 100).toFixed(0)}
                 </TableCell>
                 <TableCell className="text-right">
                   {buy ? (
