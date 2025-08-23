@@ -24,8 +24,16 @@ serve(async (req) => {
     const tiingoApiKey = Deno.env.get('TIINGO_API_KEY');
 
     if (!tiingoApiKey) {
+      console.error('❌ TIINGO_API_KEY not found in environment variables');
       throw new Error('TIINGO_API_KEY not found');
     }
+
+    if (tiingoApiKey.length < 10) {
+      console.error('❌ TIINGO_API_KEY appears to be invalid (too short)');
+      throw new Error('TIINGO_API_KEY appears to be invalid');
+    }
+
+    console.log(`🔑 Using Tiingo API key: ${tiingoApiKey.substring(0, 8)}...`);
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
