@@ -38,22 +38,18 @@ const Index = () => {
         const prices = await fetchLivePricesWithDataSources(tickers);
         if (cancelled) return;
         setLivePrices(prices);
-        toast({ 
-          title: "Live data", 
-          description: `Updated ${Object.keys(prices).length} tickers with real data.` 
-        });
+        console.log(`Updated ${Object.keys(prices).length} live prices`);
       } catch (e) {
-        console.error(e);
-        toast({ title: "Sample data", description: "Using illustrative ETF data fallback." });
+        console.error('Live price fetch error:', e);
+        // Don't show toast on every error to avoid spam
       }
     };
 
     run();
     return () => { cancelled = true; };
-  }, [etfs, toast]);
+  }, [etfs]); // Remove toast from dependencies to prevent loops
 
   useEffect(() => {
-
     // SEO: Title, description, canonical
     document.title = "HillJump — Dividend ETF Rankings by Total Return";
     const meta =
@@ -78,7 +74,7 @@ const Index = () => {
         return l as HTMLLinkElement;
       })();
     link.setAttribute('href', window.location.origin + window.location.pathname);
-  }, [toast]);
+  }, []); // Remove toast dependency to prevent loops
 
   // Use real ETF data if available, fallback to sample data
   const dataToUse = etfs.length > 0 ? etfs : SAMPLE_ETFS;
