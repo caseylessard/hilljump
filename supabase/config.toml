@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.get-single-price]
 verify_jwt = false
+
+[functions.bulk-price-update]
+verify_jwt = false
