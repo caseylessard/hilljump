@@ -1,6 +1,152 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0'
 
+// DRIP calculation types and functions (embedded for edge function)
+type PriceRow = { date: string; close: number };
+type DistRow = { exDate: string; amount: number };
+
+type DripOptions = {
+  includePolicy?: 'open-closed' | 'open-open';
+  payOffsetDays?: number;
+  taxWithholdRate?: number;
+};
+
+type DripResult = {
+  startISO: string;
+  endISO: string;
+  startPrice: number;
+  endPrice: number;
+  startShares: number;
+  totalShares: number;
+  dripShares: number;
+  startValue: number;
+  endValue: number;
+  dripDollarValue: number;
+  dripPercent: number;
+  factors: Array<{ exDate: string; inferredPayRef: string; reinvestDate: string; reinvestPrice: number; netAmount: number; factor: number }>;
+};
+
+function ensureSorted<T extends { date: string }>(rows: T[]): T[] {
+  return rows.slice().sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function priceOnOrBefore(prices: PriceRow[], iso: string): number {
+  let lo = 0, hi = prices.length - 1, ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (prices[mid].date <= iso) { ans = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  return ans >= 0 ? prices[ans].close : NaN;
+}
+
+function indexOnOrAfter(prices: PriceRow[], iso: string): number {
+  let lo = 0, hi = prices.length - 1, ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (prices[mid].date < iso) lo = mid + 1;
+    else { ans = mid; hi = mid - 1; }
+  }
+  return ans;
+}
+
+function dripOverPeriod(
+  pricesInput: PriceRow[],
+  distsInput: DistRow[],
+  startISO: string,
+  endISO: string,
+  startShares = 1,
+  opts: DripOptions = {}
+): DripResult {
+  const prices = ensureSorted(pricesInput);
+  const dists = distsInput.slice().sort((a, b) => a.exDate.localeCompare(b.exDate));
+
+  const startPrice = priceOnOrBefore(prices, startISO);
+  const endPrice = priceOnOrBefore(prices, endISO);
+  if (!isFinite(startPrice) || !isFinite(endPrice) || endPrice <= 0 || startShares <= 0) {
+    return {
+      startISO, endISO, startPrice: NaN, endPrice: NaN,
+      startShares, totalShares: startShares, dripShares: 0,
+      startValue: 0, endValue: 0, dripDollarValue: 0, dripPercent: 0, factors: []
+    };
+  }
+
+  const includePolicy = opts.includePolicy ?? 'open-closed';
+  const payOffsetDays = Number.isFinite(opts.payOffsetDays ?? 0) ? (opts.payOffsetDays as number) : 2;
+  const taxRate = opts.taxWithholdRate ?? 0;
+
+  let shares = startShares;
+  const factors: DripResult['factors'] = [];
+
+  for (const ev of dists) {
+    const ex = ev.exDate;
+    const inWindow =
+      includePolicy === 'open-closed'
+        ? (ex > startISO && ex <= endISO)
+        : (ex > startISO && ex < endISO);
+    if (!inWindow) continue;
+
+    const nominalPayRef = addDaysISO(ex, payOffsetDays);
+    const idx = indexOnOrAfter(prices, nominalPayRef);
+    if (idx < 0) continue;
+    const actualReinvestDate = prices[idx].date;
+
+    if (actualReinvestDate > endISO) continue;
+
+    const reinvestPrice = prices[idx].close;
+    const netAmt = ev.amount * (1 - taxRate);
+    if (!(netAmt > 0) || !(reinvestPrice > 0)) continue;
+
+    const factor = 1 + netAmt / reinvestPrice;
+    shares *= factor;
+    factors.push({
+      exDate: ex,
+      inferredPayRef: nominalPayRef,
+      reinvestDate: actualReinvestDate,
+      reinvestPrice,
+      netAmount: netAmt,
+      factor
+    });
+  }
+
+  const totalShares = shares;
+  const dripShares = totalShares - startShares;
+  const startValue = startShares * startPrice;
+  const endValue = totalShares * endPrice;
+  const dripDollarValue = dripShares * endPrice;
+  const dripPercent = ((endValue / startValue) - 1) * 100;
+
+  return {
+    startISO, endISO, startPrice, endPrice,
+    startShares, totalShares, dripShares,
+    startValue, endValue, dripDollarValue, dripPercent, factors
+  };
+}
+
+function dripWindows(
+  prices: PriceRow[],
+  dists: DistRow[],
+  endISO: string,
+  windowsDays = [28, 84, 182, 364],
+  startShares = 1,
+  opts?: DripOptions
+): Record<number, DripResult> {
+  const end = new Date(endISO);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const out: Record<number, DripResult> = {};
+  for (const days of windowsDays) {
+    const start = new Date(end);
+    start.setDate(start.getDate() - days);
+    out[days] = dripOverPeriod(prices, dists, fmt(start), fmt(end), startShares, opts);
+  }
+  return out;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -80,94 +226,106 @@ serve(async (req) => {
     let processedCount = 0
     let errorCount = 0
 
-    // Calculate DRIP percentages for each valid ticker
+    const today = new Date().toISOString().slice(0, 10)
+    const windowsDays = [28, 84, 182, 364] // 4W, 12W, 26W, 52W
+    const periodLabels = ['4w', '12w', '26w', '52w']
+
+    // Calculate true DRIP percentages for each valid ticker
     for (const ticker of validTickers) {
       try {
         console.log(`[${processedCount + 1}/${validTickers.length}] 📊 Processing ${ticker}...`)
         
-        // Use cached price from database (no API calls during DRIP calculation)
-        let currentPrice = cachedPrices[ticker]
-        
-        if (!currentPrice) {
-          console.log(`⚠️ No cached price for ${ticker}, using fallback estimate`)
-          currentPrice = 25.0 // Conservative estimate for missing prices
-        } else {
-          console.log(`✅ Using cached price for ${ticker}: $${currentPrice}`)
-        }
+        // Get historical price data for at least 1 year
+        const oneYearAgo = new Date()
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+        const startDate = oneYearAgo.toISOString().slice(0, 10)
 
+        // For now, we'll use current price as a single price point
+        // TODO: Get actual historical price data when available
+        const currentPrice = cachedPrices[ticker]
+        
         if (!currentPrice || currentPrice <= 0) {
           console.log(`❌ No price data for ${ticker}`)
-          // Still create entry with zero DRIP values so we have placeholder data
           dripData[ticker] = {
             ticker,
             currentPrice: null,
-          drip4wPercent: 0,
-          drip4wDollar: 0,
-          drip13wPercent: 0,
-          drip13wDollar: 0,
-          drip26wPercent: 0,
-          drip26wDollar: 0,
-          drip52wPercent: 0,
-          drip52wDollar: 0,
+            drip4wPercent: 0,
+            drip4wDollar: 0,
+            drip12wPercent: 0,
+            drip12wDollar: 0,
+            drip26wPercent: 0,
+            drip26wDollar: 0,
+            drip52wPercent: 0,
+            drip52wDollar: 0,
             error: 'No price data available'
           }
           errorCount++
           continue
         }
 
-        // Get dividends for the past periods
-        const now = new Date()
-        const dates = {
-          '4w': new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000),   // 4 weeks (28 days)
-          '13w': new Date(now.getTime() - 91 * 24 * 60 * 60 * 1000),  // 13 weeks (91 days)
-          '26w': new Date(now.getTime() - 182 * 24 * 60 * 60 * 1000), // 26 weeks (182 days)
-          '52w': new Date(now.getTime() - 364 * 24 * 60 * 60 * 1000)  // 52 weeks (364 days)
+        // Get dividend data for the past year
+        const { data: dividends, error: divError } = await supabase
+          .from('dividends')
+          .select('amount, ex_date')
+          .eq('ticker', ticker)
+          .gte('ex_date', startDate)
+          .order('ex_date', { ascending: true })
+
+        if (divError) {
+          console.log(`❌ Error fetching dividends for ${ticker}:`, divError.message)
+          dripData[ticker] = {
+            ticker,
+            currentPrice,
+            drip4wPercent: 0,
+            drip4wDollar: 0,
+            drip12wPercent: 0,
+            drip12wDollar: 0,
+            drip26wPercent: 0,
+            drip26wDollar: 0,
+            drip52wPercent: 0,
+            drip52wDollar: 0,
+            error: 'Failed to fetch dividend data'
+          }
+          errorCount++
+          continue
         }
 
-        // Calculate DRIP for all periods
-        const periods = ['4w', '13w', '26w', '52w']
-        const periodLabels = { '4w': '4W', '13w': '13W', '26w': '26W', '52w': '52W' }
+        // Prepare price and dividend data for DRIP calculation
+        // For now use current price as both start and end (simplified)
+        const prices: PriceRow[] = [
+          { date: startDate, close: currentPrice },
+          { date: today, close: currentPrice }
+        ]
         
+        const dists: DistRow[] = (dividends || []).map(div => ({
+          exDate: div.ex_date,
+          amount: Number(div.amount || 0)
+        }))
+
+        console.log(`  📊 Found ${dists.length} dividends for ${ticker}`)
+
+        // Calculate DRIP for all periods using the new math
+        const dripResults = dripWindows(
+          prices,
+          dists,
+          today,
+          windowsDays,
+          1,
+          { includePolicy: 'open-closed', payOffsetDays: 2, taxWithholdRate: 0 }
+        )
+
         const result: any = { ticker, currentPrice }
 
-        for (const period of periods) {
-          const label = periodLabels[period as keyof typeof periodLabels]
-          const startDate = dates[period as keyof typeof dates].toISOString().split('T')[0]
+        // Map results to expected format
+        for (let i = 0; i < windowsDays.length; i++) {
+          const days = windowsDays[i]
+          const period = periodLabels[i]
+          const dripResult = dripResults[days]
           
-          console.log(`  🔍 Fetching ${label} dividends for ${ticker} since ${startDate}`)
+          result[`drip${period}Percent`] = Math.round(dripResult.dripPercent * 100) / 100
+          result[`drip${period}Dollar`] = Math.round(dripResult.dripDollarValue * 10000) / 10000
           
-          // Get dividends in this period
-          const { data: dividends, error: divError } = await supabase
-            .from('dividends')
-            .select('amount, ex_date, pay_date')
-            .eq('ticker', ticker)
-            .gte('ex_date', startDate)
-            .order('ex_date', { ascending: true })
-
-          if (divError) {
-            console.log(`❌ Error fetching ${label} dividends for ${ticker}:`, divError.message)
-            result[`drip${period}Percent`] = 0
-            result[`drip${period}Dollar`] = 0
-            continue
-          }
-
-          if (!dividends || dividends.length === 0) {
-            console.log(`  📊 No ${label} dividends found for ${ticker}`)
-            result[`drip${period}Percent`] = 0
-            result[`drip${period}Dollar`] = 0
-            continue
-          }
-
-          // Sum total dividends in period
-          const totalDividends = dividends.reduce((sum, div) => sum + Number(div.amount || 0), 0)
-          
-          // Calculate DRIP return percentage
-          const dripPercent = totalDividends > 0 ? (totalDividends / currentPrice) * 100 : 0
-          
-          result[`drip${period}Percent`] = Math.round(dripPercent * 100) / 100 // Round to 2 decimals
-          result[`drip${period}Dollar`] = Math.round(totalDividends * 10000) / 10000 // Round to 4 decimals
-          
-          console.log(`  📈 ${ticker} ${label}: ${dividends.length} dividends, $${totalDividends.toFixed(4)} = ${dripPercent.toFixed(2)}%`)
+          console.log(`  📈 ${ticker} ${period.toUpperCase()}: ${dripResult.dripPercent.toFixed(2)}% (${dripResult.factors.length} reinvestments)`)
         }
 
         dripData[ticker] = result
@@ -180,8 +338,8 @@ serve(async (req) => {
           currentPrice: null,
           drip4wPercent: 0,
           drip4wDollar: 0,
-          drip13wPercent: 0,
-          drip13wDollar: 0,
+          drip12wPercent: 0,
+          drip12wDollar: 0,
           drip26wPercent: 0,
           drip26wDollar: 0,
           drip52wPercent: 0,
