@@ -134,6 +134,9 @@ const Index = () => {
             <Button variant="ghost" asChild>
               <a href="#ranking">Ranking</a>
             </Button>
+            <Button variant="ghost" asChild>
+              <a href="/teststream">Admin</a>
+            </Button>
             <UserBadge />
           </nav>
         </div>
