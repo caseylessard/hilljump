@@ -92,7 +92,7 @@ export type Database = {
           cadence: string | null
           cash_currency: string
           created_at: string
-          etf_id: string
+          etf_id: string | null
           ex_date: string
           id: string
           pay_date: string | null
@@ -103,7 +103,7 @@ export type Database = {
           cadence?: string | null
           cash_currency?: string
           created_at?: string
-          etf_id: string
+          etf_id?: string | null
           ex_date: string
           id?: string
           pay_date?: string | null
@@ -114,7 +114,7 @@ export type Database = {
           cadence?: string | null
           cash_currency?: string
           created_at?: string
-          etf_id?: string
+          etf_id?: string | null
           ex_date?: string
           id?: string
           pay_date?: string | null

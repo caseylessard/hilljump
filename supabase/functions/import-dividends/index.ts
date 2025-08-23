@@ -151,13 +151,25 @@ serve(async (req) => {
           continue
         }
 
+        // Try to find matching ETF for etf_id
+        const { data: etfMatch } = await supabase
+          .from('etfs')
+          .select('id')
+          .eq('ticker', dividend.ticker)
+          .limit(1)
+
+        const dividendData = {
+          ...dividend,
+          etf_id: etfMatch?.[0]?.id || null
+        }
+
         // Check for duplicate (same ticker, ex_date, amount)
         const { data: existing } = await supabase
           .from('dividends')
           .select('id')
-          .eq('ticker', dividend.ticker)
-          .eq('ex_date', dividend.ex_date)
-          .eq('amount', dividend.amount)
+          .eq('ticker', dividendData.ticker)
+          .eq('ex_date', dividendData.ex_date)
+          .eq('amount', dividendData.amount)
           .limit(1)
 
         if (existing && existing.length > 0) {
@@ -168,7 +180,7 @@ serve(async (req) => {
         // Insert the dividend
         const { error: insertError } = await supabase
           .from('dividends')
-          .insert(dividend)
+          .insert(dividendData)
 
         if (insertError) {
           log(`Error inserting ${dividend.ticker} ${dividend.ex_date}: ${insertError.message}`)
