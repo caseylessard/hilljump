@@ -44,10 +44,16 @@ export const DividendDataViewer = () => {
   const { data: stats } = useQuery({
     queryKey: ['dividend-stats'],
     queryFn: async () => {
+      // Get total count first
+      const { count: totalCount } = await supabase
+        .from('dividends')
+        .select('*', { count: 'exact', head: true });
+
+      // Get sample data for stats (no need to load all records for stats)
       const { data, error } = await supabase
         .from('dividends')
         .select('ticker, cadence, amount')
-        .limit(1000);
+        .limit(5000); // Increased sample size for better stats
       
       if (error) throw error;
 
@@ -60,7 +66,7 @@ export const DividendDataViewer = () => {
       }, {}) || {};
 
       return {
-        totalRecords: data?.length || 0,
+        totalRecords: totalCount || 0,
         uniqueTickers: tickers.size,
         totalAmount: totalAmount.toFixed(2),
         cadences
@@ -148,7 +154,9 @@ export const DividendDataViewer = () => {
             placeholder="Limit"
             value={limit}
             onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value) || 50))}
-            className="w-24"
+            className="w-32"
+            min="1"
+            max="10000"
           />
           <Button onClick={() => refetch()}>Refresh</Button>
         </div>
