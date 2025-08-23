@@ -22,6 +22,9 @@ export type ETF = {
   currency?: string; // e.g., 'USD', 'CAD'
   underlying?: string; // e.g., 'Tesla (TSLA)', 'Technology (broad)'
   active?: boolean; // whether the ETF is currently active
+  fund?: string; // full fund name
+  strategy?: string; // strategy description
+  industry?: string; // industry classification
   // Data source information for improved price fetching
   dataSource?: string; // e.g., 'polygon', 'twelvedata'
   polygonSupported?: boolean; // whether ticker is supported by Polygon

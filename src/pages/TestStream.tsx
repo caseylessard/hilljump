@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { TrendingUp, Database, Clock, Zap } from 'lucide-react';
 import { useETFStream } from '@/hooks/useETFStream';
 import ETFStreamPanel from '@/components/admin/ETFStreamPanel';
+import { ETFDataImport } from '@/components/admin/ETFDataImport';
 
 const TestStreamPage: React.FC = () => {
   const [testResults, setTestResults] = React.useState<any[]>([]);
@@ -131,6 +132,8 @@ const TestStreamPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ETFDataImport />
 
       <ETFStreamPanel />
 

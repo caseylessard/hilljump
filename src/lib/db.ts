@@ -27,6 +27,9 @@ function mapRow(row: any): ETF {
     currency: row.currency ?? 'USD',
     underlying: row.underlying ?? undefined,
     active: row.active ?? true,
+    fund: row.fund ?? undefined,
+    strategy: row.strategy ?? undefined,
+    industry: row.industry ?? undefined,
     // Data source fields for improved price fetching
     dataSource: row.data_source ?? undefined,
     polygonSupported: row.polygon_supported ?? false,

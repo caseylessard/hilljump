@@ -150,7 +150,9 @@ export type Database = {
           finnhub_symbol: string | null
           finnhub_ws_subscribe: string | null
           finnhub_ws_url: string | null
+          fund: string | null
           id: string
+          industry: string | null
           last_dividend_update: string | null
           logo_key: string | null
           manager: string | null
@@ -163,6 +165,7 @@ export type Database = {
           price_updated_at: string | null
           provider: string | null
           provider_group: string | null
+          strategy: string | null
           strategy_label: string | null
           summary: string | null
           ticker: string
@@ -198,7 +201,9 @@ export type Database = {
           finnhub_symbol?: string | null
           finnhub_ws_subscribe?: string | null
           finnhub_ws_url?: string | null
+          fund?: string | null
           id?: string
+          industry?: string | null
           last_dividend_update?: string | null
           logo_key?: string | null
           manager?: string | null
@@ -211,6 +216,7 @@ export type Database = {
           price_updated_at?: string | null
           provider?: string | null
           provider_group?: string | null
+          strategy?: string | null
           strategy_label?: string | null
           summary?: string | null
           ticker: string
@@ -246,7 +252,9 @@ export type Database = {
           finnhub_symbol?: string | null
           finnhub_ws_subscribe?: string | null
           finnhub_ws_url?: string | null
+          fund?: string | null
           id?: string
+          industry?: string | null
           last_dividend_update?: string | null
           logo_key?: string | null
           manager?: string | null
@@ -259,6 +267,7 @@ export type Database = {
           price_updated_at?: string | null
           provider?: string | null
           provider_group?: string | null
+          strategy?: string | null
           strategy_label?: string | null
           summary?: string | null
           ticker?: string
