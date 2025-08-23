@@ -123,78 +123,86 @@ serve(async (req) => {
 
     let insertedCount = 0
     let errorCount = 0
+    const BATCH_SIZE = 100
+    const processed = new Set<string>()
 
-    // Process each row
-    for (let i = 0; i < dataRows.length; i++) {
-      try {
-        const row = splitCSVLine(dataRows[i])
-        if (row.length !== headers.length) {
-          log(`Row ${i + 1}: Column count mismatch. Expected ${headers.length}, got ${row.length}`)
+    // Get all ETFs upfront for ticker lookup
+    const { data: allETFs } = await supabase
+      .from('etfs')
+      .select('id, ticker')
+    
+    const etfMap = new Map<string, string>()
+    allETFs?.forEach(etf => etfMap.set(etf.ticker, etf.id))
+
+    // Process rows in batches
+    for (let batchStart = 0; batchStart < dataRows.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, dataRows.length)
+      const batch: any[] = []
+      
+      log(`Processing batch ${Math.floor(batchStart/BATCH_SIZE) + 1}/${Math.ceil(dataRows.length/BATCH_SIZE)}...`)
+
+      // Prepare batch records
+      for (let i = batchStart; i < batchEnd; i++) {
+        try {
+          const row = splitCSVLine(dataRows[i])
+          if (row.length !== headers.length) {
+            log(`Row ${i + 1}: Column count mismatch. Expected ${headers.length}, got ${row.length}`)
+            errorCount++
+            continue
+          }
+
+          // Map CSV columns to database columns
+          const dividend = {
+            ticker: row[headers.indexOf('ticker')],
+            ex_date: row[headers.indexOf('ex_date')],
+            amount: parseFloat(row[headers.indexOf('amount')]) || 0,
+            cash_currency: row[headers.indexOf('currency')] || 'USD',
+            cadence: row[headers.indexOf('cadence')] || null,
+            created_at: new Date().toISOString()
+          }
+
+          // Validate required fields
+          if (!dividend.ticker || !dividend.ex_date || dividend.amount <= 0) {
+            log(`Row ${i + 1}: Missing required fields (ticker: ${dividend.ticker}, ex_date: ${dividend.ex_date}, amount: ${dividend.amount})`)
+            errorCount++
+            continue
+          }
+
+          // Create unique key for deduplication
+          const uniqueKey = `${dividend.ticker}-${dividend.ex_date}-${dividend.amount}`
+          if (processed.has(uniqueKey)) {
+            continue // Skip duplicate
+          }
+          processed.add(uniqueKey)
+
+          // Add etf_id from lookup map
+          const dividendData = {
+            ...dividend,
+            etf_id: etfMap.get(dividend.ticker) || null
+          }
+
+          batch.push(dividendData)
+
+        } catch (error) {
+          log(`Error processing row ${i + 1}: ${error.message}`)
           errorCount++
-          continue
         }
+      }
 
-        // Map CSV columns to database columns
-        const dividend = {
-          ticker: row[headers.indexOf('ticker')],
-          ex_date: row[headers.indexOf('ex_date')],
-          amount: parseFloat(row[headers.indexOf('amount')]) || 0,
-          cash_currency: row[headers.indexOf('currency')] || 'USD',
-          cadence: row[headers.indexOf('cadence')] || null,
-          created_at: new Date().toISOString()
-        }
-
-        // Validate required fields
-        if (!dividend.ticker || !dividend.ex_date || dividend.amount <= 0) {
-          log(`Row ${i + 1}: Missing required fields (ticker: ${dividend.ticker}, ex_date: ${dividend.ex_date}, amount: ${dividend.amount})`)
-          errorCount++
-          continue
-        }
-
-        // Try to find matching ETF for etf_id
-        const { data: etfMatch } = await supabase
-          .from('etfs')
-          .select('id')
-          .eq('ticker', dividend.ticker)
-          .limit(1)
-
-        const dividendData = {
-          ...dividend,
-          etf_id: etfMatch?.[0]?.id || null
-        }
-
-        // Check for duplicate (same ticker, ex_date, amount)
-        const { data: existing } = await supabase
+      // Insert batch if not empty
+      if (batch.length > 0) {
+        const { data, error: insertError } = await supabase
           .from('dividends')
+          .insert(batch)
           .select('id')
-          .eq('ticker', dividendData.ticker)
-          .eq('ex_date', dividendData.ex_date)
-          .eq('amount', dividendData.amount)
-          .limit(1)
-
-        if (existing && existing.length > 0) {
-          // Skip duplicate
-          continue
-        }
-
-        // Insert the dividend
-        const { error: insertError } = await supabase
-          .from('dividends')
-          .insert(dividendData)
 
         if (insertError) {
-          log(`Error inserting ${dividend.ticker} ${dividend.ex_date}: ${insertError.message}`)
-          errorCount++
+          log(`Batch insert error: ${insertError.message}`)
+          errorCount += batch.length
         } else {
-          insertedCount++
-          if (insertedCount % 100 === 0) {
-            log(`Inserted ${insertedCount} dividends...`)
-          }
+          insertedCount += batch.length
+          log(`Inserted ${insertedCount} dividends so far...`)
         }
-
-      } catch (error) {
-        log(`Error processing row ${i + 1}: ${error.message}`)
-        errorCount++
       }
     }
 
