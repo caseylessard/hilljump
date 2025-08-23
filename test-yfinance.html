@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Yahoo Finance API Test for PLTY</title>
+</head>
+<body>
+    <h1>Yahoo Finance API Test for PLTY</h1>
+    <button onclick="testYahooAPI()">Test Yahoo Finance API for PLTY</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testYahooAPI() {
+            const result = document.getElementById('result');
+            result.textContent = 'Loading...';
+            
+            try {
+                const ticker = 'PLTY';
+                const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail,financialData,defaultKeyStatistics`;
+                
+                console.log('📊 Fetching Yahoo Finance data for', ticker);
+                console.log('🔗 URL:', url);
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                console.log('📈 Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    console.log('✅ Raw Yahoo Finance response for PLTY:');
+                    console.log(JSON.stringify(data, null, 2));
+                    
+                    const quoteSummary = data?.quoteSummary?.result?.[0];
+                    const summaryDetail = quoteSummary?.summaryDetail;
+                    const financialData = quoteSummary?.financialData;
+                    const defaultKeyStatistics = quoteSummary?.defaultKeyStatistics;
+                    
+                    const analysis = {
+                        ticker: ticker,
+                        rawResponse: data,
+                        summaryDetail: summaryDetail,
+                        financialData: financialData,
+                        defaultKeyStatistics: defaultKeyStatistics,
+                        dividendYield: {
+                            raw: summaryDetail?.dividendYield?.raw,
+                            fmt: summaryDetail?.dividendYield?.fmt,
+                            percentage: summaryDetail?.dividendYield?.raw ? (summaryDetail.dividendYield.raw * 100).toFixed(2) + '%' : 'N/A'
+                        },
+                        trailingAnnualDividendRate: summaryDetail?.trailingAnnualDividendRate?.raw,
+                        trailingAnnualDividendYield: summaryDetail?.trailingAnnualDividendYield?.raw,
+                        price: summaryDetail?.regularMarketPrice?.raw || financialData?.currentPrice?.raw,
+                        volume: summaryDetail?.volume?.raw,
+                        marketCap: summaryDetail?.marketCap?.raw
+                    };
+                    
+                    result.textContent = JSON.stringify(analysis, null, 2);
+                    
+                } else {
+                    result.textContent = `❌ HTTP ${response.status}: ${response.statusText}`;
+                }
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                result.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
