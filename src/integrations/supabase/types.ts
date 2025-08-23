@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -129,11 +129,13 @@ export type Database = {
       }
       etfs: {
         Row: {
+          active: boolean | null
           aum: number | null
           avg_volume: number | null
           category: string | null
           country: string | null
           created_at: string
+          currency: string | null
           current_price: number | null
           data_source: string | null
           distribution_frequency: string | null
@@ -159,6 +161,7 @@ export type Database = {
           polygon_supported: boolean | null
           polygon_ticker: string | null
           price_updated_at: string | null
+          provider: string | null
           provider_group: string | null
           strategy_label: string | null
           summary: string | null
@@ -168,16 +171,19 @@ export type Database = {
           twelve_feed_timeseries: string | null
           twelve_symbol: string | null
           twelve_ws_url: string | null
+          underlying: string | null
           updated_at: string
           volatility_1y: number
           yield_ttm: number | null
         }
         Insert: {
+          active?: boolean | null
           aum?: number | null
           avg_volume?: number | null
           category?: string | null
           country?: string | null
           created_at?: string
+          currency?: string | null
           current_price?: number | null
           data_source?: string | null
           distribution_frequency?: string | null
@@ -203,6 +209,7 @@ export type Database = {
           polygon_supported?: boolean | null
           polygon_ticker?: string | null
           price_updated_at?: string | null
+          provider?: string | null
           provider_group?: string | null
           strategy_label?: string | null
           summary?: string | null
@@ -212,16 +219,19 @@ export type Database = {
           twelve_feed_timeseries?: string | null
           twelve_symbol?: string | null
           twelve_ws_url?: string | null
+          underlying?: string | null
           updated_at?: string
           volatility_1y: number
           yield_ttm?: number | null
         }
         Update: {
+          active?: boolean | null
           aum?: number | null
           avg_volume?: number | null
           category?: string | null
           country?: string | null
           created_at?: string
+          currency?: string | null
           current_price?: number | null
           data_source?: string | null
           distribution_frequency?: string | null
@@ -247,6 +257,7 @@ export type Database = {
           polygon_supported?: boolean | null
           polygon_ticker?: string | null
           price_updated_at?: string | null
+          provider?: string | null
           provider_group?: string | null
           strategy_label?: string | null
           summary?: string | null
@@ -256,6 +267,7 @@ export type Database = {
           twelve_feed_timeseries?: string | null
           twelve_symbol?: string | null
           twelve_ws_url?: string | null
+          underlying?: string | null
           updated_at?: string
           volatility_1y?: number
           yield_ttm?: number | null
@@ -443,8 +455,8 @@ export type Database = {
     Functions: {
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
