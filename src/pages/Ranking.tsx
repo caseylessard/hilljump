@@ -14,7 +14,6 @@ import { getETFs } from '@/lib/db';
 import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import QuickETFTest from '@/components/QuickETFTest';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -190,9 +189,6 @@ const Ranking = () => {
               </Button>
             )}
           </div>
-
-          {/* Quick ETF Test Panel */}
-          <QuickETFTest />
 
           <ETFTable 
             items={filtered} 

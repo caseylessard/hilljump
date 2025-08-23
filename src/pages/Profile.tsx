@@ -10,6 +10,7 @@ import { UserBadge } from "@/components/UserBadge";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Loader2 } from "lucide-react";
+import QuickETFTest from "@/components/QuickETFTest";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -503,34 +504,38 @@ const Profile = () => {
             )}
 
             {isAdmin && (
-              <Card className="p-4 grid gap-3 mt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Export/Import ETFs CSV</div>
-                    <div className="text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
+              <>
+                <Card className="p-4 grid gap-3 mt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Export/Import ETFs CSV</div>
+                      <div className="text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={exportEtfs}>Export CSV</Button>
+                      <label className={`cursor-pointer ${importing ? 'pointer-events-none' : ''}`}>
+                        <input 
+                          type="file" 
+                          accept=".csv" 
+                          className="hidden" 
+                          disabled={importing}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) importEtfsFromFile(file);
+                            e.currentTarget.value = '';
+                          }} 
+                        />
+                        <span className={`inline-flex items-center justify-center h-9 px-4 rounded-md border bg-background gap-2 ${importing ? 'opacity-50' : ''}`}>
+                          {importing && <Loader2 className="h-4 w-4 animate-spin" />}
+                          Import CSV
+                        </span>
+                      </label>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button onClick={exportEtfs}>Export CSV</Button>
-                    <label className={`cursor-pointer ${importing ? 'pointer-events-none' : ''}`}>
-                      <input 
-                        type="file" 
-                        accept=".csv" 
-                        className="hidden" 
-                        disabled={importing}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) importEtfsFromFile(file);
-                          e.currentTarget.value = '';
-                        }} 
-                      />
-                      <span className={`inline-flex items-center justify-center h-9 px-4 rounded-md border bg-background gap-2 ${importing ? 'opacity-50' : ''}`}>
-                        {importing && <Loader2 className="h-4 w-4 animate-spin" />}
-                        Import CSV
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </Card>
+                </Card>
+                
+                <QuickETFTest />
+              </>
             )}
            </>
         )}
