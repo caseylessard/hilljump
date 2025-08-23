@@ -36,3 +36,40 @@ export async function fetchLatestDistributions(
 
   return map;
 }
+
+export async function calculateAnnualYields(
+  tickers: string[], 
+  currentPrices: Record<string, number>
+): Promise<Record<string, number>> {
+  if (!tickers.length) return {};
+
+  // Get dividends from last 12 months
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+
+  const { data, error } = await supabase
+    .from("dividends")
+    .select("ticker, amount, ex_date")
+    .in("ticker", tickers)
+    .gte("ex_date", twelveMonthsAgo.toISOString().split('T')[0]);
+
+  if (error) throw error;
+
+  const yields: Record<string, number> = {};
+
+  // Group by ticker and sum amounts
+  const tickerSums: Record<string, number> = {};
+  for (const row of data || []) {
+    tickerSums[row.ticker] = (tickerSums[row.ticker] || 0) + Number(row.amount);
+  }
+
+  // Calculate yield as (annual dividends / current price) * 100
+  for (const [ticker, totalDividends] of Object.entries(tickerSums)) {
+    const price = currentPrices[ticker];
+    if (price && price > 0) {
+      yields[ticker] = (totalDividends / price) * 100;
+    }
+  }
+
+  return yields;
+}
