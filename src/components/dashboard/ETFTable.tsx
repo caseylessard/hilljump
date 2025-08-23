@@ -252,17 +252,17 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
             </TableHead>
             <TableHead className="text-right">
               <button onClick={() => requestSort("drip4w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                1M DRIP <span className="text-muted-foreground text-xs">{indicator("drip4w")}</span>
+                4W DRIP <span className="text-muted-foreground text-xs">{indicator("drip4w")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
               <button onClick={() => requestSort("drip12w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                3M DRIP <span className="text-muted-foreground text-xs">{indicator("drip12w")}</span>
+                12W DRIP <span className="text-muted-foreground text-xs">{indicator("drip12w")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
               <button onClick={() => requestSort("drip52w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                1Y DRIP <span className="text-muted-foreground text-xs">{indicator("drip52w")}</span>
+                52W DRIP <span className="text-muted-foreground text-xs">{indicator("drip52w")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
