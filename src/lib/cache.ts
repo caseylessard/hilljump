@@ -123,12 +123,39 @@ if (typeof window !== 'undefined') {
   }, 5 * 60 * 1000);
 }
 
+// Check if current user is admin (bypass cache)
+async function isCurrentUserAdmin(): Promise<boolean> {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session?.user?.id) return false;
+    
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.session.user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    return !!data;
+  } catch {
+    return false;
+  }
+}
+
 // Cached data fetchers with fallback
 export async function getCachedData<T>(
   cacheType: keyof CacheConfig,
   fetcher: () => Promise<T>,
   identifier?: string
 ): Promise<T> {
+  // Bypass cache for admin users
+  const isAdmin = await isCurrentUserAdmin();
+  if (isAdmin) {
+    console.log('🔧 Admin user detected - bypassing cache for', cacheType);
+    return await fetcher();
+  }
+
   // Try to get from cache first
   const cached = cache.get<T>(cacheType, identifier);
   if (cached !== null) {

@@ -3,31 +3,38 @@ import { getCachedData, getCachedETFPrices, getCachedETFScoring, getCachedDivide
 import { fetchLatestDistributions } from '@/lib/dividends';
 import { getETFs } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdmin } from './useAdmin';
 
 // Custom hooks for cached ETF data with proper React Query integration
 
 export const useCachedETFs = () => {
+  const { isAdmin } = useAdmin();
+  
   return useQuery({
     queryKey: ["cached-etfs"],
     queryFn: async () => {
       return getCachedData('ranking', getETFs, 'all-etfs');
     },
-    staleTime: 60_000, // 1 minute
+    staleTime: isAdmin ? 0 : 60_000, // No cache for admins
+    refetchOnMount: isAdmin,
+    refetchOnWindowFocus: isAdmin,
   });
 };
 
 export const useCachedPrices = (tickers: string[]) => {
+  const { isAdmin } = useAdmin();
+  
   return useQuery({
-    queryKey: ["cached-prices", tickers.sort().join(',')],
+    queryKey: ["cached-prices", tickers.sort().join(','), isAdmin ? 'admin' : 'user'],
     queryFn: async () => {
       if (tickers.length === 0) return {};
       return getCachedETFPrices(tickers);
     },
     enabled: tickers.length > 0,
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    refetchOnWindowFocus: false, // Prevent refetch on window focus
-    refetchOnMount: true, // Only refetch on component mount
-    refetchInterval: 15 * 60 * 1000, // Auto-refetch every 15 minutes
+    staleTime: isAdmin ? 0 : 15 * 60 * 1000,
+    refetchOnWindowFocus: isAdmin,
+    refetchOnMount: true,
+    refetchInterval: isAdmin ? false : 15 * 60 * 1000,
   });
 };
 
@@ -90,12 +97,16 @@ export const useCachedYields = (tickers: string[]) => {
 };
 
 export const useCachedScoring = (preferences: any, country?: string) => {
+  const { isAdmin } = useAdmin();
+  
   return useQuery({
-    queryKey: ["cached-scoring", JSON.stringify(preferences), country || 'all'],
+    queryKey: ["cached-scoring", JSON.stringify(preferences), country || 'all', isAdmin ? 'admin' : 'user'],
     queryFn: async () => {
       return getCachedETFScoring(preferences, country);
     },
-    staleTime: 60 * 60 * 1000, // 1 hour
+    staleTime: isAdmin ? 0 : 60 * 60 * 1000,
+    refetchOnMount: isAdmin,
+    refetchOnWindowFocus: isAdmin,
   });
 };
 
