@@ -51,6 +51,7 @@ serve(async (req) => {
 
     console.log(`🔑 Using Tiingo API key: ${tiingoApiKey.substring(0, 8)}...`);
 
+    console.log('📋 Creating Supabase client');
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log('🔄 Starting Tiingo yield update process');
