@@ -66,7 +66,10 @@ serve(async (req: Request) => {
   try {
     const { tickers } = await req.json();
     if (!Array.isArray(tickers)) throw new Error("tickers must be an array");
+    
     const prices: Record<string, number> = {};
+    
+    // Fetch all prices first
     await Promise.all(
       tickers.map(async (t: string) => {
         const sym = String(t || "").toUpperCase();
@@ -83,6 +86,43 @@ serve(async (req: Request) => {
         if (p != null) prices[sym] = p;
       })
     );
+
+    // Update database with fetched prices
+    if (Object.keys(prices).length > 0) {
+      try {
+        // Import Supabase client for database updates
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.54.0');
+        
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Update prices in database
+        const updatePromises = Object.entries(prices).map(async ([ticker, price]) => {
+          const { error } = await supabase
+            .from('etfs')
+            .update({ 
+              current_price: price,
+              price_updated_at: new Date().toISOString()
+            })
+            .eq('ticker', ticker);
+          
+          if (error) {
+            console.error(`Failed to update price for ${ticker}:`, error);
+          } else {
+            console.log(`✅ Updated ${ticker} price in database: $${price}`);
+          }
+        });
+
+        await Promise.all(updatePromises);
+        console.log(`📊 Updated ${Object.keys(prices).length} prices in database`);
+        
+      } catch (dbError) {
+        console.error('Database update error:', dbError);
+        // Continue anyway - return the prices even if database update fails
+      }
+    }
+
     return json({ prices });
   } catch (e) {
     return json({ error: String(e?.message || e) }, 400);
