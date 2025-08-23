@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.dividend-updater]
 verify_jwt = false
+
+[functions.yfinance-yields]
+verify_jwt = false

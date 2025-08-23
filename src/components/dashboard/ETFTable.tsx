@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { predictNextDistribution } from "@/lib/dividends";
 
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
@@ -461,25 +462,46 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
 
 // Separate component for next distribution to avoid performance issues with many queries
 const NextDistributionCell = ({ ticker }: { ticker: string }) => {
-  const today = new Date();
   const { data: nextDividend } = useQuery({
     queryKey: ['nextDividend', ticker],
     queryFn: async () => {
+      // First, check if there are any future dividends already in the database
+      const today = new Date().toISOString().split('T')[0];
       const { data } = await supabase
         .from('dividends')
         .select('ex_date, pay_date, amount')
         .eq('ticker', ticker)
-        .gte('ex_date', today.toISOString().split('T')[0])
+        .gte('ex_date', today)
         .order('ex_date', { ascending: true })
         .limit(1);
-      return data?.[0] || null;
-    }
+      
+      // If we have a future dividend, use it
+      if (data?.[0]) {
+        return {
+          amount: data[0].amount,
+          date: data[0].pay_date || data[0].ex_date,
+          isPrediction: false
+        };
+      }
+
+      // Otherwise, try to predict the next distribution
+      const prediction = await predictNextDistribution(ticker);
+      if (prediction) {
+        return {
+          amount: prediction.amount,
+          date: prediction.date,
+          isPrediction: true
+        };
+      }
+      
+      return null;
+    },
+    staleTime: 1800_000 // 30 minutes
   });
 
   if (!nextDividend) return <span>—</span>;
   
-  const nextDate = nextDividend.pay_date || nextDividend.ex_date;
-  const dateStr = format(new Date(nextDate), "MM/dd");
+  const dateStr = format(new Date(nextDividend.date), "MM/dd");
   const amountStr = new Intl.NumberFormat("en", {
     style: "currency",
     currency: "USD",
@@ -488,8 +510,12 @@ const NextDistributionCell = ({ ticker }: { ticker: string }) => {
   
   return (
     <div className="inline-flex flex-col items-end leading-tight">
-      <span>{amountStr}</span>
-      <span className="text-muted-foreground text-xs">{dateStr}</span>
+      <span className={nextDividend.isPrediction ? "text-muted-foreground" : ""}>
+        {amountStr}
+      </span>
+      <span className="text-muted-foreground text-xs">
+        {dateStr}{nextDividend.isPrediction ? "*" : ""}
+      </span>
     </div>
   );
 };

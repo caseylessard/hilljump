@@ -2,7 +2,7 @@ import hero from "@/assets/hero-investing.jpg";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { fetchLatestDistributions, Distribution, calculateAnnualYields } from "@/lib/dividends";
+import { fetchLatestDistributions, Distribution, predictNextDistribution } from "@/lib/dividends";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { SAMPLE_ETFS } from "@/data/etfs";
@@ -10,6 +10,7 @@ import { ScoredETF, scoreETFs } from "@/lib/scoring";
 import { fetchLivePricesWithDataSources, LivePrice } from "@/lib/live";
 import { getETFs } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -36,21 +37,18 @@ const Index = () => {
     staleTime: 300_000 // 5 minutes
   });
 
-  // Calculate annual yields from dividend data  
-  const { data: calculatedYields = {} } = useQuery({
-    queryKey: ["yields", etfs.map(e => e.ticker), livePrices],
-    queryFn: () => {
-      const prices: Record<string, number> = {};
-      etfs.forEach(etf => {
-        const livePrice = livePrices[etf.ticker]?.price;
-        const dbPrice = etf.current_price;
-        if (livePrice) prices[etf.ticker] = livePrice;
-        else if (dbPrice) prices[etf.ticker] = dbPrice;
+  // Fetch yields from Yahoo Finance
+  const { data: yfinanceYields = {} } = useQuery({
+    queryKey: ["yfinance-yields", etfs.map(e => e.ticker)],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+        body: { tickers: etfs.map(e => e.ticker) }
       });
-      return calculateAnnualYields(etfs.map(e => e.ticker), prices);
+      if (error) throw error;
+      return data.yields || {};
     },
     enabled: etfs.length > 0,
-    staleTime: 600_000 // 10 minutes
+    staleTime: 1800_000 // 30 minutes
   });
 
   // Fetch live prices for real ETFs
@@ -105,9 +103,9 @@ const Index = () => {
   // Use real ETF data if available, fallback to sample data
   const dataToUse = etfs.length > 0 ? etfs.map(etf => ({
     ...etf,
-    yieldTTM: calculatedYields[etf.ticker] || etf.yieldTTM || 0
+    yieldTTM: yfinanceYields[etf.ticker] || etf.yieldTTM || 0
   })) : SAMPLE_ETFS;
-  const ranked: ScoredETF[] = useMemo(() => scoreETFs(dataToUse, weights, livePrices), [dataToUse, weights, livePrices, calculatedYields]);
+  const ranked: ScoredETF[] = useMemo(() => scoreETFs(dataToUse, weights, livePrices), [dataToUse, weights, livePrices, yfinanceYields]);
   
   // Filter for high-yield ETFs (top performers)
   const topETFs: ScoredETF[] = useMemo(() => {
