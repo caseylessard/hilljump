@@ -69,17 +69,21 @@ serve(async (req) => {
 
     console.log(`📊 Created log entry: ${logEntry.id}`);
 
+    // Check if this is a test run (limit to 5 ETFs for testing)
+    const isTestRun = true; // Set to false for production runs
+    
     // Fetch active ETFs
     const { data: etfs, error: etfsError } = await supabase
       .from('etfs')
       .select('ticker')
-      .eq('active', true);
+      .eq('active', true)
+      .limit(isTestRun ? 5 : 1000);
 
     if (etfsError) {
       throw new Error(`Failed to fetch ETFs: ${etfsError.message}`);
     }
 
-    console.log(`📈 Found ${etfs.length} active ETFs to update`);
+    console.log(`📈 Found ${etfs.length} active ETFs to update ${isTestRun ? '(TEST MODE - limited to 5)' : '(FULL MODE)'}`);
 
     let successCount = 0;
     let errorCount = 0;
