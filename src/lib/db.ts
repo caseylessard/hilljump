@@ -23,7 +23,6 @@ function mapRow(row: any): ETF {
     strategyLabel: row.strategy_label ?? undefined,
     logoKey: row.logo_key ?? undefined,
     // New columns from updated ticker data
-    provider: row.provider ?? undefined,
     currency: row.currency ?? 'USD',
     underlying: row.underlying ?? undefined,
     active: row.active ?? true,

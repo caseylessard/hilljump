@@ -18,7 +18,6 @@ export type ETF = {
   strategyLabel?: string; // e.g., 'CC ETF - NVDA'
   logoKey?: string; // maps to a local asset key
   // New fields from updated ticker data
-  provider?: string; // e.g., 'YieldMax', 'Hamilton'
   currency?: string; // e.g., 'USD', 'CAD'
   underlying?: string; // e.g., 'Tesla (TSLA)', 'Technology (broad)'
   active?: boolean; // whether the ETF is currently active

@@ -154,7 +154,6 @@ export type Database = {
           name: string
           polygon_supported: boolean | null
           price_updated_at: string | null
-          provider: string | null
           provider_group: string | null
           strategy: string | null
           strategy_label: string | null
@@ -189,7 +188,6 @@ export type Database = {
           name: string
           polygon_supported?: boolean | null
           price_updated_at?: string | null
-          provider?: string | null
           provider_group?: string | null
           strategy?: string | null
           strategy_label?: string | null
@@ -224,7 +222,6 @@ export type Database = {
           name?: string
           polygon_supported?: boolean | null
           price_updated_at?: string | null
-          provider?: string | null
           provider_group?: string | null
           strategy?: string | null
           strategy_label?: string | null
