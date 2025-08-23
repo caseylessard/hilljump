@@ -469,7 +469,7 @@ const NextDistributionCell = ({ ticker }: { ticker: string }) => {
       const today = new Date().toISOString().split('T')[0];
       const { data } = await supabase
         .from('dividends')
-        .select('ex_date, pay_date, amount')
+        .select('ex_date, pay_date, amount, cash_currency')
         .eq('ticker', ticker)
         .gte('ex_date', today)
         .order('ex_date', { ascending: true })
@@ -480,6 +480,7 @@ const NextDistributionCell = ({ ticker }: { ticker: string }) => {
         return {
           amount: data[0].amount,
           date: data[0].pay_date || data[0].ex_date,
+          currency: data[0].cash_currency || 'USD',
           isPrediction: false
         };
       }
@@ -487,9 +488,17 @@ const NextDistributionCell = ({ ticker }: { ticker: string }) => {
       // Otherwise, try to predict the next distribution
       const prediction = await predictNextDistribution(ticker);
       if (prediction) {
+        // Get currency from ETF data for predictions
+        const { data: etfData } = await supabase
+          .from('etfs')
+          .select('currency')
+          .eq('ticker', ticker)
+          .single();
+        
         return {
           amount: prediction.amount,
           date: prediction.date,
+          currency: etfData?.currency || 'USD',
           isPrediction: true
         };
       }
@@ -502,11 +511,8 @@ const NextDistributionCell = ({ ticker }: { ticker: string }) => {
   if (!nextDividend) return <span>—</span>;
   
   const dateStr = format(new Date(nextDividend.date), "MM/dd");
-  const amountStr = new Intl.NumberFormat("en", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 4,
-  }).format(nextDividend.amount);
+  const symbol = nextDividend.currency === 'CAD' ? 'CA$' : '$';
+  const amountStr = `${symbol}${nextDividend.amount.toFixed(4)}`;
   
   return (
     <div className="inline-flex flex-col items-end leading-tight">
