@@ -18,12 +18,23 @@ import { UserBadge } from "@/components/UserBadge";
 import { updateCanadianPrices } from "@/utils/canadianPriceUpdater";
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
+import { warmSpecificCache } from "@/lib/cacheUtils";
 
 const Index = () => {
   const { toast } = useToast();
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
+
+  // Reload cache on component mount
+  useEffect(() => {
+    const reloadCache = async () => {
+      console.log('🔄 Reloading cache...');
+      await warmSpecificCache('all');
+      console.log('✅ Cache reloaded successfully');
+    };
+    reloadCache();
+  }, []);
   
   // Fetch real ETF data from database
   const { data: etfs = [], isLoading } = useQuery({ 
