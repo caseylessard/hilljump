@@ -19,9 +19,25 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    console.log('🔄 Starting Tiingo yield update process - checking environment variables');
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const tiingoApiKey = Deno.env.get('TIINGO_API_KEY');
+
+    console.log(`📊 Environment check - SUPABASE_URL: ${supabaseUrl ? 'Found' : 'Missing'}`);
+    console.log(`📊 Environment check - SUPABASE_SERVICE_ROLE_KEY: ${supabaseKey ? 'Found' : 'Missing'}`);
+    console.log(`📊 Environment check - TIINGO_API_KEY: ${tiingoApiKey ? 'Found' : 'Missing'}`);
+
+    if (!supabaseUrl) {
+      console.error('❌ SUPABASE_URL not found in environment variables');
+      throw new Error('SUPABASE_URL not found');
+    }
+
+    if (!supabaseKey) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY not found in environment variables');
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY not found');
+    }
 
     if (!tiingoApiKey) {
       console.error('❌ TIINGO_API_KEY not found in environment variables');
