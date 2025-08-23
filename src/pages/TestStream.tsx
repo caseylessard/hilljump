@@ -8,6 +8,7 @@ import { useETFStream } from '@/hooks/useETFStream';
 import ETFStreamPanel from '@/components/admin/ETFStreamPanel';
 import { ETFDataImport } from '@/components/admin/ETFDataImport';
 import { DividendDataImport } from '@/components/admin/DividendDataImport';
+import { DividendDataViewer } from '@/components/admin/DividendDataViewer';
 
 const TestStreamPage: React.FC = () => {
   const [testResults, setTestResults] = React.useState<any[]>([]);
@@ -137,6 +138,8 @@ const TestStreamPage: React.FC = () => {
       <ETFDataImport />
 
       <DividendDataImport />
+
+      <DividendDataViewer />
 
       <ETFStreamPanel />
 
