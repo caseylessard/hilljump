@@ -76,18 +76,36 @@ serve(async (req) => {
 
     console.log(`📊 Created log entry: ${logEntry.id}`);
 
-    // Fetch active ETFs
+    // Fetch active ETFs (only US tickers for Tiingo fundamentals)
     const { data: etfs, error: etfsError } = await supabase
       .from('etfs')
       .select('ticker')
       .eq('active', true)
+      .not('ticker', 'like', '%.TO')
+      .not('ticker', 'like', '%.NE') 
+      .not('ticker', 'like', '%.V')
       .limit(isTestRun ? 5 : 1000);
 
     if (etfsError) {
       throw new Error(`Failed to fetch ETFs: ${etfsError.message}`);
     }
 
-    console.log(`📈 Found ${etfs.length} active ETFs to update ${isTestRun ? '(TEST MODE - limited to 5)' : '(FULL MODE)'}`);
+    console.log(`📈 Found ${etfs.length} active US ETFs to update ${isTestRun ? '(TEST MODE - limited to 5)' : '(FULL MODE)'}`);
+    
+    if (etfs.length === 0) {
+      console.log('⚠️ No US ETFs found for Tiingo processing');
+      return new Response(
+        JSON.stringify({ 
+          message: 'No US ETFs found for processing',
+          totalETFs: 0,
+          successful: 0,
+          errors: 0
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     let successCount = 0;
     let errorCount = 0;
