@@ -251,6 +251,13 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         // Primary: Score descending (skip if both scores are 0)
         const scoreA = a.compositeScore;
         const scoreB = b.compositeScore;
+        
+        // Debug logging for key comparisons
+        if ((a.ticker === 'MSTY' && b.ticker === 'AIPI') || (a.ticker === 'AIPI' && b.ticker === 'MSTY')) {
+          console.log(`🔍 Comparing ${a.ticker} vs ${b.ticker}:`);
+          console.log(`  Scores: ${a.ticker}=${scoreA}, ${b.ticker}=${scoreB}`);
+        }
+        
         if (scoreA !== 0 || scoreB !== 0) {
           if (scoreA !== scoreB) {
             return scoreB - scoreA; // descending
@@ -260,6 +267,14 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         // Secondary: 52w DRIP descending
         const dripA = getDripPercent(a.ticker, "52w");
         const dripB = getDripPercent(b.ticker, "52w");
+        
+        // Debug logging for key comparisons
+        if ((a.ticker === 'MSTY' && b.ticker === 'AIPI') || (a.ticker === 'AIPI' && b.ticker === 'MSTY')) {
+          console.log(`  DRIPs: ${a.ticker}=${dripA}%, ${b.ticker}=${dripB}%`);
+          console.log(`  isNaN check: ${a.ticker}=${Number.isNaN(dripA)}, ${b.ticker}=${Number.isNaN(dripB)}`);
+          console.log(`  Final result: ${dripB - dripA} (${dripB} - ${dripA})`);
+        }
+        
         if (!Number.isNaN(dripA) && !Number.isNaN(dripB) && dripA !== dripB) {
           return dripB - dripA; // descending
         }
