@@ -97,6 +97,25 @@ const Index = () => {
   }, [etfs]);
 
   useEffect(() => {
+    // Clear all caches on page load
+    console.log('🧹 Clearing all caches on Index page load');
+    
+    // Clear React Query cache if available
+    try {
+      // Force clear browser caches
+      if (typeof window !== 'undefined') {
+        // Clear localStorage cache entries
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('cache-') || key.startsWith('yields-') || key.startsWith('etf-') || key.includes('react-query')) {
+            localStorage.removeItem(key);
+          }
+        });
+        console.log('✅ localStorage cache cleared');
+      }
+    } catch (e) {
+      console.log('⚠️ Could not clear cache:', e);
+    }
+    
     // SEO: Title, description, canonical
     document.title = "HillJump — Dividend ETF Rankings by Total Return";
     const meta =
@@ -195,6 +214,8 @@ const Index = () => {
       </header>
 
       <main className="container grid gap-8 pb-16">
+        <YahooFinanceTest />
+        
         <section aria-labelledby="scoring" className="grid md:grid-cols-3 gap-6">
           <h2 id="scoring" className="sr-only">Scoring Controls</h2>
           <div className="md:col-span-2">
@@ -209,8 +230,6 @@ const Index = () => {
           <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
           <ETFTable items={topETFs} live={livePrices} distributions={distributions} />
         </section>
-
-        <YahooFinanceTest />
       </main>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
