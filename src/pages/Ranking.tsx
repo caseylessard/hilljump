@@ -236,12 +236,12 @@ const Ranking = () => {
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Adjust Scoring</DialogTitle>
+              <DialogTitle>Scoring Settings</DialogTitle>
             </DialogHeader>
             {(isSubscribed || isAdmin) ? (
               <ScoringControls onChange={setWeights} />
             ) : (
-              <div className="text-sm text-muted-foreground">Subscribe to adjust scoring.</div>
+              <div className="text-sm text-muted-foreground">Subscribe to access scoring settings.</div>
             )}
           </DialogContent>
         </Dialog>
