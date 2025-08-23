@@ -193,6 +193,13 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         const percentKey = `drip${period}Percent`;
         const percent = tickerData[percentKey];
         if (percent !== undefined && percent !== 0) {
+          // Debug logging
+          if (period === '52w' && ticker === 'MSTY') {
+            console.log(`🔍 MSTY 52w DRIP from dripData: ${percent}%`);
+          }
+          if (period === '52w' && ticker === 'AIPI') {
+            console.log(`🔍 AIPI 52w DRIP from dripData: ${percent}%`);
+          }
           return percent;
         }
       }
@@ -200,7 +207,16 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       // Fallback to live data
       const liveItem = live[ticker];
       const periodKey = period as '4w' | '12w' | '52w';
-      return liveItem?.[`drip${periodKey}Percent` as keyof LivePrice] as number ?? Number.NaN;
+      const livePercent = liveItem?.[`drip${periodKey}Percent` as keyof LivePrice] as number ?? Number.NaN;
+      
+      // Debug logging
+      if (period === '52w' && (ticker === 'MSTY' || ticker === 'AIPI')) {
+        console.log(`🔍 ${ticker} 52w DRIP from live: ${livePercent}%`);
+        console.log(`🔍 ${ticker} dripData exists:`, !!tickerData);
+        console.log(`🔍 ${ticker} dripData keys:`, tickerData ? Object.keys(tickerData) : 'none');
+      }
+      
+      return livePercent;
     };
 
     const getVal = (etf: ScoredETF): number | string => {
