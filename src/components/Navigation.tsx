@@ -18,9 +18,6 @@ const Navigation = () => {
           <Button variant="ghost" asChild>
             <a href="/crypto">Crypto</a>
           </Button>
-          <Button variant="ghost" asChild>
-            <a href="/profile">Profile</a>
-          </Button>
           <UserBadge />
         </nav>
       </div>
