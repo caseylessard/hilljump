@@ -18,7 +18,7 @@ import { UserBadge } from "@/components/UserBadge";
 import { useCachedETFs, useCachedPrices, useCachedYields } from "@/hooks/useCachedETFData";
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
-import { FinnhubYieldsTest } from "@/components/FinnhubYieldsTest";
+import { TiingoYieldsTest } from "@/components/TiingoYieldsTest";
 
 const Index = () => {
   const { toast } = useToast();
@@ -212,7 +212,7 @@ const Index = () => {
 
       <main className="container grid gap-8 pb-16">
         <div className="w-full">
-          <FinnhubYieldsTest />
+          <TiingoYieldsTest />
         </div>
         
         <section aria-labelledby="scoring" className="grid md:grid-cols-3 gap-6">

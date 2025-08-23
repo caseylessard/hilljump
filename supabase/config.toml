@@ -24,6 +24,9 @@ verify_jwt = false
 [functions.finnhub-yields]
 verify_jwt = false
 
+[functions.tiingo-yields]
+verify_jwt = false
+
 [functions.yahoo-finance-test]
 verify_jwt = false
 
