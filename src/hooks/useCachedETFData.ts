@@ -54,44 +54,35 @@ export const useCachedYields = (tickers: string[]) => {
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      // Batch process in smaller chunks to avoid overwhelming the API
-      const batchSize = 25;
-      const batches = [];
-      for (let i = 0; i < tickers.length; i += batchSize) {
-        batches.push(tickers.slice(i, i + batchSize));
-      }
+      // First, try to get fresh data from database (populated by daily Yahoo Finance updates)
+      const cacheKey = `yields-${tickers.sort().join(',')}`;
       
-      const results: Record<string, any> = {};
-      
-      for (const batch of batches) {
-        const cacheKey = batch.sort().join(',');
-        
-        try {
-          const batchResults = await getCachedData(
-            'yield',
-            async () => {
-              console.log('🔍 Fetching Yahoo Finance yields for batch of', batch.length, 'tickers...');
-              const { data, error } = await supabase.functions.invoke('yfinance-yields', {
-                body: { tickers: batch }
-              });
-
-              if (error) throw error;
-              return data?.yields || {};
-            },
-            cacheKey
-          );
+      return getCachedData(
+        'yield-1d',
+        async () => {
+          console.log('🔍 Fetching Yahoo Finance yields for', tickers.length, 'tickers...');
           
-          Object.assign(results, batchResults);
-        } catch (error) {
-          console.error('❌ Yahoo Finance yields batch failed:', error);
-          // Continue with other batches on error
-        }
-      }
-      
-      return results;
+          // Call the yfinance function with database update enabled
+          const { data, error } = await supabase.functions.invoke('yfinance-yields', {
+            body: { 
+              tickers: tickers,
+              updateDatabase: true 
+            }
+          });
+
+          if (error) throw error;
+          
+          console.log('✅ Yahoo Finance yields updated in database:', data?.dbUpdates || 0, 'records');
+          return data?.yields || {};
+        },
+        cacheKey
+      );
     },
     enabled: tickers.length > 0,
     staleTime: 24 * 60 * 60 * 1000, // 1 day
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchInterval: 24 * 60 * 60 * 1000, // Auto-refetch every 24 hours
   });
 };
 
