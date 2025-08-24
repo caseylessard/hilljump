@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { SAMPLE_ETFS } from "@/data/etfs";
 import { ScoredETF, scoreETFs } from "@/lib/scoring";
-import { fetchLivePricesWithDataSources, LivePrice } from "@/lib/live";
 import { getETFs } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,20 +14,36 @@ import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { UserBadge } from "@/components/UserBadge";
-import { useCachedETFs, useCachedPrices, useCachedYields } from "@/hooks/useCachedETFData";
+import { useCachedETFs, useCachedYields } from "@/hooks/useCachedETFData";
+import { useCachedFirstThenLive } from "@/hooks/useCachedFirstThenLive";
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
 import { TiingoYieldsTest } from "@/components/TiingoYieldsTest";
 import HistoricalPriceTest from "@/components/HistoricalPriceTest";
 
-const Index = () => {
+const Index = () => {  
   const { toast } = useToast();
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
   
-  // Fetch real ETF data from database
-  const { data: etfs = [], isLoading } = useCachedETFs();
+  // Use cached ETFs data
+  const { data: etfs = [], isLoading, error } = useCachedETFs();
+  
+  // Memoize tickers to prevent unnecessary refetches
+  const tickers = useMemo(() => etfs.map(etf => etf.ticker), [etfs]);
+  
+  // Use cached-first then live data loading pattern
+  const { prices: livePrices, distributions, dripData, isLoadingLive } = useCachedFirstThenLive(tickers);
+
+  // Show loading status for live data updates
+  useEffect(() => {
+    if (isLoadingLive) {
+      toast({
+        title: "Updating data",
+        description: "Fetching latest prices in background...",
+      });
+    }
+  }, [isLoadingLive, toast]);
 
   // Debug ETFs loading
   useEffect(() => {
@@ -38,22 +53,6 @@ const Index = () => {
       firstFewETFs: etfs.slice(0, 3).map(e => ({ ticker: e.ticker, name: e.name }))
     });
   }, [etfs, isLoading]);
-
-  // Fetch dividend distributions for ETFs
-  const { data: distributions = {} } = useQuery({
-    queryKey: ["distributions", etfs.map(e => e.ticker)],
-    queryFn: async () => {
-      const { getCachedData } = await import('@/lib/cache');
-      const cacheKey = etfs.map(e => e.ticker).sort().join(',');
-      return getCachedData(
-        'lastDist',
-        () => fetchLatestDistributions(etfs.map(e => e.ticker)),
-        cacheKey
-      );
-    },
-    enabled: etfs.length > 0,
-    staleTime: 300_000 // 5 minutes
-  });
 
   // Fetch yields from Yahoo Finance using the cached hook
   const { data: yfinanceYields = {}, isLoading: yieldsLoading, error: yieldsError } = useCachedYields(etfs.map(e => e.ticker));
@@ -71,31 +70,6 @@ const Index = () => {
       });
     }
   }, [etfs.length, yieldsLoading, yieldsError, yfinanceYields]);
-
-  // Fetch live prices for real ETFs
-  useEffect(() => {
-    if (!etfs.length) return;
-    let cancelled = false;
-
-    const run = async () => {
-      try {
-        const tickers = etfs.map(e => e.ticker);
-        
-        const { getCachedETFPrices } = await import('@/lib/cache');
-        const prices = await getCachedETFPrices(tickers);
-        
-        if (cancelled) return;
-        setLivePrices(prices);
-        console.log(`Updated ${Object.keys(prices).length} live prices from cache`);
-      } catch (e) {
-        console.error('Live price fetch error:', e);
-        // Don't show toast on every error to avoid spam
-      }
-    };
-
-    run();
-    return () => { cancelled = true; };
-  }, [etfs]);
 
   useEffect(() => {
     // Clear all caches on page load

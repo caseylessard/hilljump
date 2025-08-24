@@ -8,13 +8,13 @@ export const initializeCache = async () => {
   if (cacheInitialized) return;
   
   try {
-    console.log('🚀 Initializing cache system...');
+    console.log('🚀 Initializing comprehensive cache system...');
     
-    // Warm up cache with popular data
-    await warmCache();
+    // Warm up cache with all essential data types
+    await warmSpecificCache('all');
     
     cacheInitialized = true;
-    console.log('✅ Cache system initialized successfully');
+    console.log('✅ Cache system initialized successfully with prices, distributions, and DRIP data');
   } catch (error) {
     console.error('❌ Cache initialization failed:', error);
   }
@@ -78,7 +78,7 @@ export const resetCache = () => {
 };
 
 // Cache warming for specific data types
-export const warmSpecificCache = async (type: 'etfs' | 'prices' | 'yields' | 'all') => {
+export const warmSpecificCache = async (type: 'etfs' | 'prices' | 'yields' | 'distributions' | 'drip' | 'all') => {
   try {
     console.log(`🔥 Warming ${type} cache...`);
     
@@ -92,17 +92,86 @@ export const warmSpecificCache = async (type: 'etfs' | 'prices' | 'yields' | 'al
         await warmCache(); // This already warms price cache
         break;
         
+      case 'distributions':
+        await warmDistributionsCache();
+        break;
+        
+      case 'drip':
+        await warmDripCache();
+        break;
+        
       case 'yields':
         // Could add yield-specific warming here
         break;
         
       case 'all':
         await warmCache();
+        await warmDistributionsCache();
+        await warmDripCache();
         break;
     }
     
     console.log(`✅ ${type} cache warmed successfully`);
   } catch (error) {
     console.error(`❌ Failed to warm ${type} cache:`, error);
+  }
+};
+
+// Warm distributions cache for popular ETFs
+const warmDistributionsCache = async () => {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { fetchLatestDistributions } = await import('@/lib/dividends');
+    
+    const { data: popularETFs } = await supabase
+      .from('etfs')
+      .select('ticker')
+      .eq('active', true)
+      .order('aum', { ascending: false })
+      .limit(50);
+      
+    if (popularETFs?.length) {
+      const tickers = popularETFs.map(etf => etf.ticker);
+      await fetchLatestDistributions(tickers); // This caches internally
+      console.log('📊 Distributions cache warmed for', tickers.length, 'ETFs');
+    }
+  } catch (error) {
+    console.error('❌ Distributions cache warming failed:', error);
+  }
+};
+
+// Warm DRIP cache for popular ETFs  
+const warmDripCache = async () => {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { getCachedData } = await import('@/lib/cache');
+    
+    const { data: popularETFs } = await supabase
+      .from('etfs')
+      .select('ticker')
+      .eq('active', true)
+      .order('aum', { ascending: false })
+      .limit(30); // Smaller batch for DRIP due to computation cost
+      
+    if (popularETFs?.length) {
+      const tickers = popularETFs.map(etf => etf.ticker);
+      const cacheKey = `drip-warm-${tickers.sort().join(',')}`;
+      
+      await getCachedData(
+        'drip4w',
+        async () => {
+          const { data, error } = await supabase.functions.invoke('calculate-drip', {
+            body: { tickers }
+          });
+          if (error) throw new Error(error.message);
+          return data?.dripData || {};
+        },
+        cacheKey
+      );
+      
+      console.log('🧮 DRIP cache warmed for', tickers.length, 'ETFs');
+    }
+  } catch (error) {
+    console.error('❌ DRIP cache warming failed:', error);
   }
 };
