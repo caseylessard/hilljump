@@ -290,12 +290,41 @@ serve(async (req) => {
           continue
         }
 
-        // Prepare price and dividend data for DRIP calculation
-        // For now use current price as both start and end (simplified)
-        const prices: PriceRow[] = [
-          { date: startDate, close: currentPrice },
-          { date: today, close: currentPrice }
-        ]
+        // Get actual historical price data from the database
+        const { data: priceRows, error: priceError } = await supabase
+          .from('historical_prices')
+          .select('date, close_price')
+          .eq('ticker', ticker)
+          .gte('date', startDate)
+          .lte('date', today)
+          .order('date', { ascending: true })
+
+        if (priceError || !priceRows || priceRows.length === 0) {
+          console.log(`❌ No historical price data for ${ticker}`)
+           dripData[ticker] = {
+              ticker,
+              currentPrice,
+              drip4wPercent: 0,
+              drip4wDollar: 0,
+              drip13wPercent: 0,
+              drip13wDollar: 0,
+              drip26wPercent: 0,
+              drip26wDollar: 0,
+              drip52wPercent: 0,
+              drip52wDollar: 0,
+              error: 'No historical price data available'
+            }
+          errorCount++
+          continue
+        }
+
+        // Convert to PriceRow format for DRIP calculation
+        const prices: PriceRow[] = priceRows.map(row => ({
+          date: row.date,
+          close: Number(row.close_price)
+        }))
+
+        console.log(`  📊 Found ${prices.length} price records for ${ticker} from ${prices[0]?.date} to ${prices[prices.length - 1]?.date}`)
         
         const dists: DistRow[] = (dividends || []).map(div => ({
           exDate: div.ex_date,

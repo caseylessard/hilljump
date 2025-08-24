@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.fetch-historical-prices]
 verify_jwt = false
+
+[functions.update-historical-prices-daily]
+verify_jwt = false
