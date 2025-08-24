@@ -238,6 +238,48 @@ export type Database = {
         }
         Relationships: []
       }
+      historical_prices: {
+        Row: {
+          adjusted_close: number | null
+          close_price: number
+          created_at: string
+          date: string
+          high_price: number | null
+          id: string
+          low_price: number | null
+          open_price: number | null
+          ticker: string
+          updated_at: string
+          volume: number | null
+        }
+        Insert: {
+          adjusted_close?: number | null
+          close_price: number
+          created_at?: string
+          date: string
+          high_price?: number | null
+          id?: string
+          low_price?: number | null
+          open_price?: number | null
+          ticker: string
+          updated_at?: string
+          volume?: number | null
+        }
+        Update: {
+          adjusted_close?: number | null
+          close_price?: number
+          created_at?: string
+          date?: string
+          high_price?: number | null
+          id?: string
+          low_price?: number | null
+          open_price?: number | null
+          ticker?: string
+          updated_at?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       portfolio_positions: {
         Row: {
           created_at: string
