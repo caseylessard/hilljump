@@ -87,12 +87,10 @@ const Ranking = () => {
 
   
   const filtered: ScoredETF[] = useMemo(() => {
-    // Filter out ETFs with invalid data (null prices, zero yields, extremely low AUM)
+    // Filter out ETFs with invalid data (dummy prices only)
     const validETFs = ranked.filter(etf => {
       // Exclude ETFs with clearly invalid data
       if (etf.current_price === 50.0) return false; // Remove $50 dummy prices
-      if (etf.aum && etf.aum < 1000000) return false; // AUM less than $1M is likely invalid
-      if (etf.avgVolume && etf.avgVolume < 100) return false; // Very low volume indicates inactive ETF
       return true;
     });
     
