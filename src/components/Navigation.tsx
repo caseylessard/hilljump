@@ -10,7 +10,7 @@ const Navigation = () => {
         </a>
         <nav className="flex items-center gap-2" aria-label="Primary">
           <Button variant="ghost" asChild>
-            <a href="/">Dividends</a>
+            <a href="/dividends">Dividends</a>
           </Button>
           <Button variant="ghost" asChild>
             <a href="/options">Options</a>
