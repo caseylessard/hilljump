@@ -23,7 +23,7 @@ interface CacheConfig {
 // Cache TTLs in milliseconds
 export const CACHE_TTLS: CacheConfig = {
   ranking: 60 * 60 * 1000,      // 1 hour
-  price: 15 * 60 * 1000,        // 15 minutes
+  price: 72 * 60 * 60 * 1000,   // 72 hours
   lastDist: 24 * 60 * 60 * 1000, // 1 day
   nextDist: 24 * 60 * 60 * 1000, // 1 day
   drip4w: 60 * 60 * 1000,       // 1 hour
