@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.quotes]
 verify_jwt = false
 
+[functions.get-stored-prices]
+verify_jwt = false
+
 [functions.polygon-quotes]
 verify_jwt = false
 

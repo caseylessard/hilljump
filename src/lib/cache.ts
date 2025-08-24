@@ -192,12 +192,35 @@ export async function getCachedETFPrices(tickers: string[]) {
     'price',
     async () => {
       const { supabase } = await import('@/integrations/supabase/client');
-      const { data, error } = await supabase.functions.invoke('quotes', {
+      
+      // First try to get stored prices from database (works on weekends)
+      const { data: storedData, error: storedError } = await supabase.functions.invoke('get-stored-prices', {
         body: { tickers }
       });
       
-      if (error) throw new Error(error.message);
-      return data?.prices || {};
+      if (storedError) {
+        console.warn('Stored prices failed, trying external quotes:', storedError);
+        // Fallback to external quotes if database fetch fails
+        const { data: quotesData, error: quotesError } = await supabase.functions.invoke('quotes', {
+          body: { tickers }
+        });
+        
+        if (quotesError) throw new Error(quotesError.message);
+        return quotesData?.prices || {};
+      }
+      
+      // Convert stored price format to simple price numbers
+      const prices: Record<string, any> = {};
+      const storedPrices = storedData?.prices || {};
+      
+      Object.entries(storedPrices).forEach(([ticker, data]: [string, any]) => {
+        if (data && typeof data === 'object' && data.price) {
+          prices[ticker] = { price: data.price };
+        }
+      });
+      
+      console.log(`📊 Retrieved ${Object.keys(prices).length} stored prices`);
+      return prices;
     },
     cacheKey
   );
