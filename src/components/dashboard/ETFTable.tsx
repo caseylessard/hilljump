@@ -26,9 +26,10 @@ type Props = {
   live?: Record<string, LivePrice>;
   distributions?: Record<string, { amount: number; date: string; currency?: string }>;
   allowSorting?: boolean;
+  cachedDripData?: Record<string, any>;
 };
 
-export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true }: Props) => {
+export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {} }: Props) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ScoredETF | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
@@ -38,8 +39,13 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   // Memoize tickers to prevent unnecessary refetches
   const tickers = useMemo(() => items.map(item => item.ticker), [items]);
   
-  // Use proper React Query hook for DRIP data
-  const { data: dripData = {} } = useCachedDRIP(tickers);
+  // Use cached DRIP data first, then fetch fresh data if needed
+  const { data: liveDripData = {} } = useCachedDRIP(tickers);
+  
+  // Combine cached and live DRIP data (live data takes precedence)
+  const dripData = useMemo(() => {
+    return { ...cachedDripData, ...liveDripData };
+  }, [cachedDripData, liveDripData]);
   const fmtCompact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
   const DRIPCell = ({ ticker, period }: { ticker: string; period: '4w' | '13w' | '26w' | '52w' }) => {
     const tickerData = dripData[ticker];

@@ -81,8 +81,8 @@ const Ranking = () => {
       return cachedRanking;
     }
     
-    // Score with available price data
-    return scoreETFs(etfs, weights, priceData);
+    // Score with available price and DRIP data
+    return scoreETFs(etfs, weights, priceData, dripData);
   }, [etfs, weights, livePrices, cachedPrices, cachedRanking]);
 
   
@@ -346,6 +346,7 @@ const Ranking = () => {
             items={filtered} 
             live={Object.keys(livePrices).length > 0 ? livePrices : cachedPrices}
             distributions={distributions}
+            cachedDripData={dripData}
           />
         </section>
 

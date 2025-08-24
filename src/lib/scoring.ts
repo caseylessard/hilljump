@@ -76,6 +76,7 @@ export function scoreETFsWithPrefs(
   data: ETF[],
   prefs: RankingPrefs,
   live?: Record<string, LivePrice>,
+  dripData?: Record<string, any>,
   options?: {
     homeCountry?: string;   // e.g., 'CA', 'US'
     currency?: string;      // e.g., 'USD', 'CAD'
@@ -121,20 +122,36 @@ export function scoreETFsWithPrefs(
   const aums      = data.map(d => safe(d.aum, 0));
   const agesDays  = data.map(d => safe((d as any).inceptionDays, undefined) ?? daysSince((d as any).inceptionDate));
 
-  // DRIP perf (prefer live; else approximate from 1y)
+  // DRIP perf (prefer cached, then live; else approximate from 1y)
   const drip4w = data.map((d, i) => {
+    const cachedDrip = dripData?.[d.ticker];
+    if (cachedDrip && typeof cachedDrip.drip4wPercent === 'number') {
+      return cachedDrip.drip4wPercent;
+    }
     const lp = live?.[d.ticker];
     return safe(lp?.drip4wPercent, approxPeriodFromAnnual(returns1y[i], 28));
   });
   const drip13w = data.map((d, i) => {
+    const cachedDrip = dripData?.[d.ticker];
+    if (cachedDrip && typeof cachedDrip.drip13wPercent === 'number') {
+      return cachedDrip.drip13wPercent;
+    }
     const lp = live?.[d.ticker];
     return safe(lp?.drip13wPercent, approxPeriodFromAnnual(returns1y[i], 91));
   });
   const drip26w = data.map((d, i) => {
+    const cachedDrip = dripData?.[d.ticker];
+    if (cachedDrip && typeof cachedDrip.drip26wPercent === 'number') {
+      return cachedDrip.drip26wPercent;
+    }
     const lp = live?.[d.ticker];
     return safe(lp?.drip26wPercent, approxPeriodFromAnnual(returns1y[i], 182));
   });
   const drip52w = data.map((d, i) => {
+    const cachedDrip = dripData?.[d.ticker];
+    if (cachedDrip && typeof cachedDrip.drip52wPercent === 'number') {
+      return cachedDrip.drip52wPercent;
+    }
     const lp = live?.[d.ticker];
     return safe(lp?.drip52wPercent, approxPeriodFromAnnual(returns1y[i], 365));
   });
@@ -322,6 +339,7 @@ export function scoreETFs(
   data: ETF[],
   weights: Weights,
   live?: Record<string, LivePrice>,
+  dripData?: Record<string, any>,
   options?: { homeCountry?: string; currency?: string }
 ): ScoredETF[] {
   const r = safe(weights.return, 0);
@@ -334,5 +352,5 @@ export function scoreETFs(
   else if (max === y) chosen = presets.income_first;
   else chosen = presets.balanced;
 
-  return scoreETFsWithPrefs(data, chosen, live, options);
+  return scoreETFsWithPrefs(data, chosen, live, dripData, options);
 }
