@@ -13,7 +13,7 @@ import { getETFs } from '@/lib/db';
 import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import { useCachedFirstThenLive } from '@/hooks/useCachedFirstThenLive';
+import { useCachedFirstThenLive, useProgressiveDataLoad } from '@/hooks/useCachedFirstThenLive';
 import Navigation from '@/components/Navigation';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
@@ -65,23 +65,13 @@ const Ranking = () => {
   // Memoize tickers to prevent unnecessary refetches
   const tickers = useMemo(() => etfs.map(etf => etf.ticker), [etfs]);
   
-  // Use cached-first then live data loading pattern
-  const { prices: livePrices, distributions, dripData, isLoadingLive } = useCachedFirstThenLive(tickers);
+  // Use progressive data loading with specific order
+  const progressiveData = useProgressiveDataLoad(tickers, weights);
 
-  // Calculate ETF ranking using scoring function
+  // Use progressive data for ranking
   const ranked: ScoredETF[] = useMemo(() => {
-    // Use cached ranking if it's recent and we don't have fresh live data
-    const cacheAge = cachedState.lastRankingUpdate ? Date.now() - cachedState.lastRankingUpdate : Infinity;
-    const hasFreshData = Object.keys(livePrices).length > 0;
-    
-    if (cachedState.cachedRanking && cacheAge < 10 * 60 * 1000 && !hasFreshData) {
-      console.log('📊 Using cached ranking (age:', Math.round(cacheAge / 1000 / 60), 'minutes)');
-      return cachedState.cachedRanking;
-    }
-    
-    // Score ETFs with current weights and live prices
-    return scoreETFs(etfs, weights, livePrices);
-  }, [etfs, weights, livePrices]);
+    return progressiveData.etfs;
+  }, [progressiveData.etfs]);
 
   // Filter ETFs based on selected category
   const filtered: ScoredETF[] = useMemo(() => {
@@ -109,15 +99,24 @@ const Ranking = () => {
     }); // Show all ranked ETFs
   }, [ranked, filter]);
 
-  // Show loading status for live data updates  
+  // Show loading status based on progressive loading stage  
   useEffect(() => {
-    if (isLoadingLive) {
+    const stage = progressiveData.loadingStage;
+    if (stage !== 'complete') {
+      const stageMessages = {
+        tickers: 'Loading tickers and cached prices...',
+        distributions: 'Loading distribution data...',
+        'next-dist': 'Calculating next distributions...',
+        yields: 'Loading yield data...',
+        live: 'Updating with live prices...'
+      };
+      
       toast({
-        title: "Live data",
-        description: "Updating prices in background...",
+        title: "Loading data",
+        description: stageMessages[stage as keyof typeof stageMessages] || 'Loading...',
       });
     }
-  }, [isLoadingLive, toast]);
+  }, [progressiveData.loadingStage, toast]);
 
   // Cache ranking periodically
   useEffect(() => {
@@ -247,8 +246,8 @@ const Ranking = () => {
         ) : (
           <ETFTable 
             items={filtered} 
-            live={livePrices} 
-            distributions={distributions} 
+            live={progressiveData.livePrices} 
+            distributions={progressiveData.lastDistributions} 
           />
         )}
 
