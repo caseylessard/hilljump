@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { predictNextDistribution } from "@/lib/dividends";
+import { useCachedDRIP } from "@/hooks/useCachedETFData";
 
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
@@ -33,44 +34,13 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
   const [range, setRange] = useState<RangeKey>("1Y");
   const [nextDividends, setNextDividends] = useState<Record<string, any>>({});
-  const [dripData, setDripData] = useState<Record<string, any>>({});
-  const fmtCompact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
   
-  // Fetch DRIP data for all tickers
-  useEffect(() => {
-    const fetchDripData = async () => {
-      if (items.length === 0) return;
-      
-      try {
-        console.log('🧮 Fetching DRIP data for', items.length, 'tickers...');
-        const tickers = items.map(item => item.ticker);
-        
-        const { getCachedData } = await import('@/lib/cache');
-        const cacheKey = tickers.sort().join(',');
-        
-        const data = await getCachedData(
-          'drip4w',
-          async () => {
-            const { data, error } = await supabase.functions.invoke('calculate-drip', {
-              body: { tickers }
-            });
-            if (error) throw new Error(error.message);
-            return data;
-          },
-          cacheKey
-        );
-        
-        if (data) {
-          console.log('✅ DRIP data loaded:', Object.keys(data?.dripData || {}).length, 'entries');
-          setDripData(data?.dripData || {});
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch DRIP data:', error);
-      }
-    };
-
-    fetchDripData();
-  }, [items]);
+  // Memoize tickers to prevent unnecessary refetches
+  const tickers = useMemo(() => items.map(item => item.ticker), [items]);
+  
+  // Use proper React Query hook for DRIP data
+  const { data: dripData = {} } = useCachedDRIP(tickers);
+  const fmtCompact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
   const DRIPCell = ({ ticker, period }: { ticker: string; period: '4w' | '13w' | '26w' | '52w' }) => {
     const tickerData = dripData[ticker];
     if (!tickerData) {
