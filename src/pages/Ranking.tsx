@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,12 +8,12 @@ import { ScoringControls } from '@/components/dashboard/ScoringControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { ScoredETF, scoreETFs } from '@/lib/scoring';
-import { Distribution } from '@/lib/dividends';
+import { fetchLivePricesWithDataSources, LivePrice } from '@/lib/live';
+import { Distribution, fetchLatestDistributions } from '@/lib/dividends';
 import { getETFs } from '@/lib/db';
 import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import { useCachedFirstThenLive, useProgressiveDataLoad } from '@/hooks/useCachedFirstThenLive';
 import Navigation from '@/components/Navigation';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
@@ -47,94 +47,85 @@ const cachedState = loadCachedState();
 const Ranking = () => {
   const [weights, setWeights] = useState(cachedState.weights);
   const [showDialog, setShowDialog] = useState(false);
-  const [filter, setFilter] = useState<FilterType>('all');
+  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
+  const [distributions, setDistributions] = useState<Record<string, Distribution>>({});
+  const [filter, setFilter] = useState<string>(cachedState.filter);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [cachedRanking, setCachedRanking] = useState<ScoredETF[] | null>(null);
-  
+  const [cachedRanking, setCachedRanking] = useState<ScoredETF[]>(cachedState.cachedRanking || []);
+
   const { toast } = useToast();
   const { profile } = useUserProfile();
-
-  // Fetch ETFs from database
-  const { data: etfs = [], isLoading, error } = useQuery({
-    queryKey: ['etfs'],
-    queryFn: getETFs,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+  const { data: etfs = [], isLoading, error } = useQuery({ 
+    queryKey: ["etfs"], 
+    queryFn: getETFs, 
+    staleTime: 60_000 
   });
 
-  // Memoize tickers to prevent unnecessary refetches
-  const tickers = useMemo(() => etfs.map(etf => etf.ticker), [etfs]);
-  
-  // Use progressive data loading with specific order
-  const progressiveData = useProgressiveDataLoad(tickers, weights);
-
-  // Use progressive data for ranking
   const ranked: ScoredETF[] = useMemo(() => {
-    return progressiveData.etfs;
-  }, [progressiveData.etfs]);
+    // Use cached ranking if it's recent (within 15 minutes) and no live data yet
+    const now = Date.now();
+    const cacheAge = cachedState.lastRankingUpdate ? now - cachedState.lastRankingUpdate : Infinity;
+    const isCacheRecent = cacheAge < 15 * 60 * 1000; // 15 minutes
+    const hasLiveData = Object.keys(livePrices).length > 0;
+    
+    if (isCacheRecent && !hasLiveData && cachedRanking.length > 0) {
+      return cachedRanking;
+    }
+    
+    return scoreETFs(etfs, weights, livePrices);
+  }, [etfs, weights, livePrices, cachedRanking]);
 
-  // Filter ETFs based on selected category
+  // Cache the ranking when it changes
+  useEffect(() => {
+    if (etfs.length > 0 && ranked.length > 0) {
+      setCachedRanking(ranked);
+    }
+  }, [ranked, etfs.length]);
+  
   const filtered: ScoredETF[] = useMemo(() => {
-    return ranked.filter(etf => {
-      // Remove ETFs with null/undefined critical data
-      if (!etf.ticker || etf.totalReturn1Y == null || etf.compositeScore == null) {
-        return false;
-      }
-
-      switch (filter) {
-        case 'canada':
-          return (etf.country || "").toUpperCase() === 'CA' || 
-                 /TSX|NEO|TSXV/i.test(etf.exchange) || 
-                 etf.ticker.endsWith('.TO');
-        case 'usa':
-          return (etf.country || "").toUpperCase() === 'US' || 
-                 /NYSE|NASDAQ|BATS/i.test(etf.exchange) || 
-                 (!etf.ticker.endsWith('.TO') && !etf.ticker.includes('.'));
-        case 'high-yield':
-          return (etf.yieldTTM || 0) >= 4; // 4%+ yield
-        case 'all':
-        default:
-          return true;
-      }
-    }); // Show all ranked ETFs
+    // Filter out ETFs with invalid data (null prices, zero yields, extremely low AUM)
+    const validETFs = ranked.filter(etf => {
+      // Exclude ETFs with clearly invalid data
+      if (etf.current_price === 50.0) return false; // Remove $50 dummy prices
+      if (etf.aum && etf.aum < 1000000) return false; // AUM less than $1M is likely invalid
+      if (etf.avgVolume && etf.avgVolume < 100) return false; // Very low volume indicates inactive ETF
+      return true;
+    });
+    
+    if (filter === "All ETFs") return validETFs;
+    if (filter === "YieldMax") return validETFs.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
+    if (filter === "Covered Call") return validETFs.filter(e => e.category === "Covered Call");
+    if (filter === "Income") return validETFs.filter(e => e.category === "Income");
+    if (filter === "Dividend") return validETFs.filter(e => e.category === "Dividend");
+    if (filter === "US Funds") return validETFs.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
+    if (filter === "Canadian Funds") return validETFs.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
+    return validETFs;
   }, [ranked, filter]);
 
-  // Show loading status based on progressive loading stage  
   useEffect(() => {
-    const stage = progressiveData.loadingStage;
-    if (stage !== 'complete') {
-      const stageMessages = {
-        tickers: 'Loading tickers and cached prices...',
-        distributions: 'Loading distribution data...',
-        'next-dist': 'Calculating next distributions...',
-        yields: 'Loading yield data...',
-        live: 'Updating with live prices...'
-      };
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const uid = session?.user?.id;
+      if (!uid) { 
+        setIsSubscribed(false); 
+        setIsAdmin(false); 
+        return; 
+      }
       
-      toast({
-        title: "Loading data",
-        description: stageMessages[stage as keyof typeof stageMessages] || 'Loading...',
-      });
-    }
-  }, [progressiveData.loadingStage, toast]);
+      const [{ data: sub }, { data: roles }] = await Promise.all([
+        supabase.from('subscribers').select('subscribed').eq('user_id', uid).maybeSingle(),
+        supabase.from('user_roles').select('role').eq('user_id', uid)
+      ]);
+      
+      setIsSubscribed(Boolean((sub as any)?.subscribed));
+      setIsAdmin(Array.isArray(roles) && roles.some((r: any) => String(r.role).toLowerCase() === 'admin'));
+    })();
+  }, []);
 
-  // Cache ranking periodically
   useEffect(() => {
-    if (ranked.length > 0) {
-      const stateToCache = {
-        weights,
-        filter,
-        cachedRanking: ranked,
-        lastRankingUpdate: Date.now()
-      };
-      localStorage.setItem('ranking-state', JSON.stringify(stateToCache));
-    }
-  }, [ranked, weights, filter]);
-
-  // Set document title
-  useEffect(() => {
-    document.title = 'ETF Ranking - HillJump';
-    const meta = document.querySelector('meta[name="description"]') as HTMLMetaElement || 
+    document.title = "HillJump — Top Dividend ETF Rankings";
+    const meta = document.querySelector('meta[name="description"]') as HTMLMetaElement ||
       (() => {
         const m = document.createElement('meta');
         m.setAttribute('name', 'description');
@@ -144,126 +135,119 @@ const Ranking = () => {
     meta.setAttribute('content', 'HillJump quick reference: All high-yield dividend ETFs ranked by risk-aware total return.');
   }, []);
 
-  // Check subscription status
   useEffect(() => {
-    const checkStatus = async () => {
+    if (!etfs.length) return;
+    let cancelled = false;
+
+    const run = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const [{ data: subscription }, { data: userRole }] = await Promise.all([
-          supabase
-            .from('subscribers')
-            .select('subscribed, subscription_end')
-            .eq('user_id', user.id)
-            .maybeSingle(),
-          supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', user.id)
-            .eq('role', 'admin')
-            .maybeSingle()
-        ]);
-
-        const isCurrentlySubscribed = subscription?.subscribed && 
-          (!subscription.subscription_end || new Date(subscription.subscription_end) > new Date());
+        const tickers = etfs.map(e => e.ticker);
         
-        setIsSubscribed(isCurrentlySubscribed);
-        setIsAdmin(!!userRole);
-      } catch (error) {
-        console.error('Failed to check subscription status:', error);
+        // Use cached pricing system instead of direct fetch
+        const { getCachedETFPrices } = await import('@/lib/cache');
+        const prices = await getCachedETFPrices(tickers);
+        
+        if (cancelled) return;
+        setLivePrices(prices);
+        console.log(`Updated ${Object.keys(prices).length} live prices from cache`);
+      } catch (e) {
+        console.error('Live price fetch error:', e);
       }
     };
 
-    checkStatus();
-  }, []);
+    run();
+    const id = setInterval(run, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [etfs, toast]);
 
-  const filterOptions = [
-    { value: 'all', label: 'All ETFs' },
-    { value: 'canada', label: 'Canadian ETFs' },
-    { value: 'usa', label: 'US ETFs' },
-    { value: 'high-yield', label: 'High Yield (4%+)' }
-  ];
+  useEffect(() => {
+    if (!etfs.length) return;
+    let cancelled = false;
+    
+    const run = async () => {
+      try {
+        const map = await fetchLatestDistributions(etfs.map(e => e.ticker));
+        if (cancelled) return;
+        setDistributions(map);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    
+    run();
+    return () => { cancelled = true; };
+  }, [etfs]);
 
-  if (error) {
-    return (
-      <div className="container py-8">
-        <Navigation />
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold text-destructive">Error Loading ETFs</h1>
-          <p className="text-muted-foreground mt-2">
-            {error instanceof Error ? error.message : 'Failed to load ETF data'}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Save state to localStorage whenever weights, filter, or ranking changes
+  useEffect(() => {
+    try {
+      const stateToSave = {
+        weights,
+        filter,
+        cachedRanking,
+        lastRankingUpdate: Date.now()
+      };
+      localStorage.setItem('ranking-state', JSON.stringify(stateToSave));
+    } catch (e) {
+      console.warn('Failed to save ranking state to localStorage:', e);
+    }
+  }, [weights, filter, cachedRanking]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <Navigation />
-      
-      <main className="container py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">ETF Ranking</h1>
-            <p className="text-muted-foreground">
-              {isLoading 
-                ? 'Loading ETF data...' 
-                : `${filtered.length} ETFs ranked by composite score`}
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Select value={filter} onValueChange={(value: FilterType) => setFilter(value)}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {filterOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowDialog(true)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Scoring
-            </Button>
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 ambient-spotlight pointer-events-none" aria-hidden="true" />
+        <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">
+          <div className="space-y-3">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Dividend ETF Rankings</h1>
           </div>
         </div>
+      </header>
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-lg text-muted-foreground">Loading ETF data...</p>
+      <main className="container grid gap-8 pb-16">
+        <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
+              <Select value={filter} onValueChange={setFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-background shadow-lg">
+                  <SelectItem value="All ETFs">All ETFs</SelectItem>
+                  <SelectItem value="YieldMax">YieldMax</SelectItem>
+                  <SelectItem value="Covered Call">Covered Call</SelectItem>
+                  <SelectItem value="Income">Income</SelectItem>
+                  <SelectItem value="Dividend">Dividend</SelectItem>
+                  <SelectItem value="US Funds">US Funds</SelectItem>
+                  <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        ) : (
+
           <ETFTable 
             items={filtered} 
-            live={progressiveData.livePrices} 
-            distributions={progressiveData.lastDistributions} 
+            live={livePrices}
+            distributions={distributions}
           />
-        )}
+        </section>
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>Scoring Configuration</DialogTitle>
+              <DialogTitle>Scoring Settings</DialogTitle>
             </DialogHeader>
-            
-            <div className="py-4">
-              <ScoringControls 
-                onChange={setWeights}
-              />
-            </div>
+            {(isSubscribed || isAdmin) ? (
+              <ScoringControls onChange={setWeights} />
+            ) : (
+              <div className="text-sm text-muted-foreground">Subscribe to access scoring settings.</div>
+            )}
           </DialogContent>
         </Dialog>
+
+        <p className="text-muted-foreground text-xs">Not investment advice.</p>
       </main>
     </div>
   );

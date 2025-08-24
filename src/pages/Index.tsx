@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { SAMPLE_ETFS } from "@/data/etfs";
 import { ScoredETF, scoreETFs } from "@/lib/scoring";
+import { fetchLivePricesWithDataSources, LivePrice } from "@/lib/live";
 import { getETFs } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,36 +15,20 @@ import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { UserBadge } from "@/components/UserBadge";
-import { useCachedETFs, useCachedYields } from "@/hooks/useCachedETFData";
-import { useCachedFirstThenLive } from "@/hooks/useCachedFirstThenLive";
+import { useCachedETFs, useCachedPrices, useCachedYields } from "@/hooks/useCachedETFData";
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
 import { TiingoYieldsTest } from "@/components/TiingoYieldsTest";
 import HistoricalPriceTest from "@/components/HistoricalPriceTest";
 
-const Index = () => {  
+const Index = () => {
   const { toast } = useToast();
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
   
-  // Use cached ETFs data
-  const { data: etfs = [], isLoading, error } = useCachedETFs();
-  
-  // Memoize tickers to prevent unnecessary refetches
-  const tickers = useMemo(() => etfs.map(etf => etf.ticker), [etfs]);
-  
-  // Use cached-first then live data loading pattern
-  const { prices: livePrices, distributions, dripData, isLoadingLive } = useCachedFirstThenLive(tickers);
-
-  // Show loading status for live data updates
-  useEffect(() => {
-    if (isLoadingLive) {
-      toast({
-        title: "Updating data",
-        description: "Fetching latest prices in background...",
-      });
-    }
-  }, [isLoadingLive, toast]);
+  // Fetch real ETF data from database
+  const { data: etfs = [], isLoading } = useCachedETFs();
 
   // Debug ETFs loading
   useEffect(() => {
@@ -54,9 +39,25 @@ const Index = () => {
     });
   }, [etfs, isLoading]);
 
-  // Fetch Yahoo Finance yields for testing
-  const { data: yfinanceYields = {}, isLoading: yieldsLoading, error: yieldsError } = useCachedYields(etfs.map(e => e.ticker));
+  // Fetch dividend distributions for ETFs
+  const { data: distributions = {} } = useQuery({
+    queryKey: ["distributions", etfs.map(e => e.ticker)],
+    queryFn: async () => {
+      const { getCachedData } = await import('@/lib/cache');
+      const cacheKey = etfs.map(e => e.ticker).sort().join(',');
+      return getCachedData(
+        'lastDist',
+        () => fetchLatestDistributions(etfs.map(e => e.ticker)),
+        cacheKey
+      );
+    },
+    enabled: etfs.length > 0,
+    staleTime: 300_000 // 5 minutes
+  });
 
+  // Fetch yields from Yahoo Finance using the cached hook
+  const { data: yfinanceYields = {}, isLoading: yieldsLoading, error: yieldsError } = useCachedYields(etfs.map(e => e.ticker));
+  
   // Debug yields data
   useEffect(() => {
     if (etfs.length > 0) {
@@ -71,15 +72,76 @@ const Index = () => {
     }
   }, [etfs.length, yieldsLoading, yieldsError, yfinanceYields]);
 
-  // Track mouse movement for background effects
+  // Fetch live prices for real ETFs
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMouse({ x: e.clientX, y: e.clientY });
+    if (!etfs.length) return;
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const tickers = etfs.map(e => e.ticker);
+        
+        const { getCachedETFPrices } = await import('@/lib/cache');
+        const prices = await getCachedETFPrices(tickers);
+        
+        if (cancelled) return;
+        setLivePrices(prices);
+        console.log(`Updated ${Object.keys(prices).length} live prices from cache`);
+      } catch (e) {
+        console.error('Live price fetch error:', e);
+        // Don't show toast on every error to avoid spam
+      }
     };
+
+    run();
+    return () => { cancelled = true; };
+  }, [etfs]);
+
+  useEffect(() => {
+    // Clear all caches on page load
+    console.log('🧹 Clearing all caches on Index page load');
     
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+    // Clear React Query cache if available
+    try {
+      // Force clear browser caches
+      if (typeof window !== 'undefined') {
+        // Clear localStorage cache entries
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('cache-') || key.startsWith('yields-') || key.startsWith('etf-') || key.includes('react-query')) {
+            localStorage.removeItem(key);
+          }
+        });
+        console.log('✅ localStorage cache cleared');
+      }
+    } catch (e) {
+      console.log('⚠️ Could not clear cache:', e);
+    }
+    
+    // SEO: Title, description, canonical
+    document.title = "HillJump — Dividend ETF Rankings by Total Return";
+    const meta =
+      (document.querySelector('meta[name="description"]') as HTMLMetaElement) ||
+      (() => {
+        const m = document.createElement('meta');
+        m.setAttribute('name', 'description');
+        document.head.appendChild(m);
+        return m as HTMLMetaElement;
+      })();
+    meta.setAttribute(
+      'content',
+      'HillJump ranks top 10 high-yield dividend ETFs by total return with risk-aware scoring for volume, volatility, drawdown, and fees.'
+    );
+
+    const link =
+      (document.querySelector('link[rel="canonical"]') as HTMLLinkElement) ||
+      (() => {
+        const l = document.createElement('link');
+        l.setAttribute('rel', 'canonical');
+        document.head.appendChild(l);
+        return l as HTMLLinkElement;
+      })();
+    link.setAttribute('href', window.location.origin + window.location.pathname);
+  }, []); // Remove toast dependency to prevent loops
 
   // Use real ETF data if available, fallback to sample data
   const dataToUse = etfs.length > 0 ? etfs.map(etf => ({
@@ -87,160 +149,95 @@ const Index = () => {
     yieldTTM: yfinanceYields[etf.ticker] || etf.yieldTTM || 0
   })) : SAMPLE_ETFS;
   const ranked: ScoredETF[] = useMemo(() => scoreETFs(dataToUse, weights, livePrices), [dataToUse, weights, livePrices, yfinanceYields]);
+  
+  // Filter for high-yield ETFs (top performers)
+  const topETFs: ScoredETF[] = useMemo(() => {
+    // Show Canadian funds that typically have higher yields
+    const canadianFunds = ranked.filter(e => 
+      /TSX|NEO|TSXV/i.test(e.exchange) || 
+      (e.country || "").toUpperCase() === 'CA' ||
+      e.ticker.endsWith('.TO')
+    );
+    
+    // Show top ETFs by composite score, prioritizing Canadian high-yield funds
+    const topFunds = ranked.slice(0, 20);
+    
+    // Combine and dedupe, prioritizing Canadian funds
+    const combined = [...canadianFunds, ...topFunds];
+    const unique = combined.filter((etf, index, arr) => 
+      arr.findIndex(e => e.ticker === etf.ticker) === index
+    );
+    
+    return unique.slice(0, 15); // Show top 15 diverse high-yield ETFs
+  }, [ranked]);
 
-  // Filter to show only Canadian high-yield funds for the hero section
-  const topETFs = ranked
-    .filter(etf => {
-      const isCanadian = (etf.country || "").toUpperCase() === 'CA' || 
-                         /TSX|NEO|TSXV/i.test(etf.exchange) || 
-                         etf.ticker.endsWith('.TO');
-      const hasGoodYield = (etf.yieldTTM || 0) >= 4; // 4%+ yield
-      return isCanadian && hasGoodYield;
-    })
-    .slice(0, 8);
-
-  // SEO structured data
-  const jsonLd = {
+  const jsonLd = useMemo(() => ({
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "HillJump",
-    "description": "Comprehensive ETF analysis and dividend investment tools for Canadian investors",
-    "url": "https://hilljump.com",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": "https://hilljump.com/search?q={search_term_string}",
-      "query-input": "required name=search_term_string"
-    }
-  };
+    "@type": "ItemList",
+    name: "Top 10 High Yield Dividend ETFs by Total Return",
+    itemListElement: ranked.map((etf, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      item: {
+        "@type": "InvestmentFund",
+        name: etf.name,
+        tickerSymbol: etf.ticker,
+        category: etf.category || "ETF",
+      }
+    }))
+  }), [ranked]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
+    <div onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })} style={{ ['--mx' as any]: `${mouse.x}px`, ['--my' as any]: `${mouse.y}px` }}>
       <Navigation />
-      
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 lg:py-32">
-        <div 
-          className="absolute inset-0 opacity-10"
-          style={{
-            background: `radial-gradient(circle at ${mouse.x}px ${mouse.y}px, hsl(var(--primary)) 0%, transparent 50%)`,
-            transition: 'background 0.3s ease'
-          }}
-        />
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 ambient-spotlight pointer-events-none" aria-hidden="true" />
+
+        {/* Hero section */}
+        <div className="container py-10 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">
+          <div className="space-y-4">
+            <Badge variant="secondary">HillJump</Badge>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Top 10 High-Yield Dividend ETFs by Total Return</h1>
+            <p className="text-muted-foreground">Risk-aware ranking that prioritizes total return while devaluing funds for low volume, high volatility, deep drawdowns, and fees.</p>
+            <div className="flex gap-3">
+              <Button variant="hero" asChild>
+                <a href="#ranking">Explore Ranking</a>
+              </Button>
+            </div>
+          </div>
+          <Card className="overflow-hidden">
+            <img src={hero} alt="HillJump dividend ETF ranking dashboard hero with futuristic cyan-blue gradient" loading="lazy" className="w-full h-56 object-cover" />
+          </Card>
+        </div>
+      </header>
+
+      <main className="container grid gap-8 pb-16">
+        <div className="w-full">
+          <TiingoYieldsTest />
+        </div>
         
-        <div className="container relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <Badge variant="secondary" className="w-fit">
-                  🇨🇦 Built for Canadian Investors
-                </Badge>
-                <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
-                  Smart ETF Analysis
-                  <span className="text-primary block">& Dividends</span>
-                </h1>
-                <p className="text-xl text-muted-foreground leading-relaxed max-w-xl">
-                  All high-yield dividend ETFs ranked by risk-aware total return. Live data where available.
-                </p>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="text-lg px-8">
-                  Explore ETFs
-                </Button>
-                <Button variant="outline" size="lg" className="text-lg px-8">
-                  Learn More
-                </Button>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <img 
-                src={hero} 
-                alt="Investment analysis dashboard showing ETF performance metrics" 
-                className="rounded-2xl shadow-2xl w-full h-auto"
-                loading="eager"
-              />
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-primary/20 to-transparent" />
-            </div>
-          </div>
+        <div className="w-full">
+          <HistoricalPriceTest />
         </div>
-      </section>
-
-      {/* Testing Components */}
-      <div className="container py-8 space-y-6">
-        <TiingoYieldsTest />
-        <HistoricalPriceTest />
-      </div>
-
-      {/* Performance Chart Section */}
-      <section className="py-16">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Performance Overview</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Track the performance of top Canadian dividend ETFs with real-time data and analysis.
-            </p>
+        
+        <section aria-labelledby="scoring" className="grid md:grid-cols-3 gap-6">
+          <h2 id="scoring" className="sr-only">Scoring Controls</h2>
+          <div className="md:col-span-2">
+            <PerformanceChart items={ranked} />
           </div>
-          
-          <Card className="p-6">
-            <PerformanceChart items={topETFs} />
-          </Card>
-        </div>
-      </section>
-
-      {/* Interactive Controls */}
-      <section className="py-16 bg-muted/20">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Customize Your Analysis</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Adjust scoring weights to match your investment strategy and risk tolerance.
-            </p>
-          </div>
-          
-          <Card className="max-w-4xl mx-auto p-6">
+          <div className="md:col-span-1">
             <ScoringControls onChange={setWeights} />
-          </Card>
-        </div>
-      </section>
-
-      {/* Top ETFs Table */}
-      <section className="py-16">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Top Canadian Dividend ETFs</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Discover the highest-ranked Canadian dividend ETFs based on our comprehensive scoring system.
-            </p>
           </div>
-          
-          {isLoading ? (
-            <Card className="p-12 text-center">
-              <p className="text-lg text-muted-foreground">Loading ETF data...</p>
-            </Card>
-          ) : topETFs.length > 0 ? (
-            <ETFTable 
-              items={topETFs} 
-              live={livePrices} 
-              distributions={distributions}
-            />
-          ) : (
-            <Card className="p-12 text-center">
-              <p className="text-lg text-muted-foreground">
-                No Canadian high-yield ETFs found matching criteria.
-              </p>
-            </Card>
-          )}
-        </div>
-      </section>
+        </section>
 
+        <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
+          <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
+          <ETFTable items={topETFs} live={livePrices} distributions={distributions} />
+        </section>
+      </main>
+
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <CacheMonitor />
-
-      {/* SEO structured data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
     </div>
   );
 };
