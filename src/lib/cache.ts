@@ -192,22 +192,6 @@ export async function getCachedETFPrices(tickers: string[]) {
     'price',
     async () => {
       const { supabase } = await import('@/integrations/supabase/client');
-      
-      // Try yfinance first for better price coverage
-      try {
-        const { data: yfinanceData, error: yfinanceError } = await supabase.functions.invoke('yfinance-prices', {
-          body: { tickers }
-        });
-        
-        if (!yfinanceError && yfinanceData?.prices && Object.keys(yfinanceData.prices).length > 0) {
-          console.log(`✅ Got ${Object.keys(yfinanceData.prices).length} prices from yfinance`);
-          return yfinanceData.prices;
-        }
-      } catch (yfinanceErr) {
-        console.warn('⚠️ yfinance failed, falling back to quotes:', yfinanceErr);
-      }
-      
-      // Fallback to existing quotes function
       const { data, error } = await supabase.functions.invoke('quotes', {
         body: { tickers }
       });
@@ -275,7 +259,7 @@ export async function getCachedDividendData(ticker: string) {
 // Cache warming function for critical data
 export async function warmCache() {
   try {
-    console.log('🔥 Warming cache with yfinance prices...');
+    console.log('Warming cache...');
     
     // Warm up common price data
     const { supabase } = await import('@/integrations/supabase/client');
@@ -288,30 +272,11 @@ export async function warmCache() {
       
     if (popularETFs?.length) {
       const tickers = popularETFs.map(etf => etf.ticker);
-      console.log(`🔥 Warming cache for ${tickers.length} ETFs...`);
-      
-      // Initialize cache with yfinance prices
-      try {
-        const { data: yfinanceData } = await supabase.functions.invoke('yfinance-prices', {
-          body: { tickers }
-        });
-        
-        if (yfinanceData?.prices) {
-          // Store prices in cache with individual keys for better granularity
-          Object.entries(yfinanceData.prices).forEach(([ticker, price]) => {
-            cache.set('price', { [ticker]: price }, ticker);
-          });
-          console.log(`✅ Cached ${Object.keys(yfinanceData.prices).length} prices from yfinance`);
-        }
-      } catch (yfinanceErr) {
-        console.warn('⚠️ yfinance warming failed, trying fallback');
-        // Fallback to existing method
-        await getCachedETFPrices(tickers);
-      }
+      await getCachedETFPrices(tickers);
     }
     
-    console.log('🔥 Cache warming completed');
+    console.log('Cache warming completed');
   } catch (error) {
-    console.error('❌ Cache warming failed:', error);
+    console.error('Cache warming failed:', error);
   }
 }
