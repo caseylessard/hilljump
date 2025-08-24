@@ -23,6 +23,7 @@ export type ScoredETF = ETF & {
     drip26wNorm: number;
     drip52wNorm: number;
   dripWeightedNorm: number;
+  dripSumScore: number; // Sum of 4w+13w+26w+52w percentages
   // Signal derived from DRIP momentum
   buySignal: boolean;
   riskScore: number;      // 0..1 higher = riskier
@@ -209,6 +210,8 @@ export function scoreETFsWithPrefs(
     const drip52wNorm = normWins(drip52w[i], d52Stats);
     const momentum13w = drip13wNorm;
     const momentum52w = drip52wNorm;
+    // Sum of all DRIP percentages as a raw number (not percentage)
+    const dripSumScore = (drip4w[i] || 0) + (drip13w[i] || 0) + (drip26w[i] || 0) + (drip52w[i] || 0);
     const dripWeightedNorm = clamp(0.5 * drip13wNorm + 0.3 * drip4wNorm + 0.1 * drip26wNorm + 0.1 * drip52wNorm, 0, 1);
 
     // Signal: positive short and medium term
@@ -290,6 +293,7 @@ export function scoreETFsWithPrefs(
       drip26wNorm,
       drip52wNorm,
       dripWeightedNorm,
+      dripSumScore,
       buySignal,
       riskScore,
       compositeScore,

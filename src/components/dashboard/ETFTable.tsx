@@ -214,14 +214,14 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     }
   };
 
-  const getDripWeightedSum = (ticker: string): number => {
+  const getDripSum = (ticker: string): number => {
     const drip4w = getDripPercent(ticker, "4w");
     const drip13w = getDripPercent(ticker, "13w");
     const drip26w = getDripPercent(ticker, "26w");
     const drip52w = getDripPercent(ticker, "52w");
     
-    // SUM: ((4W percentage *13) + (13W percentage * 4) + (26W percentage *2) + (52W percentage))/4
-    return ((drip4w * 13) + (drip13w * 4) + (drip26w * 2) + (drip52w * 1)) / 4;
+    // Simple sum: 4W% + 13W% + 26W% + 52W% (as number, not percentage)
+    return drip4w + drip13w + drip26w + drip52w;
   };
 
   const rows = useMemo(() => {
@@ -239,7 +239,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         case "drip52w": return getDripPercent(etf.ticker, "52w");
         case "yield": { const y = etf.yieldTTM; return Math.abs(y) <= 1 ? y * 100 : y; }
         case "risk": return etf.riskScore;
-        case "score": return getDripWeightedSum(etf.ticker); // Use weighted DRIP sum instead of score
+        case "score": return getDripSum(etf.ticker); // Use DRIP sum instead of composite score
         case "signal": {
           const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
           const r28d = (Math.pow(1 + daily, 28) - 1) * 100;
@@ -249,16 +249,16 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         }
         case "rank":
         default:
-          return getDripWeightedSum(etf.ticker); // Use weighted DRIP sum as default
+          return getDripSum(etf.ticker); // Use DRIP sum as default
       }
     };
     const cmp = (a: ScoredETF, b: ScoredETF) => {
-      // Use weighted DRIP sum for default sort (score/rank columns)
+      // Use DRIP sum for default sort (score/rank columns)
       if (sortKey === "score" || sortKey === "rank") {
-        const sumA = getDripWeightedSum(a.ticker);
-        const sumB = getDripWeightedSum(b.ticker);
+        const sumA = getDripSum(a.ticker);
+        const sumB = getDripSum(b.ticker);
         
-        // Sort by weighted DRIP sum descending, then ticker ascending as tiebreaker
+        // Sort by DRIP sum descending, then ticker ascending as tiebreaker
         if (sumA !== sumB) {
           return sumB - sumA; // descending
         }
@@ -445,9 +445,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-semibold">
-                  {(etf.compositeScore * 100).toFixed(0)}
-                </TableCell>
+                 <TableCell className="text-right font-semibold">
+                   {getDripSum(etf.ticker).toFixed(1)}
+                 </TableCell>
                 <TableCell className="text-right">
                   {buy ? (
                     <Badge className="bg-emerald-500 text-white">BUY</Badge>
