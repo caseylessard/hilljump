@@ -63,6 +63,9 @@ const Ranking = () => {
   });
 
   const ranked: ScoredETF[] = useMemo(() => {
+    // Always score ETFs with database data first, then enhance with live prices
+    if (etfs.length === 0) return [];
+    
     // Use cached ranking if it's recent (within 15 minutes) and no live data yet
     const now = Date.now();
     const cacheAge = cachedState.lastRankingUpdate ? now - cachedState.lastRankingUpdate : Infinity;
@@ -73,6 +76,7 @@ const Ranking = () => {
       return cachedRanking;
     }
     
+    // Score with database prices first, enhanced by live prices if available
     return scoreETFs(etfs, weights, livePrices);
   }, [etfs, weights, livePrices, cachedRanking]);
 
@@ -135,30 +139,43 @@ const Ranking = () => {
     meta.setAttribute('content', 'HillJump quick reference: All high-yield dividend ETFs ranked by risk-aware total return.');
   }, []);
 
+  // Load live prices lazily after initial render
   useEffect(() => {
-    if (!etfs.length) return;
+    if (!etfs.length || !filtered.length) return;
     let cancelled = false;
 
-    const run = async () => {
+    const loadLivePrices = async () => {
       try {
-        const tickers = etfs.map(e => e.ticker);
+        // Only fetch prices for filtered/visible ETFs to reduce API load
+        const visibleTickers = filtered.map(e => e.ticker);
         
-        // Use cached pricing system instead of direct fetch
+        console.log(`🔄 Loading live prices for ${visibleTickers.length} visible ETFs...`);
+        
+        // Use cached pricing system with error handling
         const { getCachedETFPrices } = await import('@/lib/cache');
-        const prices = await getCachedETFPrices(tickers);
+        const prices = await getCachedETFPrices(visibleTickers);
         
         if (cancelled) return;
         setLivePrices(prices);
-        console.log(`Updated ${Object.keys(prices).length} live prices from cache`);
+        console.log(`✅ Updated ${Object.keys(prices).length} live prices`);
       } catch (e) {
-        console.error('Live price fetch error:', e);
+        console.warn('Live price fetch failed, using database prices:', e);
+        // Don't clear existing data on error, just log and continue
       }
     };
 
-    run();
-    const id = setInterval(run, 60_000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [etfs, toast]);
+    // Initial load after a short delay to let UI render first
+    const initialTimeout = setTimeout(loadLivePrices, 100);
+    
+    // Then refresh periodically
+    const refreshInterval = setInterval(loadLivePrices, 60_000);
+    
+    return () => { 
+      cancelled = true; 
+      clearTimeout(initialTimeout);
+      clearInterval(refreshInterval);
+    };
+  }, [etfs, filtered]);
 
   useEffect(() => {
     if (!etfs.length) return;
