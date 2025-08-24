@@ -48,11 +48,14 @@ const Ranking = () => {
   const [weights, setWeights] = useState(cachedState.weights);
   const [showDialog, setShowDialog] = useState(false);
   const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
+  const [cachedPrices, setCachedPrices] = useState<Record<string, any>>({});
   const [distributions, setDistributions] = useState<Record<string, Distribution>>({});
+  const [dripData, setDripData] = useState<Record<string, any>>({});
   const [filter, setFilter] = useState<string>(cachedState.filter);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [cachedRanking, setCachedRanking] = useState<ScoredETF[]>(cachedState.cachedRanking || []);
+  const [isLoadingLive, setIsLoadingLive] = useState(false);
 
   const { toast } = useToast();
   const { profile } = useUserProfile();
@@ -63,29 +66,25 @@ const Ranking = () => {
   });
 
   const ranked: ScoredETF[] = useMemo(() => {
-    // Always score ETFs with database data first, then enhance with live prices
     if (etfs.length === 0) return [];
     
-    // Use cached ranking if it's recent (within 15 minutes) and no live data yet
+    // Determine which price data to use (live prices override cached prices)
+    const priceData = Object.keys(livePrices).length > 0 ? livePrices : cachedPrices;
+    
+    // Use cached ranking if it's recent and no new price data
     const now = Date.now();
     const cacheAge = cachedState.lastRankingUpdate ? now - cachedState.lastRankingUpdate : Infinity;
     const isCacheRecent = cacheAge < 15 * 60 * 1000; // 15 minutes
-    const hasLiveData = Object.keys(livePrices).length > 0;
+    const hasNewPriceData = Object.keys(priceData).length > 0;
     
-    if (isCacheRecent && !hasLiveData && cachedRanking.length > 0) {
+    if (isCacheRecent && !hasNewPriceData && cachedRanking.length > 0) {
       return cachedRanking;
     }
     
-    // Score with database prices first, enhanced by live prices if available
-    return scoreETFs(etfs, weights, livePrices);
-  }, [etfs, weights, livePrices, cachedRanking]);
+    // Score with available price data
+    return scoreETFs(etfs, weights, priceData);
+  }, [etfs, weights, livePrices, cachedPrices, cachedRanking]);
 
-  // Cache the ranking when it changes
-  useEffect(() => {
-    if (etfs.length > 0 && ranked.length > 0) {
-      setCachedRanking(ranked);
-    }
-  }, [ranked, etfs.length]);
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (null prices, zero yields, extremely low AUM)
@@ -139,61 +138,156 @@ const Ranking = () => {
     meta.setAttribute('content', 'HillJump quick reference: All high-yield dividend ETFs ranked by risk-aware total return.');
   }, []);
 
-  // Load live prices lazily after initial render
-  useEffect(() => {
-    if (!etfs.length || !filtered.length) return;
-    let cancelled = false;
-
-    const loadLivePrices = async () => {
-      try {
-        // Only fetch prices for filtered/visible ETFs to reduce API load
-        const visibleTickers = filtered.map(e => e.ticker);
-        
-        console.log(`🔄 Loading live prices for ${visibleTickers.length} visible ETFs...`);
-        
-        // Use cached pricing system with error handling
-        const { getCachedETFPrices } = await import('@/lib/cache');
-        const prices = await getCachedETFPrices(visibleTickers);
-        
-        if (cancelled) return;
-        setLivePrices(prices);
-        console.log(`✅ Updated ${Object.keys(prices).length} live prices`);
-      } catch (e) {
-        console.warn('Live price fetch failed, using database prices:', e);
-        // Don't clear existing data on error, just log and continue
-      }
-    };
-
-    // Initial load after a short delay to let UI render first
-    const initialTimeout = setTimeout(loadLivePrices, 100);
-    
-    // Then refresh periodically
-    const refreshInterval = setInterval(loadLivePrices, 60_000);
-    
-    return () => { 
-      cancelled = true; 
-      clearTimeout(initialTimeout);
-      clearInterval(refreshInterval);
-    };
-  }, [etfs, filtered]);
-
+  // Load all cached data immediately on mount
   useEffect(() => {
     if (!etfs.length) return;
     let cancelled = false;
-    
-    const run = async () => {
+
+    const loadCachedData = async () => {
       try {
-        const map = await fetchLatestDistributions(etfs.map(e => e.ticker));
+        const tickers = etfs.map(e => e.ticker);
+        console.log('📦 Loading cached data for immediate display...');
+
+        // Load all cached data in parallel
+        const [cachedPricesData, cachedDripData, distributionsData] = await Promise.allSettled([
+          import('@/lib/cache').then(({ cache }) => cache.get('price', tickers.sort().join(',')) || {}),
+          import('@/lib/cache').then(({ cache }) => cache.get('drip4w', tickers.sort().join(',')) || {}),
+          fetchLatestDistributions(tickers)
+        ]);
+
         if (cancelled) return;
-        setDistributions(map);
+
+        // Set cached data for immediate display
+        if (cachedPricesData.status === 'fulfilled') {
+          setCachedPrices(cachedPricesData.value);
+          console.log('✅ Loaded cached prices:', Object.keys(cachedPricesData.value).length);
+        }
+        
+        if (cachedDripData.status === 'fulfilled') {
+          setDripData(cachedDripData.value);
+          console.log('✅ Loaded cached DRIP data:', Object.keys(cachedDripData.value).length);
+        }
+        
+        if (distributionsData.status === 'fulfilled') {
+          setDistributions(distributionsData.value);
+          console.log('✅ Loaded distributions:', Object.keys(distributionsData.value).length);
+        }
+
       } catch (e) {
-        console.error(e);
+        console.warn('Failed to load cached data:', e);
       }
     };
-    
-    run();
+
+    loadCachedData();
     return () => { cancelled = true; };
   }, [etfs]);
+
+  // Load live prices and recalculate after cached data is shown
+  useEffect(() => {
+    if (!etfs.length) return;
+    let cancelled = false;
+
+    const loadLiveDataAndRecalculate = async () => {
+      try {
+        setIsLoadingLive(true);
+        const tickers = etfs.map(e => e.ticker);
+        
+        console.log('🔄 Loading live prices and recalculating...');
+        
+        // 1. Fetch live prices
+        const { getCachedETFPrices } = await import('@/lib/cache');
+        const liveData = await getCachedETFPrices(tickers);
+        
+        if (cancelled) return;
+        setLivePrices(liveData);
+        console.log(`✅ Updated ${Object.keys(liveData).length} live prices`);
+        
+        // 2. Recalculate DRIP with live prices
+        console.log('🧮 Recalculating DRIP with live prices...');
+        const { supabase } = await import('@/integrations/supabase/client');
+        
+        const batchSize = 30;
+        const batches = [];
+        for (let i = 0; i < tickers.length; i += batchSize) {
+          batches.push(tickers.slice(i, i + batchSize));
+        }
+        
+        const newDripData: Record<string, any> = {};
+        for (const batch of batches) {
+          if (cancelled) break;
+          
+          try {
+            const { data, error } = await supabase.functions.invoke('calculate-drip', {
+              body: { 
+                tickers: batch,
+                livePrices: Object.fromEntries(
+                  batch.map(ticker => [ticker, liveData[ticker]]).filter(([, price]) => price)
+                )
+              }
+            });
+            
+            if (error) throw new Error(error.message);
+            Object.assign(newDripData, data?.dripData || {});
+            console.log(`✅ Recalculated DRIP for ${batch.length} tickers`);
+          } catch (error) {
+            console.warn('Failed to recalculate DRIP batch:', error);
+          }
+        }
+        
+        if (cancelled) return;
+        setDripData(newDripData);
+        
+        // 3. Write updated data back to cache
+        console.log('💾 Writing updated data to cache...');
+        const { cache } = await import('@/lib/cache');
+        
+        // Cache the live prices
+        cache.set('price', liveData, tickers.sort().join(','));
+        
+        // Cache the new DRIP data
+        cache.set('drip4w', newDripData, tickers.sort().join(','));
+        
+        console.log('✅ Cache updated successfully');
+        
+      } catch (e) {
+        console.warn('Live data update failed, keeping cached data:', e);
+      } finally {
+        setIsLoadingLive(false);
+      }
+    };
+
+    // Delay live data loading to show cached data first
+    const liveDataTimeout = setTimeout(loadLiveDataAndRecalculate, 500);
+    
+    // Then refresh periodically
+    const refreshInterval = setInterval(loadLiveDataAndRecalculate, 5 * 60 * 1000); // 5 minutes
+    
+    return () => { 
+      cancelled = true; 
+      clearTimeout(liveDataTimeout);
+      clearInterval(refreshInterval);
+    };
+  }, [etfs]);
+
+  // Cache the ranking when it changes (after live data calculations)
+  useEffect(() => {
+    if (etfs.length > 0 && ranked.length > 0 && Object.keys(livePrices).length > 0) {
+      setCachedRanking(ranked);
+      
+      // Also save to cache service
+      const saveRankingToCache = async () => {
+        try {
+          const { cache } = await import('@/lib/cache');
+          cache.set('ranking', ranked, 'live-calculated');
+          console.log('💾 Saved updated ranking to cache');
+        } catch (e) {
+          console.warn('Failed to cache ranking:', e);
+        }
+      };
+      
+      saveRankingToCache();
+    }
+  }, [ranked, etfs.length, livePrices]);
 
   // Save state to localStorage whenever weights, filter, or ranking changes
   useEffect(() => {
@@ -242,11 +336,15 @@ const Ranking = () => {
                 </SelectContent>
               </Select>
             </div>
+            <Button variant="outline" size="sm" onClick={() => setShowDialog(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Scoring
+            </Button>
           </div>
 
           <ETFTable 
             items={filtered} 
-            live={livePrices}
+            live={Object.keys(livePrices).length > 0 ? livePrices : cachedPrices}
             distributions={distributions}
           />
         </section>
