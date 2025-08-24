@@ -151,20 +151,35 @@ export async function getCachedData<T>(
   fetcher: () => Promise<T>,
   identifier?: string
 ): Promise<T> {
-  // Bypass cache for admin users
   const isAdmin = await isCurrentUserAdmin();
+  
+  // Try to get from cache first (even for admin users as fallback)
+  const cached = cache.get<T>(cacheType, identifier);
+  
+  // For admin users, try to fetch fresh data but fall back to cache on failure
   if (isAdmin) {
-    console.log('🔧 Admin user detected - bypassing cache for', cacheType);
-    return await fetcher();
+    console.log('🔧 Admin user detected - attempting fresh data for', cacheType);
+    try {
+      const data = await fetcher();
+      // Store fresh data in cache for future fallback
+      cache.set(cacheType, data, identifier);
+      return data;
+    } catch (error) {
+      console.warn(`Fresh data fetch failed for ${cacheType}, falling back to cache:`, error);
+      if (cached !== null) {
+        console.log(`✅ Using cached ${cacheType} data as fallback`);
+        return cached;
+      }
+      throw error; // No cached data available, propagate error
+    }
   }
 
-  // Try to get from cache first
-  const cached = cache.get<T>(cacheType, identifier);
+  // Non-admin users: use cache-first strategy
   if (cached !== null) {
     return cached;
   }
 
-  // Fetch new data
+  // Fetch new data for non-admin users
   const data = await fetcher();
   
   // Store in cache
