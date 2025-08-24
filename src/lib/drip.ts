@@ -9,8 +9,10 @@ export type DistRow  = { exDate: string; amount: number }; // $/share; ex-date o
 export type DripOptions = {
   // Include dividend if EX-DATE in (start, end] (recommended) or (start, end)
   includePolicy?: 'open-closed' | 'open-open';
-  // Calendar-day offset from exDate to nominal pay date
+  // Business-day offset from exDate to nominal pay date (default 2 business days)
   payOffsetDays?: number; // default 2
+  // Use business days (true) or calendar days (false) for pay offset
+  useBusinessDays?: boolean; // default true
   // Optional withholding (e.g., 0.15 for 15%)
   taxWithholdRate?: number;
 };
@@ -38,6 +40,22 @@ function ensureSorted<T extends { date: string }>(rows: T[]): T[] {
 function addDaysISO(iso: string, days: number): string {
   const d = new Date(iso + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Add business days (excluding weekends) to a date
+function addBusinessDaysISO(iso: string, businessDays: number): string {
+  const d = new Date(iso + 'T00:00:00Z');
+  let added = 0;
+  
+  while (added < businessDays) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const dayOfWeek = d.getUTCDay(); // 0 = Sunday, 6 = Saturday
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip weekends
+      added++;
+    }
+  }
+  
   return d.toISOString().slice(0, 10);
 }
 
@@ -85,6 +103,7 @@ export function dripOverPeriod(
 
   const includePolicy = opts.includePolicy ?? 'open-closed';
   const payOffsetDays = Number.isFinite(opts.payOffsetDays ?? 0) ? (opts.payOffsetDays as number) : 2;
+  const useBusinessDays = opts.useBusinessDays ?? true;
   const taxRate = opts.taxWithholdRate ?? 0;
 
   let shares = startShares;
@@ -98,7 +117,10 @@ export function dripOverPeriod(
         : (ex > startISO && ex < endISO);
     if (!inWindow) continue;
 
-    const nominalPayRef = addDaysISO(ex, payOffsetDays); // ex + offset (calendar)
+    // Calculate nominal pay date using business days or calendar days
+    const nominalPayRef = useBusinessDays 
+      ? addBusinessDaysISO(ex, payOffsetDays)
+      : addDaysISO(ex, payOffsetDays);
     // Actual reinvestment occurs on the first trading day ON OR AFTER this ref date
     const idx = indexOnOrAfter(prices, nominalPayRef);
     if (idx < 0) continue; // no trading days at/after ref → skip

@@ -8,6 +8,7 @@ type DistRow = { exDate: string; amount: number };
 type DripOptions = {
   includePolicy?: 'open-closed' | 'open-open';
   payOffsetDays?: number;
+  useBusinessDays?: boolean;
   taxWithholdRate?: number;
 };
 
@@ -33,6 +34,22 @@ function ensureSorted<T extends { date: string }>(rows: T[]): T[] {
 function addDaysISO(iso: string, days: number): string {
   const d = new Date(iso + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Add business days (excluding weekends) to a date
+function addBusinessDaysISO(iso: string, businessDays: number): string {
+  const d = new Date(iso + 'T00:00:00Z');
+  let added = 0;
+  
+  while (added < businessDays) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const dayOfWeek = d.getUTCDay(); // 0 = Sunday, 6 = Saturday
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip weekends
+      added++;
+    }
+  }
+  
   return d.toISOString().slice(0, 10);
 }
 
@@ -78,6 +95,7 @@ function dripOverPeriod(
 
   const includePolicy = opts.includePolicy ?? 'open-closed';
   const payOffsetDays = Number.isFinite(opts.payOffsetDays ?? 0) ? (opts.payOffsetDays as number) : 2;
+  const useBusinessDays = opts.useBusinessDays ?? true;
   const taxRate = opts.taxWithholdRate ?? 0;
 
   let shares = startShares;
@@ -91,7 +109,10 @@ function dripOverPeriod(
         : (ex > startISO && ex < endISO);
     if (!inWindow) continue;
 
-    const nominalPayRef = addDaysISO(ex, payOffsetDays);
+    // Calculate nominal pay date using business days or calendar days
+    const nominalPayRef = useBusinessDays 
+      ? addBusinessDaysISO(ex, payOffsetDays)
+      : addDaysISO(ex, payOffsetDays);
     const idx = indexOnOrAfter(prices, nominalPayRef);
     if (idx < 0) continue;
     const actualReinvestDate = prices[idx].date;
@@ -333,14 +354,14 @@ serve(async (req) => {
 
         console.log(`  📊 Found ${dists.length} dividends for ${ticker}`)
 
-        // Calculate DRIP for all periods using the new math
+        // Calculate DRIP for all periods using business days for more accurate pay dates
         const dripResults = dripWindows(
           prices,
           dists,
           today,
           windowsDays,
           1,
-          { includePolicy: 'open-closed', payOffsetDays: 2, taxWithholdRate: 0 }
+          { includePolicy: 'open-closed', payOffsetDays: 2, useBusinessDays: true, taxWithholdRate: 0 }
         )
 
         const result: any = { ticker, currentPrice }
