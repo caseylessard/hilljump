@@ -106,7 +106,7 @@ const Ranking = () => {
         default:
           return true;
       }
-    }).slice(0, 100); // Limit to top 100 for performance
+    }); // Show all ranked ETFs
   }, [ranked, filter]);
 
   // Show loading status for live data updates  
@@ -216,8 +216,6 @@ const Ranking = () => {
           </div>
           
           <div className="flex items-center gap-4">
-            <UserBadge />
-            
             <Select value={filter} onValueChange={(value: FilterType) => setFilter(value)}>
               <SelectTrigger className="w-48">
                 <SelectValue />
@@ -231,16 +229,14 @@ const Ranking = () => {
               </SelectContent>
             </Select>
 
-            {(isSubscribed || isAdmin) && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowDialog(true)}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Scoring
-              </Button>
-            )}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowDialog(true)}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Scoring
+            </Button>
           </div>
         </div>
 

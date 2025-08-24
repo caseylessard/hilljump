@@ -99,7 +99,7 @@ export const useCachedFirstThenLive = (tickers: string[]) => {
       cancelled = true;
       clearInterval(refreshInterval);
     };
-  }, [tickers.join(','), cachedDripData]);
+  }, [tickers.join(',')]);
 
   // Update DRIP data when it changes
   useEffect(() => {
