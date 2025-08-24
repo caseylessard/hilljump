@@ -15,6 +15,7 @@ import { TiingoYieldsTest } from "@/components/TiingoYieldsTest";
 import { ETFDataImport } from "@/components/admin/ETFDataImport";
 import { DividendDataImport } from "@/components/admin/DividendDataImport";
 import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
+import { HistoricalPriceImport } from "@/components/admin/HistoricalPriceImport";
 import ETFStreamPanel from "@/components/admin/ETFStreamPanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, Database, Clock, Zap } from "lucide-react";
@@ -701,6 +702,8 @@ const Profile = () => {
                   <ETFDataImport />
 
                   <DividendDataImport />
+
+                  <HistoricalPriceImport />
 
                   <DividendDataViewer />
 
