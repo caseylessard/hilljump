@@ -132,7 +132,7 @@ function dripWindows(
   prices: PriceRow[],
   dists: DistRow[],
   endISO: string,
-  windowsDays = [28, 84, 182, 364],
+  windowsDays = [28, 91, 182, 364],
   startShares = 1,
   opts?: DripOptions
 ): Record<number, DripResult> {
@@ -227,8 +227,8 @@ serve(async (req) => {
     let errorCount = 0
 
     const today = new Date().toISOString().slice(0, 10)
-    const windowsDays = [28, 84, 182, 364] // 4W, 12W, 26W, 52W
-    const periodLabels = ['4w', '12w', '26w', '52w']
+    const windowsDays = [28, 91, 182, 364] // 4W, 13W, 26W, 52W
+    const periodLabels = ['4w', '13w', '26w', '52w']
 
     // Calculate true DRIP percentages for each valid ticker
     for (const ticker of validTickers) {
@@ -246,19 +246,19 @@ serve(async (req) => {
         
         if (!currentPrice || currentPrice <= 0) {
           console.log(`❌ No price data for ${ticker}`)
-          dripData[ticker] = {
-            ticker,
-            currentPrice: null,
-            drip4wPercent: 0,
-            drip4wDollar: 0,
-            drip12wPercent: 0,
-            drip12wDollar: 0,
-            drip26wPercent: 0,
-            drip26wDollar: 0,
-            drip52wPercent: 0,
-            drip52wDollar: 0,
-            error: 'No price data available'
-          }
+           dripData[ticker] = {
+             ticker,
+             currentPrice: null,
+             drip4wPercent: 0,
+             drip4wDollar: 0,
+             drip13wPercent: 0,
+             drip13wDollar: 0,
+             drip26wPercent: 0,
+             drip26wDollar: 0,
+             drip52wPercent: 0,
+             drip52wDollar: 0,
+             error: 'No price data available'
+           }
           errorCount++
           continue
         }
@@ -273,19 +273,19 @@ serve(async (req) => {
 
         if (divError) {
           console.log(`❌ Error fetching dividends for ${ticker}:`, divError.message)
-          dripData[ticker] = {
-            ticker,
-            currentPrice,
-            drip4wPercent: 0,
-            drip4wDollar: 0,
-            drip12wPercent: 0,
-            drip12wDollar: 0,
-            drip26wPercent: 0,
-            drip26wDollar: 0,
-            drip52wPercent: 0,
-            drip52wDollar: 0,
-            error: 'Failed to fetch dividend data'
-          }
+           dripData[ticker] = {
+             ticker,
+             currentPrice,
+             drip4wPercent: 0,
+             drip4wDollar: 0,
+             drip13wPercent: 0,
+             drip13wDollar: 0,
+             drip26wPercent: 0,
+             drip26wDollar: 0,
+             drip52wPercent: 0,
+             drip52wDollar: 0,
+             error: 'Failed to fetch dividend data'
+           }
           errorCount++
           continue
         }
@@ -333,19 +333,19 @@ serve(async (req) => {
 
       } catch (error) {
         console.error(`💥 Error calculating DRIP for ${ticker}:`, error)
-        dripData[ticker] = {
-          ticker,
-          currentPrice: null,
-          drip4wPercent: 0,
-          drip4wDollar: 0,
-          drip12wPercent: 0,
-          drip12wDollar: 0,
-          drip26wPercent: 0,
-          drip26wDollar: 0,
-          drip52wPercent: 0,
-          drip52wDollar: 0,
-          error: error.message
-        }
+         dripData[ticker] = {
+           ticker,
+           currentPrice: null,
+           drip4wPercent: 0,
+           drip4wDollar: 0,
+           drip13wPercent: 0,
+           drip13wDollar: 0,
+           drip26wPercent: 0,
+           drip26wDollar: 0,
+           drip52wPercent: 0,
+           drip52wDollar: 0,
+           error: error.message
+         }
         errorCount++
       }
     }

@@ -11,7 +11,7 @@ interface CacheConfig {
   lastDist: number;
   nextDist: number;
   drip4w: number;
-  drip12w: number;
+  drip13w: number;
   drip26w: number;
   drip52w: number;
   yield: number;
@@ -27,7 +27,7 @@ export const CACHE_TTLS: CacheConfig = {
   lastDist: 24 * 60 * 60 * 1000, // 1 day
   nextDist: 24 * 60 * 60 * 1000, // 1 day
   drip4w: 60 * 60 * 1000,       // 1 hour
-  drip12w: 60 * 60 * 1000,      // 1 hour
+  drip13w: 60 * 60 * 1000,      // 1 hour
   drip26w: 60 * 60 * 1000,      // 1 hour
   drip52w: 60 * 60 * 1000,      // 1 hour
   yield: 24 * 60 * 60 * 1000,   // 1 day

@@ -142,7 +142,7 @@ export function dripWindows(
   prices: PriceRow[],
   dists: DistRow[],
   endISO: string,
-  windowsDays = [28, 84, 182, 364], // 4w, 12w, 26w, 52w
+  windowsDays = [28, 91, 182, 364], // 4w, 13w, 26w, 52w
   startShares = 1,
   opts?: DripOptions
 ): Record<number, DripResult> {

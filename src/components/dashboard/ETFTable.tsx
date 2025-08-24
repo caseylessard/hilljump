@@ -71,7 +71,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
 
     fetchDripData();
   }, [items]);
-  const DRIPCell = ({ ticker, period }: { ticker: string; period: '4w' | '12w' | '26w' | '52w' }) => {
+  const DRIPCell = ({ ticker, period }: { ticker: string; period: '4w' | '13w' | '26w' | '52w' }) => {
     const tickerData = dripData[ticker];
     if (!tickerData) {
       // Fallback to live data if available
@@ -169,7 +169,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     return ticker.replace(/\.(TO|NE)$/, '');
   }
   // Sorting state and helpers
-  type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip12w" | "drip26w" | "drip52w" | "yield" | "risk" | "score" | "signal";
+  type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "yield" | "risk" | "score" | "signal";
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
@@ -187,7 +187,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   };
 
   // Helper functions for DRIP calculations
-  const getDripPercent = (ticker: string, period: '4w' | '12w' | '26w' | '52w'): number => {
+  const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
     // First check dripData (from calculate-drip edge function)
     const tickerData = dripData[ticker];
     if (tickerData) {
@@ -203,8 +203,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     switch (period) {
       case "4w":
         return liveItem?.drip4wPercent ?? 0;
-      case "12w":
-        return liveItem?.drip13wPercent ?? 0; // Use old 13w property as fallback for 12w
+      case "13w":
+        return liveItem?.drip13wPercent ?? 0;
       case "26w":
         return liveItem?.drip26wPercent ?? 0;
       case "52w":
@@ -216,12 +216,12 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
 
   const getDripWeightedSum = (ticker: string): number => {
     const drip4w = getDripPercent(ticker, "4w");
-    const drip12w = getDripPercent(ticker, "12w");
+    const drip13w = getDripPercent(ticker, "13w");
     const drip26w = getDripPercent(ticker, "26w");
     const drip52w = getDripPercent(ticker, "52w");
     
-    // SUM: ((4W percentage *13) + (12W percentage * 4) + (26W percentage *2) + (52W percentage))/4
-    return ((drip4w * 13) + (drip12w * 4) + (drip26w * 2) + (drip52w * 1)) / 4;
+    // SUM: ((4W percentage *13) + (13W percentage * 4) + (26W percentage *2) + (52W percentage))/4
+    return ((drip4w * 13) + (drip13w * 4) + (drip26w * 2) + (drip52w * 1)) / 4;
   };
 
   const rows = useMemo(() => {
@@ -234,7 +234,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
           case "lastDist": return distributions[etf.ticker]?.amount ?? Number.NaN;
           case "nextDist": return Number.NaN; // Will be handled in a separate component for performance
         case "drip4w": return getDripPercent(etf.ticker, "4w");
-        case "drip12w": return getDripPercent(etf.ticker, "12w");
+        case "drip13w": return getDripPercent(etf.ticker, "13w");
         case "drip26w": return getDripPercent(etf.ticker, "26w");
         case "drip52w": return getDripPercent(etf.ticker, "52w");
         case "yield": { const y = etf.yieldTTM; return Math.abs(y) <= 1 ? y * 100 : y; }
@@ -318,8 +318,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
               </button>
             </TableHead>
             <TableHead className="text-right">
-              <button onClick={() => requestSort("drip12w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                12W DRIP <span className="text-muted-foreground text-xs">{indicator("drip12w")}</span>
+              <button onClick={() => requestSort("drip13w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                13W DRIP <span className="text-muted-foreground text-xs">{indicator("drip13w")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
@@ -428,7 +428,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                   <DRIPCell ticker={etf.ticker} period="4w" />
                 </TableCell>
                 <TableCell className="text-right">
-                  <DRIPCell ticker={etf.ticker} period="12w" />
+                  <DRIPCell ticker={etf.ticker} period="13w" />
                 </TableCell>
                 <TableCell className="text-right">
                   <DRIPCell ticker={etf.ticker} period="26w" />
