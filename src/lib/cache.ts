@@ -20,35 +20,10 @@ interface CacheConfig {
   signal: number;
 }
 
-// Helper to check if it's weekend or market closed
-function isMarketClosed(): boolean {
-  const now = new Date();
-  const day = now.getDay(); // 0 = Sunday, 6 = Saturday
-  const hour = now.getHours();
-  
-  // Weekend (Saturday/Sunday)
-  if (day === 0 || day === 6) return true;
-  
-  // Market hours: 9:30 AM to 4 PM ET (approximate)
-  // This is a simplified check - real implementation would consider holidays
-  if (hour < 9 || hour >= 16) return true;
-  
-  return false;
-}
-
-// Dynamic TTL calculation for prices
-function getPriceTTL(): number {
-  if (isMarketClosed()) {
-    // During weekends/after hours, cache prices longer
-    return 24 * 60 * 60 * 1000; // 24 hours
-  }
-  return 15 * 60 * 1000; // 15 minutes during market hours
-}
-
 // Cache TTLs in milliseconds
 export const CACHE_TTLS: CacheConfig = {
   ranking: 60 * 60 * 1000,      // 1 hour
-  price: getPriceTTL(),         // Dynamic: 15 min (market hours) / 24 hours (weekends)
+  price: 15 * 60 * 1000,        // 15 minutes
   lastDist: 24 * 60 * 60 * 1000, // 1 day
   nextDist: 24 * 60 * 60 * 1000, // 1 day
   drip4w: 60 * 60 * 1000,       // 1 hour
@@ -74,12 +49,10 @@ class CacheService {
 
   set<T>(type: keyof CacheConfig, data: T, identifier?: string): void {
     const key = this.generateKey(type, identifier);
-    // Get dynamic TTL for price data
-    const ttl = type === 'price' ? getPriceTTL() : CACHE_TTLS[type];
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now(),
-      ttl,
+      ttl: CACHE_TTLS[type],
     };
     this.cache.set(key, entry);
   }
@@ -219,56 +192,12 @@ export async function getCachedETFPrices(tickers: string[]) {
     'price',
     async () => {
       const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('quotes', {
+        body: { tickers }
+      });
       
-      // First try the more reliable fetchLivePricesWithDataSources
-      try {
-        const { fetchLivePricesWithDataSources } = await import('@/lib/live');
-        const prices = await fetchLivePricesWithDataSources(tickers);
-        
-        // Convert LivePrice format to simple price format for caching
-        const simplePrices: Record<string, number> = {};
-        Object.entries(prices).forEach(([ticker, priceData]) => {
-          if (priceData.price > 0) {
-            simplePrices[ticker] = priceData.price;
-          }
-        });
-        
-        console.log(`✅ Fetched ${Object.keys(simplePrices).length} live prices`);
-        return simplePrices;
-      } catch (liveError) {
-        console.warn('Live price fetch failed, trying fallback quotes function:', liveError);
-        
-        // Fallback to direct quotes function
-        try {
-          const { data, error } = await supabase.functions.invoke('quotes', {
-            body: { tickers }
-          });
-          
-          if (error) throw new Error(error.message);
-          return data?.prices || {};
-        } catch (quotesError) {
-          console.warn('Quotes function also failed, trying database fallback:', quotesError);
-          
-          // Final fallback: get prices from database
-          const { data: dbPrices, error: dbError } = await supabase
-            .from('etfs')
-            .select('ticker, current_price')
-            .in('ticker', tickers)
-            .not('current_price', 'is', null);
-          
-          if (dbError) throw new Error(`All price sources failed: ${dbError.message}`);
-          
-          const prices: Record<string, number> = {};
-          dbPrices?.forEach((etf: any) => {
-            if (etf.current_price > 0) {
-              prices[etf.ticker] = etf.current_price;
-            }
-          });
-          
-          console.log(`📊 Using database fallback prices for ${Object.keys(prices).length} tickers`);
-          return prices;
-        }
-      }
+      if (error) throw new Error(error.message);
+      return data?.prices || {};
     },
     cacheKey
   );
