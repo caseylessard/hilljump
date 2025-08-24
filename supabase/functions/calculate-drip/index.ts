@@ -366,7 +366,7 @@ serve(async (req) => {
 
         const result: any = { ticker, currentPrice }
 
-        // Map results to expected format
+        // Map results to expected format and add data coverage info
         for (let i = 0; i < windowsDays.length; i++) {
           const days = windowsDays[i]
           const period = periodLabels[i]
@@ -375,7 +375,16 @@ serve(async (req) => {
           result[`drip${period}Percent`] = Math.round(dripResult.dripPercent * 100) / 100
           result[`drip${period}Dollar`] = Math.round(dripResult.dripDollarValue * 10000) / 10000
           
-          console.log(`  📈 ${ticker} ${period.toUpperCase()}: ${dripResult.dripPercent.toFixed(2)}% (${dripResult.factors.length} reinvestments)`)
+          // Check if we have sufficient data for this period
+          const requiredStartDate = new Date(today)
+          requiredStartDate.setDate(requiredStartDate.getDate() - days)
+          const hasInsufficientData = isNaN(dripResult.startPrice)
+          
+          if (hasInsufficientData) {
+            console.log(`  ⚠️  ${ticker} ${period.toUpperCase()}: Insufficient data (need prices from ${requiredStartDate.toISOString().slice(0, 10)})`)
+          } else {
+            console.log(`  📈 ${ticker} ${period.toUpperCase()}: ${dripResult.dripPercent.toFixed(2)}% (${dripResult.factors.length} reinvestments)`)
+          }
         }
 
         dripData[ticker] = result

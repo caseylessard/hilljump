@@ -93,9 +93,16 @@ export function dripOverPeriod(
 
   const startPrice = priceOnOrBefore(prices, startISO);
   const endPrice   = priceOnOrBefore(prices, endISO);
-  if (!isFinite(startPrice) || !isFinite(endPrice) || endPrice <= 0 || startShares <= 0) {
+  
+  // Check if we have insufficient data for this time period
+  const hasStartPrice = isFinite(startPrice) && startPrice > 0;
+  const hasEndPrice = isFinite(endPrice) && endPrice > 0;
+  
+  if (!hasStartPrice || !hasEndPrice || startShares <= 0) {
     return {
-      startISO, endISO, startPrice: NaN, endPrice: NaN,
+      startISO, endISO, 
+      startPrice: hasStartPrice ? startPrice : NaN, 
+      endPrice: hasEndPrice ? endPrice : NaN,
       startShares, totalShares: startShares, dripShares: 0,
       startValue: 0, endValue: 0, dripDollarValue: 0, dripPercent: 0, factors: []
     };
