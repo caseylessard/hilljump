@@ -142,15 +142,16 @@ const Ranking = () => {
     const run = async () => {
       try {
         const tickers = etfs.map(e => e.ticker);
-        const prices = await fetchLivePricesWithDataSources(tickers);
+        
+        // Use cached pricing system instead of direct fetch
+        const { getCachedETFPrices } = await import('@/lib/cache');
+        const prices = await getCachedETFPrices(tickers);
+        
         if (cancelled) return;
         setLivePrices(prices);
-        toast({ 
-          title: "Live data", 
-          description: `Updated ${Object.keys(prices).length} tickers.` 
-        });
+        console.log(`Updated ${Object.keys(prices).length} live prices from cache`);
       } catch (e) {
-        console.error(e);
+        console.error('Live price fetch error:', e);
       }
     };
 
