@@ -60,5 +60,5 @@ verify_jwt = false
 [functions.import-historical-prices]
 verify_jwt = false
 
-[functions.rsi-signals]
+[functions.yfinance-rsi]
 verify_jwt = false

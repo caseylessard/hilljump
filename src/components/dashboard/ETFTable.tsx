@@ -47,7 +47,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       
       try {
         console.log('Fetching RSI signals for', tickers.length, 'tickers');
-        const response = await supabase.functions.invoke('rsi-signals', {
+        const response = await supabase.functions.invoke('yfinance-rsi', {
           body: { tickers }
         });
         
