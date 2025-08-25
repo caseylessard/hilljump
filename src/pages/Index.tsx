@@ -21,7 +21,7 @@ import { CacheMonitor } from "@/components/CacheMonitor";
 import { TiingoYieldsTest } from "@/components/TiingoYieldsTest";
 import HistoricalPriceTest from "@/components/HistoricalPriceTest";
 
-import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
+
 
 const Index = () => {
   const { toast } = useToast();
@@ -214,10 +214,6 @@ const Index = () => {
       </header>
 
       <main className="container grid gap-8 pb-16">
-        {/* Admin Test Component */}
-        <div className="w-full">
-          <TestCanadianPrices />
-        </div>
         <div className="w-full">
           <TiingoYieldsTest />
         </div>

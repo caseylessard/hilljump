@@ -20,6 +20,7 @@ import ETFStreamPanel from "@/components/admin/ETFStreamPanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, Database, Clock, Zap } from "lucide-react";
 import { useETFStream } from "@/hooks/useETFStream";
+import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -418,6 +419,8 @@ const Profile = () => {
         <h1 className="text-3xl font-bold">Profile</h1>
         
         <TiingoYieldsTest />
+        
+        <TestCanadianPrices />
         
         {!userId ? (
           <Card className="p-6">
