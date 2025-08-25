@@ -9,10 +9,13 @@ async function fetchEODHDPrice(symbol: string): Promise<number | null> {
   }
 
   try {
-    // For Canadian tickers, use the Toronto exchange format
+    // For Canadian tickers, convert to appropriate EODHD format
     let eodhSymbol = symbol;
     if (symbol.endsWith('.TO')) {
       eodhSymbol = symbol; // EODHD uses .TO format directly
+    } else if (symbol.endsWith('.NE')) {
+      // NEO Exchange tickers - try .TO format first for EODHD
+      eodhSymbol = symbol.replace('.NE', '.TO');
     }
 
     const url = `https://eodhd.com/api/real-time/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
@@ -75,9 +78,9 @@ serve(async (req: Request) => {
         const sym = String(t || "").toUpperCase();
         if (!sym) return;
         
-        // Use EODHD for Canadian tickers (.TO, .CN, etc.), Stooq for others
+        // Use EODHD for Canadian tickers (.TO, .CN, .VN, .NE), Stooq for others
         let p: number | null = null;
-        if (sym.endsWith('.TO') || sym.endsWith('.CN') || sym.endsWith('.VN')) {
+        if (sym.endsWith('.TO') || sym.endsWith('.CN') || sym.endsWith('.VN') || sym.endsWith('.NE')) {
           p = await fetchEODHDPrice(sym);
         } else {
           p = await fetchStooqPrice(sym);
