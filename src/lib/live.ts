@@ -72,10 +72,18 @@ export async function fetchLivePrices(tickers: string[], region: 'US' | 'CA' = '
 
 export async function fetchLivePricesWithDataSources(tickers: string[]): Promise<Record<string, LivePrice>> {
   // Get ETF data source information for smarter price fetching
+  // Also try variations with common Canadian suffixes for tickers not found
+  const tickerVariations = [...tickers];
+  tickers.forEach(ticker => {
+    if (!ticker.includes('.')) {
+      tickerVariations.push(`${ticker}.TO`, `${ticker}.NE`);
+    }
+  });
+  
   const { data: etfData, error: etfError } = await supabase
     .from('etfs')
     .select('ticker, country, data_source, polygon_supported, twelve_symbol, finnhub_symbol, eodhd_symbol, yield_ttm, aum, avg_volume, total_return_1y, current_price, price_updated_at')
-    .in('ticker', tickers);
+    .in('ticker', tickerVariations);
   
   if (etfError) {
     console.warn('Could not fetch ETF data sources, falling back to region-based fetching');
@@ -205,5 +213,27 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
     }
   }
 
-  return results;
+  // Map results back to original ticker names (without suffixes)
+  const mappedResults: Record<string, LivePrice> = {};
+  
+  // First, add all exact matches
+  Object.entries(results).forEach(([ticker, price]) => {
+    mappedResults[ticker] = price;
+  });
+  
+  // Then, for tickers that weren't found exactly, try to map from suffixed versions
+  tickers.forEach(originalTicker => {
+    if (!mappedResults[originalTicker]) {
+      // Check if we have a suffixed version of this ticker
+      const suffixedTicker = Object.keys(results).find(ticker => 
+        ticker === `${originalTicker}.TO` || ticker === `${originalTicker}.NE`
+      );
+      
+      if (suffixedTicker && results[suffixedTicker]) {
+        mappedResults[originalTicker] = results[suffixedTicker];
+      }
+    }
+  });
+
+  return mappedResults;
 }
