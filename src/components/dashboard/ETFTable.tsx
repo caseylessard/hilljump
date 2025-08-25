@@ -145,7 +145,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     return ticker.replace(/\.(TO|NE)$/, '');
   }
   // Sorting state and helpers
-  type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "yield" | "risk" | "score" | "signal";
+  type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "risk" | "score" | "signal";
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
@@ -213,7 +213,6 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         case "drip13w": return getDripPercent(etf.ticker, "13w");
         case "drip26w": return getDripPercent(etf.ticker, "26w");
         case "drip52w": return getDripPercent(etf.ticker, "52w");
-        case "yield": { const y = etf.yieldTTM; return Math.abs(y) <= 1 ? y * 100 : y; }
         case "risk": return etf.riskScore;
         case "score": return getDripSum(etf.ticker); // Use DRIP sum instead of composite score
         case "signal": {
@@ -306,11 +305,6 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
             <TableHead className="text-right">
               <button onClick={() => requestSort("drip52w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 52W DRIP <span className="text-muted-foreground text-xs">{indicator("drip52w")}</span>
-              </button>
-            </TableHead>
-            <TableHead className="text-right">
-              <button onClick={() => requestSort("yield")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                Yield (TTM) <span className="text-muted-foreground text-xs">{indicator("yield")}</span>
               </button>
             </TableHead>
             <TableHead className="text-right">
@@ -412,7 +406,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 <TableCell className="text-right">
                   <DRIPCell ticker={etf.ticker} period="52w" />
                 </TableCell>
-                <TableCell className="text-right">{formatPct(etf.yieldTTM, 1)}</TableCell>
+                
                 <TableCell className="text-right">
                   <div className="inline-flex flex-col items-end leading-tight">
                     <span>{Math.round(etf.riskScore * 100)}%</span>
@@ -509,10 +503,6 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                   <div>
                     <div className="text-sm text-muted-foreground">1Y Total Return</div>
                     <div className="text-lg font-medium">{formatPct(selected.totalReturn1Y, 1)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Yield (TTM)</div>
-                    <div className="text-lg font-medium">{formatPct(selected.yieldTTM, 1)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">AV</div>
