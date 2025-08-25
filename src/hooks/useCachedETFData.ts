@@ -116,55 +116,52 @@ export const useCachedDRIP = (tickers: string[]) => {
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      // Pre-filter tickers that have active ETF records to avoid processing inactive ones
-      const { data: activeETFs } = await supabase
-        .from('etfs')
-        .select('ticker')
-        .in('ticker', tickers)
-        .eq('active', true);
+      console.log('🧮 Loading cached DRIP data for', tickers.length, 'tickers...');
       
-      const activeTickers = activeETFs?.map(etf => etf.ticker) || [];
-      
-      if (activeTickers.length === 0) return {};
-      
-      // Batch process in smaller chunks to reduce server load
-      const batchSize = 30;
-      const batches = [];
-      for (let i = 0; i < activeTickers.length; i += batchSize) {
-        batches.push(activeTickers.slice(i, i + batchSize));
-      }
-      
-      const results: Record<string, any> = {};
-      
-      for (const batch of batches) {
-        const cacheKey = `drip-${batch.sort().join(',')}`;
+      try {
+        // First try to get cached DRIP data from database
+        const { data, error } = await supabase.functions.invoke('get-cached-drip', {
+          body: { tickers }
+        });
         
-        try {
-          const batchResults = await getCachedData(
-            'drip4w',
-            async () => {
-              console.log('🧮 Fetching DRIP data for', batch.length, 'tickers...');
-              const { data, error } = await supabase.functions.invoke('calculate-drip', {
-                body: { tickers: batch }
-              });
-              if (error) throw new Error(error.message);
-              return data?.dripData || {};
-            },
-            cacheKey
-          );
-          
-          Object.assign(results, batchResults);
-          console.log('✅ DRIP data loaded:', Object.keys(batchResults || {}).length, 'entries');
-        } catch (error) {
-          console.error('❌ DRIP batch failed:', error);
-          // Continue with other batches on error
+        if (error) {
+          console.warn('❌ Failed to fetch cached DRIP data:', error);
+          return {};
         }
+        
+        const cachedResults = data?.dripData || {};
+        const foundCount = Object.keys(cachedResults).length;
+        const missingTickers = data?.missing || [];
+        
+        console.log(`✅ Loaded ${foundCount}/${tickers.length} cached DRIP entries`);
+        
+        // If we have missing tickers and it's a small number, calculate them on-demand
+        if (missingTickers.length > 0 && missingTickers.length <= 5) {
+          console.log('🔄 Calculating missing DRIP data for:', missingTickers);
+          try {
+            const { data: liveData, error: liveError } = await supabase.functions.invoke('calculate-drip', {
+              body: { tickers: missingTickers }
+            });
+            
+            if (!liveError && liveData?.dripData) {
+              Object.assign(cachedResults, liveData.dripData);
+              console.log('✅ Added live DRIP data for missing tickers');
+            }
+          } catch (liveError) {
+            console.warn('⚠️ Failed to calculate missing DRIP data:', liveError);
+          }
+        }
+        
+        return cachedResults;
+        
+      } catch (error) {
+        console.error('❌ DRIP data fetch failed:', error);
+        return {};
       }
-      
-      return results;
     },
     enabled: tickers.length > 0,
-    staleTime: 60 * 60 * 1000, // 1 hour
-    refetchOnWindowFocus: false, // Prevent unnecessary refetches
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours - use cached data longer
+    refetchOnWindowFocus: false,
+    refetchOnMount: false, // Don't refetch on mount - use cached data
   });
 };

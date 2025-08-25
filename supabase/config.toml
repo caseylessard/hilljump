@@ -15,6 +15,12 @@ verify_jwt = false
 [functions.get-stored-prices]
 verify_jwt = false
 
+[functions.get-cached-drip]
+verify_jwt = false
+
+[functions.daily-drip-calculator]
+verify_jwt = false
+
 [functions.polygon-quotes]
 verify_jwt = false
 
