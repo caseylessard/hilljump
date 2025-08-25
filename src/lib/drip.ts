@@ -180,8 +180,7 @@ export function dripWindows(
   const out: Record<number, DripResult> = {};
   for (const days of windowsDays) {
     const start = new Date(end);
-    // Start from the day before the measurement period to get true N-day performance
-    start.setDate(start.getDate() - days - 1);
+    start.setDate(start.getDate() - days);
     out[days] = dripOverPeriod(prices, dists, fmt(start), fmt(end), startShares, opts);
   }
   return out;
