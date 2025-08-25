@@ -3,23 +3,22 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 async function fetchYahooFinancePrice(symbol: string): Promise<number | null> {
   try {
-    // Yahoo Finance uses different suffixes for Canadian exchanges
+    // Yahoo Finance uses different suffixes - normalize for better compatibility
     let yahooSymbol = symbol;
+    
+    // Handle Canadian exchanges
     if (symbol.endsWith('.NE')) {
-      // NEO Exchange - Yahoo uses .NE
-      yahooSymbol = symbol; // Keep as is
+      yahooSymbol = symbol; // NEO Exchange - Yahoo uses .NE
     } else if (symbol.endsWith('.TO')) {
-      // Toronto Stock Exchange - Yahoo uses .TO
-      yahooSymbol = symbol; // Keep as is
+      yahooSymbol = symbol; // Toronto Stock Exchange - Yahoo uses .TO
     } else if (symbol.endsWith('.CN')) {
-      // Canadian National Stock Exchange - convert to .CN
-      yahooSymbol = symbol; // Keep as is
+      yahooSymbol = symbol; // Canadian National Stock Exchange
     } else if (symbol.endsWith('.VN')) {
-      // TSX Venture - Yahoo uses .V
-      yahooSymbol = symbol.replace('.VN', '.V');
+      yahooSymbol = symbol.replace('.VN', '.V'); // TSX Venture - Yahoo uses .V
     }
+    // US tickers don't need suffix modification
 
-    // Use Yahoo Finance v8 API (free, no key required)
+    // Use Yahoo Finance v8 API (free, no key required, no rate limits)
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}`;
     console.log(`Fetching Yahoo Finance price for: ${yahooSymbol}`);
     
@@ -31,7 +30,7 @@ async function fetchYahooFinancePrice(symbol: string): Promise<number | null> {
     
     if (!response.ok) {
       console.error(`Yahoo Finance API error for ${yahooSymbol}: ${response.status}`);
-      return fetchStooqPrice(symbol);
+      return null;
     }
 
     const data = await response.json();
@@ -45,10 +44,10 @@ async function fetchYahooFinancePrice(symbol: string): Promise<number | null> {
     }
 
     console.warn(`Invalid Yahoo Finance data for ${yahooSymbol}:`, data?.chart?.error || 'No price data');
-    return fetchStooqPrice(symbol);
+    return null;
   } catch (error) {
     console.error(`Yahoo Finance fetch error for ${symbol}:`, error);
-    return fetchStooqPrice(symbol);
+    return null;
   }
 }
 
@@ -173,11 +172,12 @@ serve(async (req: Request) => {
         const sym = String(t || "").toUpperCase();
         if (!sym) return;
         
-        // Use Yahoo Finance for Canadian tickers (more generous than EODHD/Alpha Vantage), Stooq for others
+        // Use Yahoo Finance for ALL tickers (most reliable free source)
         let p: number | null = null;
-        if (sym.endsWith('.TO') || sym.endsWith('.CN') || sym.endsWith('.VN') || sym.endsWith('.NE')) {
-          p = await fetchYahooFinancePrice(sym);
-        } else {
+        p = await fetchYahooFinancePrice(sym);
+        
+        // If Yahoo fails, fallback to Stooq
+        if (p == null) {
           p = await fetchStooqPrice(sym);
         }
         
