@@ -1,6 +1,50 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
+async function fetchCanadianPrice(symbol: string): Promise<number | null> {
+  const alphaVantageKey = Deno.env.get('ALPHA_VANTAGE_API_KEY');
+  if (!alphaVantageKey) {
+    console.warn('Alpha Vantage API key not found, falling back to Stooq');
+    return fetchStooqPrice(symbol);
+  }
+
+  try {
+    // Convert symbol to Alpha Vantage format - they use .TRT or .TO for TSX
+    let avSymbol = symbol;
+    if (symbol.endsWith('.NE')) {
+      // Try converting NEO to Toronto format
+      avSymbol = symbol.replace('.NE', '.TRT');
+    } else if (symbol.endsWith('.TO')) {
+      avSymbol = symbol.replace('.TO', '.TRT');
+    }
+
+    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${avSymbol}&apikey=${alphaVantageKey}`;
+    console.log(`Fetching Alpha Vantage price for: ${avSymbol}`);
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Alpha Vantage API error for ${avSymbol}: ${response.status}`);
+      return fetchStooqPrice(symbol);
+    }
+
+    const data = await response.json();
+    
+    if (data['Global Quote'] && data['Global Quote']['05. price']) {
+      const price = parseFloat(data['Global Quote']['05. price']);
+      if (price > 0) {
+        console.log(`✅ Alpha Vantage ${avSymbol}: $${price}`);
+        return price;
+      }
+    }
+
+    console.warn(`Invalid Alpha Vantage data for ${avSymbol}:`, data);
+    return fetchStooqPrice(symbol);
+  } catch (error) {
+    console.error(`Alpha Vantage fetch error for ${symbol}:`, error);
+    return fetchStooqPrice(symbol);
+  }
+}
+
 async function fetchEODHDPrice(symbol: string): Promise<number | null> {
   const apiKey = Deno.env.get('EODHD_API_KEY');
   if (!apiKey) {
@@ -78,10 +122,10 @@ serve(async (req: Request) => {
         const sym = String(t || "").toUpperCase();
         if (!sym) return;
         
-        // Use EODHD for Canadian tickers (.TO, .CN, .VN, .NE), Stooq for others
+        // Use Alpha Vantage for Canadian tickers, Stooq for others
         let p: number | null = null;
         if (sym.endsWith('.TO') || sym.endsWith('.CN') || sym.endsWith('.VN') || sym.endsWith('.NE')) {
-          p = await fetchEODHDPrice(sym);
+          p = await fetchCanadianPrice(sym);
         } else {
           p = await fetchStooqPrice(sym);
         }
