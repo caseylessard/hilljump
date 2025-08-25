@@ -337,14 +337,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
               >
                 <TableCell>{idx + 1}</TableCell>
                 <TableCell>
-                  <span className="inline-flex items-center">
-                    {displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
-                    {upWeek ? (
-                      <ArrowUpRight className="ml-1 h-4 w-4 text-emerald-500" aria-label="Up last week" />
-                    ) : (
-                      <ArrowDownRight className="ml-1 h-4 w-4 text-red-500" aria-label="Down last week" />
-                    )}
-                  </span>
+                   <span className="inline-flex items-center">
+                     {displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
+                   </span>
                 </TableCell>
                 <TableCell className="text-right">
                   {(() => {
