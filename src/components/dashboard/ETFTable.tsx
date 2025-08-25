@@ -35,9 +35,40 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
   const [range, setRange] = useState<RangeKey>("1Y");
   const [nextDividends, setNextDividends] = useState<Record<string, any>>({});
+  const [rsiSignals, setRsiSignals] = useState<Record<string, { rsi: number; signal: string }>>({});
   
   // Memoize tickers to prevent unnecessary refetches
   const tickers = useMemo(() => items.map(item => item.ticker), [items]);
+  
+  // Fetch RSI signals when tickers change
+  useEffect(() => {
+    const fetchRSISignals = async () => {
+      if (tickers.length === 0) return;
+      
+      try {
+        console.log('Fetching RSI signals for', tickers.length, 'tickers');
+        const response = await supabase.functions.invoke('rsi-signals', {
+          body: { tickers }
+        });
+        
+        if (response.error) {
+          console.error('Error fetching RSI signals:', response.error);
+          return;
+        }
+        
+        const { signals } = response.data;
+        console.log('Received RSI signals for', Object.keys(signals || {}).length, 'tickers');
+        setRsiSignals(signals || {});
+        
+      } catch (error) {
+        console.error('Failed to fetch RSI signals:', error);
+      }
+    };
+    
+    // Fetch RSI signals with a small delay to avoid rapid calls
+    const timeoutId = setTimeout(fetchRSISignals, 500);
+    return () => clearTimeout(timeoutId);
+  }, [tickers]);
   
   // Use cached DRIP data first, then fetch fresh data if needed
   const { data: liveDripData = {} } = useCachedDRIP(tickers);
@@ -215,6 +246,12 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         case "drip52w": return getDripPercent(etf.ticker, "52w");
         case "score": return getDripSum(etf.ticker); // Use DRIP sum instead of composite score
         case "signal": {
+          const rsiSignal = rsiSignals[etf.ticker];
+          if (rsiSignal) {
+            // Return numeric value for sorting: BUY=2, HOLD=1, SELL=0
+            return rsiSignal.signal === 'BUY' ? 2 : (rsiSignal.signal === 'HOLD' ? 1 : 0);
+          }
+          // Fallback to old logic if no RSI data
           const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
           const r28d = (Math.pow(1 + daily, 28) - 1) * 100;
           const r3m = (Math.pow(1 + daily, 90) - 1) * 100;
@@ -400,11 +437,28 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                    {getDripSum(etf.ticker).toFixed(1)}
                  </TableCell>
                 <TableCell className="text-right">
-                  {buy ? (
-                    <Badge className="bg-emerald-500 text-white">BUY</Badge>
-                  ) : (
-                    <Badge variant="destructive" className="bg-red-500 text-white">SELL</Badge>
-                  )}
+                  {(() => {
+                    const rsiSignal = rsiSignals[etf.ticker];
+                    if (rsiSignal) {
+                      const { signal, rsi } = rsiSignal;
+                      const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
+                                        signal === 'SELL' ? "bg-red-500 text-white" : 
+                                        "bg-gray-500 text-white";
+                      return (
+                        <div className="inline-flex flex-col items-end leading-tight">
+                          <Badge className={badgeClass}>{signal}</Badge>
+                          <span className="text-muted-foreground text-xs">RSI: {rsi.toFixed(0)}</span>
+                        </div>
+                      );
+                    }
+                    
+                    // Fallback to old logic if no RSI data
+                    return buy ? (
+                      <Badge className="bg-emerald-500 text-white">BUY</Badge>
+                    ) : (
+                      <Badge variant="destructive" className="bg-red-500 text-white">SELL</Badge>
+                    );
+                  })()}
                 </TableCell>
               </TableRow>
             );
