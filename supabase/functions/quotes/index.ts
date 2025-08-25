@@ -122,10 +122,15 @@ serve(async (req: Request) => {
         const sym = String(t || "").toUpperCase();
         if (!sym) return;
         
-        // Use Alpha Vantage for Canadian tickers, Stooq for others
+        // Use EODHD for Canadian tickers (better than Alpha Vantage rate limits), Stooq for others
         let p: number | null = null;
         if (sym.endsWith('.TO') || sym.endsWith('.CN') || sym.endsWith('.VN') || sym.endsWith('.NE')) {
-          p = await fetchCanadianPrice(sym);
+          // Try EODHD first for Canadian tickers to avoid Alpha Vantage rate limits
+          p = await fetchEODHDPrice(sym);
+          // If EODHD fails, fallback to Alpha Vantage (which will then fallback to Stooq)
+          if (p == null) {
+            p = await fetchCanadianPrice(sym);
+          }
         } else {
           p = await fetchStooqPrice(sym);
         }
