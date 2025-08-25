@@ -120,7 +120,7 @@ const Index = () => {
     }
     
     // SEO: Title, description, canonical
-    document.title = "HillJump — Dividend ETF Rankings by Total Return";
+    document.title = "HillJump — Income ETFs by Total Return";
     const meta =
       (document.querySelector('meta[name="description"]') as HTMLMetaElement) ||
       (() => {
@@ -131,7 +131,7 @@ const Index = () => {
       })();
     meta.setAttribute(
       'content',
-      'HillJump ranks top 10 high-yield dividend ETFs by total return with risk-aware scoring for volume, volatility, drawdown, and fees.'
+      'HillJump ranks top 10 high-yield income ETFs by total return with risk-aware scoring for volume, volatility, drawdown, and fees.'
     );
 
     const link =
@@ -176,7 +176,7 @@ const Index = () => {
   const jsonLd = useMemo(() => ({
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "Top 10 High Yield Dividend ETFs by Total Return",
+    name: "Top 10 High Yield Income ETFs by Total Return",
     itemListElement: ranked.map((etf, idx) => ({
       "@type": "ListItem",
       position: idx + 1,
@@ -199,7 +199,7 @@ const Index = () => {
         <div className="container py-10 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">
           <div className="space-y-4">
             <Badge variant="secondary">HillJump</Badge>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Top 10 High-Yield Dividend ETFs by Total Return</h1>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Top 10 High-Yield Income ETFs by Total Return</h1>
             <p className="text-muted-foreground">Risk-aware ranking that prioritizes total return while devaluing funds for low volume, high volatility, deep drawdowns, and fees.</p>
             <div className="flex gap-3">
               <Button variant="hero" asChild>

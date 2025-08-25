@@ -125,7 +125,7 @@ const Ranking = () => {
   }, []);
 
   useEffect(() => {
-    document.title = "HillJump — Top Dividend ETF Rankings";
+    document.title = "HillJump — Top Income ETFs";
     const meta = document.querySelector('meta[name="description"]') as HTMLMetaElement ||
       (() => {
         const m = document.createElement('meta');
@@ -309,7 +309,7 @@ const Ranking = () => {
         <div className="absolute inset-0 ambient-spotlight pointer-events-none" aria-hidden="true" />
         <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">
           <div className="space-y-3">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Dividend ETF Rankings</h1>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Income ETFs</h1>
           </div>
         </div>
       </header>
