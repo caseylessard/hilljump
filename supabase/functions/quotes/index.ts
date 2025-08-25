@@ -1,6 +1,57 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
+async function fetchYahooFinancePrice(symbol: string): Promise<number | null> {
+  try {
+    // Yahoo Finance uses different suffixes for Canadian exchanges
+    let yahooSymbol = symbol;
+    if (symbol.endsWith('.NE')) {
+      // NEO Exchange - Yahoo uses .NE
+      yahooSymbol = symbol; // Keep as is
+    } else if (symbol.endsWith('.TO')) {
+      // Toronto Stock Exchange - Yahoo uses .TO
+      yahooSymbol = symbol; // Keep as is
+    } else if (symbol.endsWith('.CN')) {
+      // Canadian National Stock Exchange - convert to .CN
+      yahooSymbol = symbol; // Keep as is
+    } else if (symbol.endsWith('.VN')) {
+      // TSX Venture - Yahoo uses .V
+      yahooSymbol = symbol.replace('.VN', '.V');
+    }
+
+    // Use Yahoo Finance v8 API (free, no key required)
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}`;
+    console.log(`Fetching Yahoo Finance price for: ${yahooSymbol}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error(`Yahoo Finance API error for ${yahooSymbol}: ${response.status}`);
+      return fetchStooqPrice(symbol);
+    }
+
+    const data = await response.json();
+    
+    if (data?.chart?.result?.[0]?.meta?.regularMarketPrice) {
+      const price = data.chart.result[0].meta.regularMarketPrice;
+      if (typeof price === 'number' && price > 0) {
+        console.log(`✅ Yahoo Finance ${yahooSymbol}: $${price}`);
+        return price;
+      }
+    }
+
+    console.warn(`Invalid Yahoo Finance data for ${yahooSymbol}:`, data?.chart?.error || 'No price data');
+    return fetchStooqPrice(symbol);
+  } catch (error) {
+    console.error(`Yahoo Finance fetch error for ${symbol}:`, error);
+    return fetchStooqPrice(symbol);
+  }
+}
+
 async function fetchCanadianPrice(symbol: string): Promise<number | null> {
   const alphaVantageKey = Deno.env.get('ALPHA_VANTAGE_API_KEY');
   if (!alphaVantageKey) {
@@ -122,15 +173,10 @@ serve(async (req: Request) => {
         const sym = String(t || "").toUpperCase();
         if (!sym) return;
         
-        // Use EODHD for Canadian tickers (better than Alpha Vantage rate limits), Stooq for others
+        // Use Yahoo Finance for Canadian tickers (more generous than EODHD/Alpha Vantage), Stooq for others
         let p: number | null = null;
         if (sym.endsWith('.TO') || sym.endsWith('.CN') || sym.endsWith('.VN') || sym.endsWith('.NE')) {
-          // Try EODHD first for Canadian tickers to avoid Alpha Vantage rate limits
-          p = await fetchEODHDPrice(sym);
-          // If EODHD fails, fallback to Alpha Vantage (which will then fallback to Stooq)
-          if (p == null) {
-            p = await fetchCanadianPrice(sym);
-          }
+          p = await fetchYahooFinancePrice(sym);
         } else {
           p = await fetchStooqPrice(sym);
         }
