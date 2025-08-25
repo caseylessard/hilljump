@@ -184,17 +184,17 @@ function dripWindows(
   const endDate = new Date(endDateISO + 'T00:00:00Z');
   
   const periods = [
-    { key: '4w', weeks: 4 },
-    { key: '13w', weeks: 13 },
-    { key: '26w', weeks: 26 },
-    { key: '52w', weeks: 52 }
+    { key: '4w', days: 28 },
+    { key: '13w', days: 91 },
+    { key: '26w', days: 182 },
+    { key: '52w', days: 364 }
   ];
   
   const results: Record<string, DripResult> = {};
   
   for (const period of periods) {
     const startDate = new Date(endDate);
-    startDate.setUTCDate(startDate.getUTCDate() - (period.weeks * 7));
+    startDate.setUTCDate(startDate.getUTCDate() - period.days);
     const startDateISO = startDate.toISOString().split('T')[0];
     
     try {
