@@ -474,14 +474,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         <DialogContent className={`p-0 overflow-hidden ${isMobile ? 'max-w-[95vw] max-h-[90vh] m-4' : 'max-w-4xl'}`}>
           {selected && (
             <div className="w-full overflow-hidden">
-              <div className="flex items-center justify-between p-4 border-b relative">
-                <button
-                  onClick={() => setOpen(false)}
-                  className="absolute top-4 right-4 p-2 hover:bg-accent rounded-full z-10"
-                  aria-label="Close dialog"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+              <div className="flex items-center justify-between p-4 border-b">
                 <div className="flex items-center gap-3">
                   {(() => {
                     const manager = getFundManager(selected);
