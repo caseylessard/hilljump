@@ -102,7 +102,14 @@ serve(async (req) => {
     const headers = splitCSVLine(lines[0])
     const dataRows = lines.slice(1)
 
+    log(`Found ${headers.length} columns in header: [${headers.join(', ')}]`)
     log(`Processing ${dataRows.length} ETF records`)
+    
+    // Debug: show first few rows structure
+    for (let i = 0; i < Math.min(3, dataRows.length); i++) {
+      const row = splitCSVLine(dataRows[i])
+      log(`Row ${i + 1} sample: ${row.length} columns - [${row.slice(0, 3).join(', ')}...]`)
+    }
 
     // First, clear all existing data
     const { error: deleteError } = await supabase
