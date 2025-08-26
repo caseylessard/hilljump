@@ -304,6 +304,33 @@ export type Database = {
         }
         Relationships: []
       }
+      price_cache: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          source: string
+          ticker: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price: number
+          source: string
+          ticker: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          source?: string
+          ticker?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved: boolean

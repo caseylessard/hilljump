@@ -28,13 +28,84 @@ export const useCachedPrices = (tickers: string[]) => {
     queryKey: ["cached-prices", tickers.sort().join(','), isAdmin ? 'admin' : 'user'],
     queryFn: async () => {
       if (tickers.length === 0) return {};
-      return getCachedETFPrices(tickers);
+      
+      console.log('🏃‍♂️ Fetching prices for', tickers.length, 'tickers...');
+      
+      // Step 1: Get database prices immediately (show cached prices on load)
+      const { data: dbPrices, error: dbError } = await supabase
+        .from('etfs')
+        .select('ticker, current_price, price_updated_at')
+        .in('ticker', tickers)
+        .not('current_price', 'is', null);
+      
+      if (dbError) {
+        console.error('❌ Failed to fetch database prices:', dbError);
+      }
+      
+      // Convert database prices to expected format
+      const results: Record<string, any> = {};
+      dbPrices?.forEach(etf => {
+        if (etf.current_price && etf.current_price > 0) {
+          results[etf.ticker] = {
+            price: etf.current_price,
+            source: 'database',
+            priceUpdatedAt: etf.price_updated_at
+          };
+        }
+      });
+      
+      console.log(`📊 Loaded ${Object.keys(results).length} prices from database`);
+      
+      // Step 2: Fetch live prices in background and update database
+      if (!isAdmin) {
+        // For regular users, start background fetch but return database prices immediately
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Background: Fetching live prices...');
+            const { data: liveData, error: liveError } = await supabase.functions.invoke('quotes', {
+              body: { tickers }
+            });
+            
+            if (!liveError && liveData?.prices) {
+              console.log(`✅ Background: Got ${Object.keys(liveData.prices).length} live prices`);
+            }
+          } catch (error) {
+            console.warn('⚠️ Background price fetch failed:', error);
+          }
+        }, 100); // Small delay to return database prices first
+      } else {
+        // For admins, fetch live prices immediately
+        try {
+          console.log('🔄 Admin: Fetching live prices immediately...');
+          const { data: liveData, error: liveError } = await supabase.functions.invoke('quotes', {
+            body: { tickers }
+          });
+          
+          if (!liveError && liveData?.prices) {
+            // Merge live prices into results, overriding database prices
+            Object.entries(liveData.prices).forEach(([ticker, price]) => {
+              if (typeof price === 'number' && price > 0) {
+                results[ticker] = {
+                  price,
+                  source: 'live',
+                  priceUpdatedAt: new Date().toISOString()
+                };
+              }
+            });
+            console.log(`✅ Admin: Updated with ${Object.keys(liveData.prices).length} live prices`);
+          }
+        } catch (error) {
+          console.warn('⚠️ Live price fetch failed for admin:', error);
+        }
+      }
+      
+      return results;
     },
     enabled: tickers.length > 0,
-    staleTime: isAdmin ? 0 : 15 * 60 * 1000,
+    staleTime: isAdmin ? 0 : 5 * 60 * 1000, // 5 minutes for users, immediate for admins
     refetchOnWindowFocus: isAdmin,
     refetchOnMount: true,
-    refetchInterval: isAdmin ? false : 15 * 60 * 1000,
+    refetchInterval: isAdmin ? false : 10 * 60 * 1000, // 10 minutes for background refresh
   });
 };
 

@@ -195,9 +195,10 @@ serve(async (req: Request) => {
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // Update prices in database
+        // Update both ETF table and price cache
         const updatePromises = Object.entries(prices).map(async ([ticker, price]) => {
-          const { error } = await supabase
+          // Update main ETF table
+          const { error: etfError } = await supabase
             .from('etfs')
             .update({ 
               current_price: price,
@@ -205,15 +206,31 @@ serve(async (req: Request) => {
             })
             .eq('ticker', ticker);
           
-          if (error) {
-            console.error(`Failed to update price for ${ticker}:`, error);
+          if (etfError) {
+            console.error(`Failed to update ETF price for ${ticker}:`, etfError);
           } else {
-            console.log(`✅ Updated ${ticker} price in database: $${price}`);
+            console.log(`✅ Updated ${ticker} price in ETF table: $${price}`);
+          }
+
+          // Update price cache table (upsert)
+          const { error: cacheError } = await supabase
+            .from('price_cache')
+            .upsert({
+              ticker,
+              price,
+              source: 'yahoo_quotes',
+              updated_at: new Date().toISOString()
+            }, { 
+              onConflict: 'ticker' 
+            });
+          
+          if (cacheError) {
+            console.error(`Failed to update price cache for ${ticker}:`, cacheError);
           }
         });
 
         await Promise.all(updatePromises);
-        console.log(`📊 Updated ${Object.keys(prices).length} prices in database`);
+        console.log(`📊 Updated ${Object.keys(prices).length} prices in database and cache`);
         
       } catch (dbError) {
         console.error('Database update error:', dbError);

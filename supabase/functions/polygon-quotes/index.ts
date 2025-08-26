@@ -63,11 +63,17 @@ serve(async (req: Request) => {
             for (const item of list) {
               const sym = item?.ticker as string;
               const lastPrice = Number(item?.lastTrade?.p ?? item?.day?.c ?? item?.min?.c);
-              if (sym && Number.isFinite(lastPrice)) {
+              if (sym && Number.isFinite(lastPrice) && lastPrice > 0) {
                 results[sym] = { price: lastPrice };
                 console.log(`Polygon: ${sym} = $${lastPrice}`);
+              } else if (sym) {
+                console.log(`Polygon: ${sym} = $0 (invalid price data)`);
               }
             }
+            
+            console.log(`Polygon API returned data for ${list.length} symbols, ${Object.keys(results).filter(k => usSymbols.includes(k)).length} with valid prices`);
+          } else {
+            console.error(`Polygon API HTTP error: ${res.status} ${res.statusText}`);
           }
         } catch (err) {
           console.error("Polygon failed, falling back to Stooq for US:", err);
@@ -122,6 +128,60 @@ serve(async (req: Request) => {
     
     
     console.log(`Final results: ${Object.keys(results).length} symbols`);
+    
+    // Update database with fetched prices if we have valid prices
+    if (Object.keys(results).length > 0) {
+      try {
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+        const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (SUPABASE_URL && SERVICE_ROLE) {
+          const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+          const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+          
+          // Update both ETF table and price cache
+          const priceUpdates = Object.entries(results).map(async ([ticker, priceData]) => {
+            const price = priceData.price;
+            if (price > 0) {
+              // Update main ETF table
+              const { error: etfError } = await sb
+                .from('etfs')
+                .update({ 
+                  current_price: price,
+                  price_updated_at: new Date().toISOString()
+                })
+                .eq('ticker', ticker);
+              
+              if (etfError) {
+                console.error(`Failed to update ETF price for ${ticker}:`, etfError);
+              }
+
+              // Update price cache table (upsert)
+              const { error: cacheError } = await sb
+                .from('price_cache')
+                .upsert({
+                  ticker,
+                  price,
+                  source: 'polygon_live',
+                  updated_at: new Date().toISOString()
+                }, { 
+                  onConflict: 'ticker' 
+                });
+              
+              if (cacheError) {
+                console.error(`Failed to update price cache for ${ticker}:`, cacheError);
+              } else {
+                console.log(`✅ Updated ${ticker} in database and cache: $${price}`);
+              }
+            }
+          });
+
+          await Promise.all(priceUpdates);
+          console.log(`📊 Updated ${Object.keys(results).length} prices in database and cache`);
+        }
+      } catch (dbError) {
+        console.error('Database update error:', dbError);
+      }
+    }
     
     // Add enrichment for 28d and DRIP if requested
     if ((include28d || includeDRIP) && Object.keys(results).length > 0) {

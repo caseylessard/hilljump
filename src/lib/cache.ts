@@ -188,20 +188,105 @@ export async function getCachedData<T>(
 export async function getCachedETFPrices(tickers: string[]) {
   const cacheKey = tickers.sort().join(',');
   
-  return getCachedData(
-    'price',
-    async () => {
-      const { fetchLivePricesWithDataSources } = await import('@/lib/live');
+  // First, get prices from database cache table for immediate response
+  const { supabase } = await import('@/integrations/supabase/client');
+  
+  try {
+    console.log('📊 Fetching prices from database cache...');
+    
+    // Get cached prices from database
+    const { data: cachedPrices, error: cacheError } = await supabase
+      .from('price_cache')
+      .select('ticker, price, source, updated_at')
+      .in('ticker', tickers);
+    
+    if (cacheError) {
+      console.warn('Cache fetch error:', cacheError);
+    }
+    
+    const results: Record<string, any> = {};
+    
+    // Add cached prices to results
+    cachedPrices?.forEach(cache => {
+      results[cache.ticker] = {
+        price: cache.price,
+        source: cache.source,
+        priceUpdatedAt: cache.updated_at
+      };
+    });
+    
+    console.log(`📊 Found ${Object.keys(results).length} cached prices`);
+    
+    // For tickers without cached prices, try to get from ETF table
+    const missingTickers = tickers.filter(ticker => !results[ticker]);
+    
+    if (missingTickers.length > 0) {
+      console.log(`📊 Fetching ${missingTickers.length} missing prices from ETF table...`);
       
-      // Use the smart price fetching that handles different data sources
-      console.log('📊 Fetching live prices with data source optimization...');
-      const liveData = await fetchLivePricesWithDataSources(tickers);
+      const { data: dbPrices, error: dbError } = await supabase
+        .from('etfs')
+        .select('ticker, current_price, price_updated_at')
+        .in('ticker', missingTickers)
+        .not('current_price', 'is', null);
       
-      console.log(`📊 Retrieved ${Object.keys(liveData).length} live prices`);
-      return liveData;
-    },
-    cacheKey
-  );
+      if (!dbError && dbPrices) {
+        dbPrices.forEach(etf => {
+          if (etf.current_price && etf.current_price > 0) {
+            results[etf.ticker] = {
+              price: etf.current_price,
+              source: 'database',
+              priceUpdatedAt: etf.price_updated_at
+            };
+          }
+        });
+        
+        console.log(`📊 Found ${dbPrices.length} additional prices from ETF table`);
+      }
+    }
+    
+    // If we still have missing tickers and it's not too many, fetch live prices
+    const stillMissingTickers = tickers.filter(ticker => !results[ticker]);
+    
+    if (stillMissingTickers.length > 0 && stillMissingTickers.length <= 20) {
+      console.log(`🔄 Fetching live prices for ${stillMissingTickers.length} missing tickers...`);
+      
+      try {
+        const { fetchLivePricesWithDataSources } = await import('@/lib/live');
+        const liveData = await fetchLivePricesWithDataSources(stillMissingTickers);
+        
+        Object.entries(liveData).forEach(([ticker, priceData]) => {
+          if (priceData.price > 0) {
+            results[ticker] = {
+              price: priceData.price,
+              source: 'live_fetch',
+              priceUpdatedAt: new Date().toISOString()
+            };
+          }
+        });
+        
+        console.log(`✅ Fetched ${Object.keys(liveData).length} live prices`);
+      } catch (liveError) {
+        console.warn('Live price fetch failed:', liveError);
+      }
+    }
+    
+    return results;
+    
+  } catch (error) {
+    console.error('Price fetch error:', error);
+    // Fallback to the original cached approach
+    return getCachedData(
+      'price',
+      async () => {
+        const { fetchLivePricesWithDataSources } = await import('@/lib/live');
+        console.log('📊 Fallback: Fetching live prices with data source optimization...');
+        const liveData = await fetchLivePricesWithDataSources(tickers);
+        console.log(`📊 Retrieved ${Object.keys(liveData).length} live prices`);
+        return liveData;
+      },
+      cacheKey
+    );
+  }
 }
 
 export async function getCachedETFScoring(preferences: any, country?: string) {
