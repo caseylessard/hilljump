@@ -12,7 +12,8 @@ import { predictNextDistribution } from "@/lib/dividends";
 import { useCachedDRIP } from "@/hooks/useCachedETFData";
 
 import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, X } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import type { LivePrice } from "@/lib/live";
 import yieldmaxLogo from "@/assets/logos/yieldmax.png";
@@ -31,6 +32,7 @@ type Props = {
 
 export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {} }: Props) => {
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
   const [range, setRange] = useState<RangeKey>("1Y");
@@ -469,10 +471,17 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         </TableBody>
       </Table>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="p-0 overflow-hidden">
+        <DialogContent className={`p-0 overflow-hidden ${isMobile ? 'max-w-[95vw] max-h-[90vh] m-4' : 'max-w-4xl'}`}>
           {selected && (
             <div className="w-full overflow-hidden">
-              <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center justify-between p-4 border-b relative">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="absolute top-4 right-4 p-2 hover:bg-accent rounded-full z-10"
+                  aria-label="Close dialog"
+                >
+                  <X className="h-4 w-4" />
+                </button>
                 <div className="flex items-center gap-3">
                   {(() => {
                     const manager = getFundManager(selected);
@@ -506,8 +515,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                   })()}
 
                 </div>
-                <div className="text-right">
-                  {selectedRank != null && <div className="text-4xl font-extrabold">#{selectedRank}</div>}
+                <div className={`text-right ${isMobile ? 'pr-12' : ''}`}>
+                  {selectedRank != null && <div className={`${isMobile ? 'text-2xl' : 'text-4xl'} font-extrabold`}>#{selectedRank}</div>}
                   <div className="text-xs text-muted-foreground">Score: {(selected.compositeScore * 100).toFixed(0)}</div>
                   <div className="mt-1">
                     {(() => {
@@ -525,7 +534,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                   </div>
                 </div>
               </div>
-              <div className="p-4">
+              <div className={`${isMobile ? 'p-2 max-h-[60vh] overflow-y-auto' : 'p-4'}`}>
                 <Tabs value={range} onValueChange={(v) => setRange(v as RangeKey)}>
                   <TabsList className="grid grid-cols-4 w-full">
                     <TabsTrigger value="1M">1M</TabsTrigger>
@@ -537,7 +546,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                     <ComparisonChart etf={selected} underlyingTicker={UNDERLYING_MAP[selected.ticker]} range={range} />
                   </TabsContent>
                 </Tabs>
-                <div className="mt-4 grid grid-cols-2 gap-4">
+                <div className={`mt-4 grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
                   <div>
                     <div className="text-sm text-muted-foreground">1Y Total Return</div>
                     <div className="text-lg font-medium">{formatPct(selected.totalReturn1Y, 1)}</div>
