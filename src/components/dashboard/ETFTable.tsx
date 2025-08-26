@@ -374,9 +374,12 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
               >
                 <TableCell>{idx + 1}</TableCell>
                 <TableCell>
-                   <span className="inline-flex items-center">
-                     {displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
-                   </span>
+                  <div className="inline-flex flex-col">
+                    <span className="inline-flex items-center">
+                      {displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">{getFundManager(etf)}</span>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   {(() => {
