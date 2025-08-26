@@ -25,10 +25,12 @@ const Index = () => {
   const { toast } = useToast();
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
   
   // Fetch real ETF data from database
   const { data: etfs = [], isLoading } = useCachedETFs();
+
+  // Fetch live prices using the cached hook that loads stored prices first, then live
+  const { data: livePrices = {}, isLoading: pricesLoading } = useCachedPrices(etfs.map(e => e.ticker));
 
   // Debug ETFs loading
   useEffect(() => {
@@ -72,30 +74,17 @@ const Index = () => {
     }
   }, [etfs.length, yieldsLoading, yieldsError, yfinanceYields]);
 
-  // Fetch live prices for real ETFs
+  // Debug prices data
   useEffect(() => {
-    if (!etfs.length) return;
-    let cancelled = false;
-
-    const run = async () => {
-      try {
-        const tickers = etfs.map(e => e.ticker);
-        
-        const { getCachedETFPrices } = await import('@/lib/cache');
-        const prices = await getCachedETFPrices(tickers);
-        
-        if (cancelled) return;
-        setLivePrices(prices);
-        console.log(`Updated ${Object.keys(prices).length} live prices from cache`);
-      } catch (e) {
-        console.error('Live price fetch error:', e);
-        // Don't show toast on every error to avoid spam
-      }
-    };
-
-    run();
-    return () => { cancelled = true; };
-  }, [etfs]);
+    if (etfs.length > 0) {
+      console.log('🔍 Prices debug:', {
+        etfCount: etfs.length,
+        pricesLoading,
+        pricesFound: Object.keys(livePrices).length,
+        samplePrices: Object.entries(livePrices).slice(0, 3)
+      });
+    }
+  }, [etfs.length, pricesLoading, livePrices]);
 
   useEffect(() => {
     // Clear all caches on page load
