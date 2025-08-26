@@ -13,6 +13,12 @@ const Navigation = () => {
             <a href="/">Income</a>
           </Button>
           <Button variant="ghost" asChild>
+            <a href="/portfolio">Portfolio</a>
+          </Button>
+          <Button variant="ghost" asChild>
+            <a href="/bots">Bots</a>
+          </Button>
+          <Button variant="ghost" asChild>
             <a href="/options">Options</a>
           </Button>
           <Button variant="ghost" asChild>

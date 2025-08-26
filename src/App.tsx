@@ -11,6 +11,8 @@ import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import Options from "./pages/Options";
 import Crypto from "./pages/Crypto";
+import Portfolio from "./pages/Portfolio";
+import Bots from "./pages/Bots";
 
 const queryClient = new QueryClient();
 
@@ -22,7 +24,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Ranking />} />
-          
+          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/bots" element={<Bots />} />
           <Route path="/options" element={<Options />} />
           <Route path="/crypto" element={<Crypto />} />
           <Route path="/profile" element={<Profile />} />
