@@ -21,6 +21,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, Database, Clock, Zap } from "lucide-react";
 import { useETFStream } from "@/hooks/useETFStream";
 import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
+import { useAdmin } from "@/hooks/useAdmin";
+import { QuickPriceTest } from "@/components/QuickPriceTest";
+import HistoricalPriceTest from "@/components/HistoricalPriceTest";
+import PriceSystemTest from "@/components/PriceSystemTest";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -40,8 +44,8 @@ const Profile = () => {
   const [weights, setWeights] = useState({ r: 15, y: 25, k: 20, d: 20, t4: 8, t52: 2, h: 6 });
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [testResults, setTestResults] = useState<any[]>([]);
+  const { isAdmin, loading: adminLoading } = useAdmin();
 
   // SEO
   useEffect(() => {
@@ -156,22 +160,6 @@ const Profile = () => {
   }, [userId]);
 
   const total = useMemo(() => positions.reduce((sum, p) => sum + (prices[p.ticker] ?? 0) * (Number(p.shares) || 0), 0), [positions, prices]);
-
-  useEffect(() => {
-    if (!userId) { setIsAdmin(false); return; }
-    (async () => {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-      if (!error && Array.isArray(data)) {
-        const adm = (data as any[]).some((r: any) => String(r.role).toLowerCase() === 'admin');
-        setIsAdmin(adm);
-      } else {
-        setIsAdmin(false);
-      }
-    })();
-  }, [userId]);
 
   const addOrUpdate = async () => {
     if (!userId) return;
@@ -418,9 +406,18 @@ const Profile = () => {
       <main className="container py-8 grid gap-6">
         <h1 className="text-3xl font-bold">Profile</h1>
         
-        <TiingoYieldsTest />
-        
-        <TestCanadianPrices />
+        {isAdmin && !adminLoading && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold">Admin Test Functions</h2>
+            <div className="grid gap-4">
+              <QuickPriceTest />
+              <TiingoYieldsTest />
+              <HistoricalPriceTest />
+              <PriceSystemTest />
+              <TestCanadianPrices />
+            </div>
+          </div>
+        )}
         
         {!userId ? (
           <Card className="p-6">

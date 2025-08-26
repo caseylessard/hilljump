@@ -18,9 +18,6 @@ import { UserBadge } from "@/components/UserBadge";
 import { useCachedETFs, useCachedPrices, useCachedYields } from "@/hooks/useCachedETFData";
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
-import { TiingoYieldsTest } from "@/components/TiingoYieldsTest";
-import HistoricalPriceTest from "@/components/HistoricalPriceTest";
-import { QuickPriceTest } from "@/components/QuickPriceTest";
 
 
 
@@ -215,18 +212,6 @@ const Index = () => {
       </header>
 
       <main className="container grid gap-8 pb-16">
-        <div className="w-full">
-          <QuickPriceTest />
-        </div>
-        
-        <div className="w-full">
-          <TiingoYieldsTest />
-        </div>
-        
-        <div className="w-full">
-          <HistoricalPriceTest />
-        </div>
-        
         <section aria-labelledby="scoring" className="grid md:grid-cols-3 gap-6">
           <h2 id="scoring" className="sr-only">Scoring Controls</h2>
           <div className="md:col-span-2">
