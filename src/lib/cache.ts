@@ -342,6 +342,39 @@ export async function getCachedDividendData(ticker: string) {
   );
 }
 
+export async function saveCachedScores(scoredETFs: any[], weights: any, country = 'CA'): Promise<void> {
+  try {
+    console.log('💾 Saving', scoredETFs.length, 'calculated scores to database...');
+    
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const scoresToSave = scoredETFs.map(etf => ({
+      ticker: etf.ticker,
+      composite_score: etf.compositeScore,
+      return_score: etf.returnScore,
+      yield_score: etf.yieldScore,
+      risk_score: etf.riskScore,
+      weights: weights,
+      country: country
+    }));
+    
+    const { error } = await supabase
+      .from('etf_scores')
+      .upsert(scoresToSave, { 
+        onConflict: 'ticker,country',
+        ignoreDuplicates: false 
+      });
+    
+    if (error) {
+      console.error('❌ Failed to save scores:', error);
+    } else {
+      console.log('✅ Saved scores to database');
+    }
+  } catch (error) {
+    console.error('❌ Error saving scores:', error);
+  }
+}
+
 // Cache warming function for critical data
 export async function warmCache() {
   try {

@@ -167,6 +167,55 @@ export const useCachedYields = (tickers: string[]) => {
   });
 };
 
+export const useCachedStoredScores = (tickers: string[], weights: any, country = 'CA') => {
+  const { isAdmin } = useAdmin();
+  
+  return useQuery({
+    queryKey: ["stored-scores", tickers.sort().join(','), JSON.stringify(weights), country],
+    queryFn: async () => {
+      if (tickers.length === 0) return {};
+      
+      console.log('📊 Loading stored scores for', tickers.length, 'tickers...');
+      
+      try {
+        const { data, error } = await supabase
+          .from('etf_scores')
+          .select('ticker, composite_score, return_score, yield_score, risk_score, weights, updated_at')
+          .in('ticker', tickers)
+          .eq('country', country);
+        
+        if (error) {
+          console.warn('❌ Failed to fetch stored scores:', error);
+          return {};
+        }
+        
+        const storedScores: Record<string, any> = {};
+        data?.forEach(score => {
+          storedScores[score.ticker] = {
+            compositeScore: score.composite_score,
+            returnScore: score.return_score,
+            yieldScore: score.yield_score,
+            riskScore: score.risk_score,
+            weights: score.weights,
+            updatedAt: score.updated_at
+          };
+        });
+        
+        console.log(`✅ Loaded ${Object.keys(storedScores).length} stored scores`);
+        return storedScores;
+        
+      } catch (error) {
+        console.error('❌ Stored scores fetch failed:', error);
+        return {};
+      }
+    },
+    enabled: tickers.length > 0,
+    staleTime: isAdmin ? 0 : 5 * 60 * 1000, // 5 minutes cache for users
+    refetchOnMount: isAdmin,
+    refetchOnWindowFocus: isAdmin,
+  });
+};
+
 export const useCachedScoring = (preferences: any, country?: string) => {
   const { isAdmin } = useAdmin();
   

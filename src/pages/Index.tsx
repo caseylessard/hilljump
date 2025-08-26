@@ -15,7 +15,7 @@ import { ScoringControls } from "@/components/dashboard/ScoringControls";
 import { ETFTable } from "@/components/dashboard/ETFTable";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { UserBadge } from "@/components/UserBadge";
-import { useCachedETFs, useCachedPrices, useCachedYields } from "@/hooks/useCachedETFData";
+import { useCachedETFs, useCachedPrices, useCachedYields, useCachedStoredScores, useCachedDistributions } from "@/hooks/useCachedETFData";
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
 
@@ -26,11 +26,22 @@ const Index = () => {
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   
-  // Fetch real ETF data from database
+  // Load order: 1. Stored scores, 2. Stored prices, 3. Distributions, 4. Live prices (background)
+  
+  // 1. Fetch real ETF data from database
   const { data: etfs = [], isLoading } = useCachedETFs();
 
-  // Fetch live prices using the cached hook that loads stored prices first, then live
+  // 2. Fetch stored scores first (fastest)
+  const { data: storedScores = {}, isLoading: scoresLoading } = useCachedStoredScores(etfs.map(e => e.ticker), weights);
+
+  // 3. Fetch stored prices (loads immediately, then background refresh)
   const { data: livePrices = {}, isLoading: pricesLoading } = useCachedPrices(etfs.map(e => e.ticker));
+
+  // 4. Fetch distributions (after prices are available)
+  const { data: distributions = {}, isLoading: distributionsLoading } = useCachedDistributions(etfs.map(e => e.ticker));
+
+  // 5. Fetch yields (runs in parallel with distributions)
+  const { data: yfinanceYields = {}, isLoading: yieldsLoading, error: yieldsError } = useCachedYields(etfs.map(e => e.ticker));
 
   // Debug ETFs loading
   useEffect(() => {
@@ -41,50 +52,17 @@ const Index = () => {
     });
   }, [etfs, isLoading]);
 
-  // Fetch dividend distributions for ETFs
-  const { data: distributions = {} } = useQuery({
-    queryKey: ["distributions", etfs.map(e => e.ticker)],
-    queryFn: async () => {
-      const { getCachedData } = await import('@/lib/cache');
-      const cacheKey = etfs.map(e => e.ticker).sort().join(',');
-      return getCachedData(
-        'lastDist',
-        () => fetchLatestDistributions(etfs.map(e => e.ticker)),
-        cacheKey
-      );
-    },
-    enabled: etfs.length > 0,
-    staleTime: 300_000 // 5 minutes
-  });
-
-  // Fetch yields from Yahoo Finance using the cached hook
-  const { data: yfinanceYields = {}, isLoading: yieldsLoading, error: yieldsError } = useCachedYields(etfs.map(e => e.ticker));
-  
-  // Debug yields data
+  // Debug loading states
   useEffect(() => {
-    if (etfs.length > 0) {
-      console.log('🔍 Yields debug:', {
-        etfCount: etfs.length,
-        firstFewTickers: etfs.slice(0, 3).map(e => e.ticker),
-        yieldsLoading,
-        yieldsError,
-        yieldsFound: Object.keys(yfinanceYields).length,
-        sampleYields: Object.entries(yfinanceYields).slice(0, 3)
-      });
-    }
-  }, [etfs.length, yieldsLoading, yieldsError, yfinanceYields]);
-
-  // Debug prices data
-  useEffect(() => {
-    if (etfs.length > 0) {
-      console.log('🔍 Prices debug:', {
-        etfCount: etfs.length,
-        pricesLoading,
-        pricesFound: Object.keys(livePrices).length,
-        samplePrices: Object.entries(livePrices).slice(0, 3)
-      });
-    }
-  }, [etfs.length, pricesLoading, livePrices]);
+    console.log('🔍 Loading states:', {
+      etfsLoading: isLoading,
+      scoresLoading,
+      pricesLoading,
+      distributionsLoading,
+      yieldsLoading,
+      yieldsError
+    });
+  }, [isLoading, scoresLoading, pricesLoading, distributionsLoading, yieldsLoading, yieldsError]);
 
   useEffect(() => {
     // Clear all caches on page load
@@ -137,7 +115,31 @@ const Index = () => {
     ...etf,
     yieldTTM: yfinanceYields[etf.ticker] || etf.yieldTTM || 0
   })) : SAMPLE_ETFS;
-  const ranked: ScoredETF[] = useMemo(() => scoreETFs(dataToUse, weights, livePrices), [dataToUse, weights, livePrices, yfinanceYields]);
+  
+  // Prioritize stored scores, fallback to live calculation
+  const ranked: ScoredETF[] = useMemo(() => {
+    if (dataToUse.length === 0) return [];
+    
+    // Check if we have stored scores for most ETFs
+    const storedScoreCount = Object.keys(storedScores).length;
+    const dataCount = dataToUse.length;
+    
+    console.log(`🎯 Stored scores: ${storedScoreCount}/${dataCount} ETFs`);
+    
+    // Always calculate scores using scoreETFs to ensure proper typing
+    // But if we have fresh stored scores, we could potentially skip recalculation in the future
+    console.log('🧮 Calculating scores...');
+    const liveScored = scoreETFs(dataToUse, weights, livePrices);
+    
+    // Save the calculated scores to database (async, don't wait)
+    if (storedScoreCount < dataCount * 0.9) { // Only save if we don't have most scores stored
+      import('@/lib/cache').then(({ saveCachedScores }) => {
+        saveCachedScores(liveScored, weights);
+      });
+    }
+    
+    return liveScored;
+  }, [dataToUse, weights, livePrices, storedScores, yfinanceYields]);
   
   // Filter for high-yield ETFs (top performers)
   const topETFs: ScoredETF[] = useMemo(() => {

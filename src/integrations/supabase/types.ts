@@ -130,6 +130,45 @@ export type Database = {
           },
         ]
       }
+      etf_scores: {
+        Row: {
+          composite_score: number | null
+          country: string | null
+          created_at: string
+          id: string
+          return_score: number | null
+          risk_score: number | null
+          ticker: string
+          updated_at: string
+          weights: Json | null
+          yield_score: number | null
+        }
+        Insert: {
+          composite_score?: number | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          return_score?: number | null
+          risk_score?: number | null
+          ticker: string
+          updated_at?: string
+          weights?: Json | null
+          yield_score?: number | null
+        }
+        Update: {
+          composite_score?: number | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          return_score?: number | null
+          risk_score?: number | null
+          ticker?: string
+          updated_at?: string
+          weights?: Json | null
+          yield_score?: number | null
+        }
+        Relationships: []
+      }
       etfs: {
         Row: {
           active: boolean | null
