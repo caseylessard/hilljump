@@ -16,6 +16,7 @@ import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
+import { LoadingProgress } from '@/components/LoadingProgress';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -324,6 +325,16 @@ const Ranking = () => {
           <div className="space-y-3">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Income ETFs</h1>
           </div>
+        </div>
+        
+        <div className="container">
+          <LoadingProgress 
+            etfsLoading={isLoading}
+            pricesLoading={isLoadingLive && Object.keys(cachedPrices).length === 0}
+            distributionsLoading={Object.keys(distributions).length === 0 && etfs.length > 0}
+            scoresLoading={ranked.length === 0 && etfs.length > 0}
+            yieldsLoading={false}
+          />
         </div>
       </header>
 
