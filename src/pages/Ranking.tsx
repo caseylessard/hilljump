@@ -96,11 +96,11 @@ const Ranking = () => {
       return true;
     });
     
-    // Apply category filter
+    // Apply category filter using reliable country field
     if (filter === "US Funds") {
-      validETFs = validETFs.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
+      validETFs = validETFs.filter(e => e.country === 'US');
     } else if (filter === "Canadian Funds") {
-      validETFs = validETFs.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
+      validETFs = validETFs.filter(e => e.country === 'CA');
     }
     // "All ETFs" doesn't need additional filtering
     
