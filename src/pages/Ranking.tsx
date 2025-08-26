@@ -330,12 +330,8 @@ const Ranking = () => {
       <main className="container grid gap-8 pb-16">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
-            </div>
-            
-            {/* Desktop: Buttons */}
-            <div className="hidden sm:flex items-center gap-2">
+            {/* Desktop: Buttons left, Search right */}
+            <div className="hidden sm:flex items-center justify-between w-full gap-4">
               <div className="flex items-center gap-1 border rounded-lg p-1">
                 <Button
                   variant={filter === "All ETFs" ? "secondary" : "ghost"}
