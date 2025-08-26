@@ -20,6 +20,7 @@ import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
 import { TiingoYieldsTest } from "@/components/TiingoYieldsTest";
 import HistoricalPriceTest from "@/components/HistoricalPriceTest";
+import { QuickPriceTest } from "@/components/QuickPriceTest";
 
 
 
@@ -214,6 +215,10 @@ const Index = () => {
       </header>
 
       <main className="container grid gap-8 pb-16">
+        <div className="w-full">
+          <QuickPriceTest />
+        </div>
+        
         <div className="w-full">
           <TiingoYieldsTest />
         </div>
