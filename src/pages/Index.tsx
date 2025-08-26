@@ -201,17 +201,19 @@ const Index = () => {
             <img src={hero} alt="HillJump dividend ETF ranking dashboard hero with futuristic cyan-blue gradient" loading="lazy" className="w-full h-56 object-cover" />
           </Card>
         </div>
+        
+        <div className="container">
+          <LoadingProgress 
+            etfsLoading={isLoading}
+            pricesLoading={pricesLoading}
+            distributionsLoading={distributionsLoading}
+            scoresLoading={scoresLoading}
+            yieldsLoading={yieldsLoading}
+          />
+        </div>
       </header>
 
       <main className="container grid gap-8 pb-16">
-        <LoadingProgress 
-          etfsLoading={isLoading}
-          pricesLoading={pricesLoading}
-          distributionsLoading={distributionsLoading}
-          scoresLoading={scoresLoading}
-          yieldsLoading={yieldsLoading}
-        />
-        
         <section aria-labelledby="scoring" className="grid md:grid-cols-3 gap-6">
           <h2 id="scoring" className="sr-only">Scoring Controls</h2>
           <div className="md:col-span-2">
