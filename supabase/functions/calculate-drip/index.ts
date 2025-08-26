@@ -182,6 +182,33 @@ serve(async (req) => {
   try {
     const { tickers } = await req.json()
     
+    // Initialize Supabase client early to get user info
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Get user country from auth header for tax calculations
+    let userCountry = 'US' // Default
+    try {
+      const authHeader = req.headers.get('authorization')
+      if (authHeader) {
+        const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('country')
+            .eq('id', user.id)
+            .maybeSingle()
+          
+          if (profile?.country) {
+            userCountry = profile.country
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Could not determine user country, using default US')
+    }
+    
     if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
       return new Response(JSON.stringify({ error: 'Invalid or empty tickers array' }), {
         status: 400,
@@ -189,17 +216,12 @@ serve(async (req) => {
       })
     }
 
-    console.log(`🧮 Calculating DRIP data for ${tickers.length} tickers`)
+    console.log(`🧮 Calculating DRIP data for ${tickers.length} tickers (User country: ${userCountry})`)
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
-
-    // Pre-filter tickers to only process those with ETF data (remove price requirement temporarily)
+    // Pre-filter tickers to only process those with ETF data - include country for tax calculations
     const { data: etfsWithData, error: etfError } = await supabase
       .from('etfs')
-      .select('ticker, current_price, currency')
+      .select('ticker, current_price, currency, country')
       .in('ticker', tickers)
       .eq('active', true)
 
@@ -354,6 +376,17 @@ serve(async (req) => {
 
         console.log(`  📊 Found ${dists.length} dividends for ${ticker}`)
 
+        // Determine withholding tax rate based on user and fund country
+        const etfInfo = etfsWithData?.find(etf => etf.ticker === ticker)
+        const fundCountry = etfInfo?.country || 'US'
+        
+        // Apply 15% withholding tax for Canadian users on US funds
+        const taxRate = (userCountry === 'CA' && fundCountry === 'US') ? 0.15 : 0
+        
+        if (taxRate > 0) {
+          console.log(`  💰 Applying ${(taxRate * 100).toFixed(0)}% withholding tax (${userCountry} user, ${fundCountry} fund)`)
+        }
+
         // Calculate DRIP for all periods using business days for more accurate pay dates
         const dripResults = dripWindows(
           prices,
@@ -361,7 +394,7 @@ serve(async (req) => {
           today,
           windowsDays,
           1,
-          { includePolicy: 'open-closed', payOffsetDays: 2, useBusinessDays: true, taxWithholdRate: 0 }
+          { includePolicy: 'open-closed', payOffsetDays: 2, useBusinessDays: true, taxWithholdRate: taxRate }
         )
 
         const result: any = { ticker, currentPrice }
