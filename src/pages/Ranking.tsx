@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { ETFTable } from '@/components/dashboard/ETFTable';
 import { ScoringControls } from '@/components/dashboard/ScoringControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -52,6 +53,7 @@ const Ranking = () => {
   const [distributions, setDistributions] = useState<Record<string, Distribution>>({});
   const [dripData, setDripData] = useState<Record<string, any>>({});
   const [filter, setFilter] = useState<string>(cachedState.filter);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [cachedRanking, setCachedRanking] = useState<ScoredETF[]>(cachedState.cachedRanking || []);
@@ -88,21 +90,32 @@ const Ranking = () => {
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (dummy prices only)
-    const validETFs = ranked.filter(etf => {
+    let validETFs = ranked.filter(etf => {
       // Exclude ETFs with clearly invalid data
       if (etf.current_price === 50.0) return false; // Remove $50 dummy prices
       return true;
     });
     
-    if (filter === "All ETFs") return validETFs;
-    if (filter === "YieldMax") return validETFs.filter(e => (e.category || "").toLowerCase().includes("yieldmax"));
-    if (filter === "Covered Call") return validETFs.filter(e => e.category === "Covered Call");
-    if (filter === "Income") return validETFs.filter(e => e.category === "Income");
-    if (filter === "Dividend") return validETFs.filter(e => e.category === "Dividend");
-    if (filter === "US Funds") return validETFs.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
-    if (filter === "Canadian Funds") return validETFs.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
+    // Apply category filter
+    if (filter === "US Funds") {
+      validETFs = validETFs.filter(e => (e.category || "").includes("(US)") || /NYSE|NASDAQ/i.test(e.exchange));
+    } else if (filter === "Canadian Funds") {
+      validETFs = validETFs.filter(e => (e.category || "").includes("(CA)") || /TSX|NEO|TSXV/i.test(e.exchange));
+    }
+    // "All ETFs" doesn't need additional filtering
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      validETFs = validETFs.filter(etf => 
+        etf.ticker.toLowerCase().includes(query) ||
+        (etf.underlying && etf.underlying.toLowerCase().includes(query)) ||
+        (etf.name && etf.name.toLowerCase().includes(query))
+      );
+    }
+    
     return validETFs;
-  }, [ranked, filter]);
+  }, [ranked, filter, searchQuery]);
 
   useEffect(() => {
     (async () => {
@@ -316,23 +329,73 @@ const Ranking = () => {
 
       <main className="container grid gap-8 pb-16">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
+            </div>
+            
+            {/* Desktop: Buttons */}
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="flex items-center gap-1 border rounded-lg p-1">
+                <Button
+                  variant={filter === "All ETFs" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setFilter("All ETFs")}
+                  className="h-8"
+                >
+                  All ETFs
+                </Button>
+                <Button
+                  variant={filter === "US Funds" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setFilter("US Funds")}
+                  className="h-8"
+                >
+                  US Funds
+                </Button>
+                <Button
+                  variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setFilter("Canadian Funds")}
+                  className="h-8"
+                >
+                  Canadian Funds
+                </Button>
+              </div>
+              
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by ticker or underlying..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-64"
+                />
+              </div>
+            </div>
+            
+            {/* Mobile: Dropdown and Search */}
+            <div className="flex sm:hidden flex-col gap-2 w-full">
               <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Filter" />
                 </SelectTrigger>
                 <SelectContent className="z-50 bg-background shadow-lg">
                   <SelectItem value="All ETFs">All ETFs</SelectItem>
-                  <SelectItem value="YieldMax">YieldMax</SelectItem>
-                  <SelectItem value="Covered Call">Covered Call</SelectItem>
-                  <SelectItem value="Income">Income</SelectItem>
-                  <SelectItem value="Dividend">Dividend</SelectItem>
                   <SelectItem value="US Funds">US Funds</SelectItem>
                   <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
                 </SelectContent>
               </Select>
+              
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by ticker or underlying..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
           </div>
 
