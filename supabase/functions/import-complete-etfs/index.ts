@@ -133,20 +133,44 @@ serve(async (req) => {
           continue
         }
 
+        // Get column indices (case-insensitive)
+        const getColumnIndex = (columnName: string) => {
+          const index = headers.findIndex(h => h.toLowerCase().trim() === columnName.toLowerCase())
+          return index >= 0 ? index : -1
+        }
+
+        const tickerIndex = getColumnIndex('ticker')
+        const fundIndex = getColumnIndex('fund')
+        const exchangeIndex = getColumnIndex('exchange')
+        
+        // Validate required fields
+        if (tickerIndex === -1) {
+          log(`Row ${i + 1}: Missing required 'ticker' column`)
+          errorCount++
+          continue
+        }
+
+        const ticker = row[tickerIndex]?.trim()
+        if (!ticker) {
+          log(`Row ${i + 1}: Empty ticker value`)
+          errorCount++
+          continue
+        }
+
         // Map CSV columns to database columns
         const etf = {
-          ticker: row[headers.indexOf('ticker')],
-          provider_group: row[headers.indexOf('provider')] || null,
-          manager: row[headers.indexOf('manager')] || null,
-          exchange: row[headers.indexOf('exchange')],
-          country: row[headers.indexOf('country')] || null,
-          currency: row[headers.indexOf('currency')] || 'USD',
-          underlying: row[headers.indexOf('underlying')] || null,
-          active: row[headers.indexOf('active')] === '1' || row[headers.indexOf('active')]?.toLowerCase() === 'true',
-          name: row[headers.indexOf('fund')] || row[headers.indexOf('ticker')], // Use fund as name
-          fund: row[headers.indexOf('fund')] || null,
-          strategy: row[headers.indexOf('strategy')] || null,
-          industry: row[headers.indexOf('industry')] || null,
+          ticker: ticker,
+          provider_group: row[getColumnIndex('provider')] || null,
+          manager: row[getColumnIndex('manager')] || null,
+          exchange: row[getColumnIndex('exchange')] || 'US', // Default to US if missing
+          country: row[getColumnIndex('country')] || null,
+          currency: row[getColumnIndex('currency')] || 'USD',
+          underlying: row[getColumnIndex('underlying')] || null,
+          active: row[getColumnIndex('active')] === '1' || row[getColumnIndex('active')]?.toLowerCase() === 'true',
+          name: row[fundIndex] || ticker, // Use fund as name, fallback to ticker
+          fund: row[fundIndex] || null,
+          strategy: row[getColumnIndex('strategy')] || null,
+          industry: row[getColumnIndex('industry')] || null,
           // Set default values for required fields
           expense_ratio: 0.01, // Default 1%
           volatility_1y: 15, // Default 15%
