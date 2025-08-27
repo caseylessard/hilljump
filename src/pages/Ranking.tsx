@@ -59,6 +59,7 @@ const Ranking = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [cachedRanking, setCachedRanking] = useState<ScoredETF[]>(cachedState.cachedRanking || []);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const { toast } = useToast();
   const { profile } = useUserProfile();
@@ -260,6 +261,7 @@ const Ranking = () => {
         cache.set('drip4w', newDripData, tickers.sort().join(','));
         
         console.log('✅ Cache updated successfully');
+        setLastUpdated(new Date());
         
       } catch (e) {
         console.warn('Live data update failed, keeping cached data:', e);
@@ -334,6 +336,7 @@ const Ranking = () => {
             distributionsLoading={Object.keys(distributions).length === 0 && etfs.length > 0}
             scoresLoading={ranked.length === 0 && etfs.length > 0}
             yieldsLoading={false}
+            lastUpdated={lastUpdated}
           />
         </div>
       </header>
