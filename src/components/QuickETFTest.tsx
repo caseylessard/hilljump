@@ -38,7 +38,7 @@ const QuickETFTest: React.FC = () => {
         description: "Starting dividend data update...",
       });
 
-      const { data, error } = await supabase.functions.invoke('dividend-updater', {
+      const { data, error } = await supabase.functions.invoke('fetch-latest-dividends', {
         body: {}
       });
       
@@ -88,7 +88,7 @@ const QuickETFTest: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Fetches the latest dividend announcements and ex-dividend dates for all ETFs, including new distributions like MARO's August 15 announcement.
+          Fetches the latest dividend announcements and ex-dividend dates for all ETFs from Yahoo Finance (prevents duplicates with upsert).
         </p>
         
         {lastUpdate && (

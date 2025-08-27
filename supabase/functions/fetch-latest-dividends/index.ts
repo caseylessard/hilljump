@@ -6,27 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const POLYGON_API_KEY = Deno.env.get('POLYGON_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-async function fetchPolygonDividends(ticker: string) {
-  if (!POLYGON_API_KEY) {
-    throw new Error('POLYGON_API_KEY not configured');
-  }
-
-  const url = `https://api.polygon.io/v3/reference/dividends?ticker=${ticker}&limit=10&apikey=${POLYGON_API_KEY}`;
+async function fetchYahooDividends(ticker: string) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y&events=div`;
   
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+    
     if (!response.ok) {
-      throw new Error(`Polygon API error: ${response.status}`);
+      throw new Error(`Yahoo Finance API error: ${response.status}`);
     }
     
     const data = await response.json();
-    return data.results || [];
+    const result = data?.chart?.result?.[0];
+    const events = result?.events?.dividends;
+    
+    if (!events) {
+      return [];
+    }
+    
+    // Convert Yahoo dividend events to our format
+    return Object.values(events).map((div: any) => ({
+      amount: div.amount,
+      date: new Date(div.date * 1000).toISOString().split('T')[0]
+    }));
   } catch (error) {
     console.error(`Failed to fetch dividends for ${ticker}:`, error);
     return [];
@@ -69,45 +80,33 @@ serve(async (req) => {
         try {
           totalProcessed++;
           
-          // Fetch dividends from Polygon
-          const dividends = await fetchPolygonDividends(etf.ticker);
+          // Fetch dividends from Yahoo Finance
+          const dividends = await fetchYahooDividends(etf.ticker);
           
           if (dividends.length === 0) {
             console.log(`No dividends found for ${etf.ticker}`);
             return;
           }
 
-          // Check existing dividends to avoid duplicates
-          const { data: existing } = await supabase
-            .from('dividends')
-            .select('ex_date, amount')
-            .eq('ticker', etf.ticker)
-            .order('ex_date', { ascending: false })
-            .limit(10);
-
-          const existingKey = (existing || []).map(d => `${d.ex_date}-${d.amount}`);
-
-          // Insert new dividends
+          // Use upsert instead of checking for duplicates to prevent constraint violations
           for (const dividend of dividends) {
-            const key = `${dividend.ex_dividend_date}-${dividend.cash_amount}`;
-            
-            if (!existingKey.includes(key)) {
-              const { error: insertError } = await supabase
-                .from('dividends')
-                .insert({
-                  ticker: etf.ticker,
-                  amount: dividend.cash_amount,
-                  ex_date: dividend.ex_dividend_date,
-                  pay_date: dividend.pay_date || null,
-                  cash_currency: dividend.currency || 'USD'
-                });
+            const { error: upsertError } = await supabase
+              .from('dividends')
+              .upsert({
+                ticker: etf.ticker,
+                amount: dividend.amount,
+                ex_date: dividend.date,
+                pay_date: null, // Yahoo doesn't provide pay date
+                cash_currency: 'USD'
+              }, {
+                onConflict: 'ticker,ex_date'
+              });
 
-              if (insertError) {
-                console.error(`Failed to insert dividend for ${etf.ticker}:`, insertError);
-                totalErrors++;
-              } else {
-                totalInserted++;
-              }
+            if (upsertError) {
+              console.error(`Failed to upsert dividend for ${etf.ticker}:`, upsertError);
+              totalErrors++;
+            } else {
+              totalInserted++;
             }
           }
         } catch (error) {
