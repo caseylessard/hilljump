@@ -533,27 +533,27 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 <div className={`mt-4 grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
                   <div>
                     <div className="text-sm text-muted-foreground">1Y Total Return</div>
-                    <div className="text-lg font-medium">{formatPct(selected.totalReturn1Y, 1)}</div>
+                    <div className="text-lg font-medium">{selected.totalReturn1Y ? formatPct(selected.totalReturn1Y, 1) : "—"}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">AV</div>
-                    <div className="text-lg font-medium">{fmtCompact.format(selected.avgVolume)}</div>
+                    <div className="text-lg font-medium">{selected.avgVolume ? fmtCompact.format(selected.avgVolume) : "—"}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Expense Ratio</div>
-                    <div className="text-lg font-medium">{formatPct(selected.expenseRatio, 2)}</div>
+                    <div className="text-lg font-medium">{selected.expenseRatio ? formatPct(selected.expenseRatio, 2) : "—"}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Volatility (1Y)</div>
-                    <div className="text-lg font-medium">{formatPct(selected.volatility1Y, 1)}</div>
+                    <div className="text-lg font-medium">{selected.volatility1Y ? formatPct(selected.volatility1Y, 1) : "—"}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Max Drawdown (1Y)</div>
-                    <div className="text-lg font-medium">{formatPct(selected.maxDrawdown1Y, 1)}</div>
+                    <div className="text-lg font-medium">{selected.maxDrawdown1Y ? formatPct(selected.maxDrawdown1Y, 1) : "—"}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">AUM</div>
-                    <div className="text-lg font-medium">{new Intl.NumberFormat("en", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(selected.aum)}</div>
+                    <div className="text-lg font-medium">{selected.aum ? new Intl.NumberFormat("en", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(selected.aum) : "—"}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Risk Score</div>

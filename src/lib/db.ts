@@ -7,14 +7,14 @@ function mapRow(row: any): ETF {
     ticker: row.ticker,
     name: row.name,
     exchange: row.exchange,
-    // Use actual values or keep as null/undefined - don't fallback to zero
-    totalReturn1Y: row.total_return_1y ? Number(row.total_return_1y) : 0,
-    yieldTTM: row.yield_ttm ? Number(row.yield_ttm) : 0,
-    avgVolume: row.avg_volume ? Number(row.avg_volume) : 0,
-    expenseRatio: row.expense_ratio ? Number(row.expense_ratio) : 0.01, // Default 1% if missing
-    volatility1Y: row.volatility_1y ? Number(row.volatility_1y) : 15, // Default 15% if missing
-    maxDrawdown1Y: row.max_drawdown_1y ? Number(row.max_drawdown_1y) : -10, // Default -10% if missing
-    aum: row.aum ? Number(row.aum) : 0,
+    // Use actual values from database - show null for missing data
+    totalReturn1Y: row.total_return_1y ? Number(row.total_return_1y) : null,
+    yieldTTM: row.yield_ttm ? Number(row.yield_ttm) : null,
+    avgVolume: row.avg_volume ? Number(row.avg_volume) : null,
+    expenseRatio: row.expense_ratio ? Number(row.expense_ratio) : null,
+    volatility1Y: row.volatility_1y && row.volatility_1y !== 15 ? Number(row.volatility_1y) : null, // Don't use default 15
+    maxDrawdown1Y: row.max_drawdown_1y && row.max_drawdown_1y !== -10 ? Number(row.max_drawdown_1y) : null, // Don't use default -10
+    aum: row.aum ? Number(row.aum) : null,
     current_price: row.current_price ? Number(row.current_price) : undefined,
     category: row.category ?? undefined,
     summary: row.summary ?? undefined,

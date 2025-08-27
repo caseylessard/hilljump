@@ -2,13 +2,13 @@ export type ETF = {
   ticker: string;
   name: string;
   exchange: string; // primary listing exchange
-  totalReturn1Y: number; // percentage
-  yieldTTM: number; // percentage
-  avgVolume: number; // shares/day
-  expenseRatio: number; // percentage
-  volatility1Y: number; // percentage
-  maxDrawdown1Y: number; // negative percentage
-  aum: number; // Assets Under Management (USD)
+  totalReturn1Y: number | null; // percentage
+  yieldTTM: number | null; // percentage
+  avgVolume: number | null; // shares/day
+  expenseRatio: number | null; // percentage
+  volatility1Y: number | null; // percentage
+  maxDrawdown1Y: number | null; // negative percentage
+  aum: number | null; // Assets Under Management (USD)
   current_price?: number; // Current market price
   category?: string;
   summary?: string; // plain language description of the ETF
