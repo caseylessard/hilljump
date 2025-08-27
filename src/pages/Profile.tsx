@@ -395,106 +395,21 @@ const Profile = () => {
     <div>
       <Navigation />
 
-      <main className="container py-8 grid gap-6">
-        <h1 className="text-3xl font-bold">Profile</h1>
-        
-        {isAdmin && !adminLoading && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold">WebSocket vs Cron Jobs Test</h2>
-            <div className="text-center space-y-2">
-              <p className="text-muted-foreground">Test WebSocket streaming vs traditional cron jobs</p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Current Cron Jobs
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="p-3 border rounded-lg">
-                      <div className="font-medium">dividend-updater-daily</div>
-                      <div className="text-sm text-muted-foreground">Schedule: 0 6 * * * (Daily at 6 AM)</div>
-                      <Badge variant="outline" className="mt-1">Active</Badge>
-                    </div>
-                    <div className="p-3 border rounded-lg">
-                      <div className="font-medium">fetch-etf-data-every-5min</div>
-                      <div className="text-sm text-muted-foreground">Schedule: */5 * * * * (Every 5 minutes)</div>
-                      <Badge variant="outline" className="mt-1">Active</Badge>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      <strong>Recommendation:</strong> The 5-minute cron job can be removed if WebSocket streaming works reliably.
-                      Keep the daily dividend updater for scheduled maintenance.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5" />
-                    WebSocket Test
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <Button onClick={testSampleStocks} className="w-full">
-                      Test 10 Sample Stocks
-                    </Button>
-                    
-                    {testResults.length > 0 && (
-                      <ScrollArea className="h-64">
-                        <div className="space-y-2">
-                          {testResults.map((result, index) => (
-                            <div key={index} className="p-2 border rounded text-sm">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <Badge variant={result.country === 'US' ? 'default' : 'secondary'}>
-                                    {result.ticker} ({result.country})
-                                  </Badge>
-                                  <div className="mt-1 text-xs text-muted-foreground">
-                                    Price: ${result.data.price?.toFixed(2) || 'N/A'}
-                                    {result.data.yield && ` | Yield: ${result.data.yield.toFixed(2)}%`}
-                                  </div>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(result.timestamp).toLocaleTimeString()}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4">
-              <QuickPriceTest />
-              <HistoricalPriceTest />
-              <PriceSystemTest />
-            </div>
-          </div>
-        )}
+      <main className="container py-4 px-4 sm:py-8 sm:px-6 grid gap-4 sm:gap-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Profile</h1>
         
         {!userId ? (
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <p className="mb-4">Please sign in to manage your profile and subscription.</p>
             <Button asChild><a href="/auth">Go to Auth</a></Button>
           </Card>
         ) : (
           <>
+            {/* User Info - Always at top and persistent */}
             <Card className="p-4 grid gap-3">
-              <div className="grid md:grid-cols-5 gap-2 items-end">
-                <div>
+              <h2 className="text-lg font-semibold">User Information</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                <div className="sm:col-span-1">
                   <label className="block text-sm mb-1">Username</label>
                   <Input
                     placeholder="e.g., caseylessard"
@@ -502,15 +417,15 @@ const Profile = () => {
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-1">
                   <label className="block text-sm mb-1">First name</label>
                   <Input placeholder="e.g., Alex" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
                 </div>
-                <div>
+                <div className="sm:col-span-1">
                   <label className="block text-sm mb-1">Last name</label>
                   <Input placeholder="e.g., Smith" value={lastName} onChange={(e) => setLastName(e.target.value)} />
                 </div>
-                <div>
+                <div className="sm:col-span-1">
                   <label className="block text-sm mb-1">Country</label>
                   <Select value={country} onValueChange={(v) => setCountry(v as 'US' | 'CA')}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Country" /></SelectTrigger>
@@ -520,7 +435,7 @@ const Profile = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 sm:col-span-1 lg:col-span-1">
                   <Button onClick={savePreferences} className="w-full">Save</Button>
                 </div>
               </div>
@@ -536,84 +451,87 @@ const Profile = () => {
               </div>
             </Card>
 
+            {/* Subscription Section */}
             <Card className="p-4 grid gap-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <div className="font-medium">Subscription</div>
                   <div className="text-sm text-muted-foreground">Current: {subscribed ? (subscriptionTier ? subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1) : 'Active') : 'Free'}</div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={refreshSubscription}>Refresh</Button>
-                  <Button onClick={manageSubscription}>Manage</Button>
-                  <Button variant="outline" onClick={resetPassword}>Reset Password</Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button variant="outline" onClick={refreshSubscription} size="sm">Refresh</Button>
+                  <Button onClick={manageSubscription} size="sm">Manage</Button>
+                  <Button variant="outline" onClick={resetPassword} size="sm">Reset Password</Button>
                 </div>
               </div>
-              <div className="grid sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button onClick={() => upgrade('subscriber')}>Upgrade to Subscriber — $9/mo</Button>
                 <Button variant="secondary" onClick={() => upgrade('premium')}>Upgrade to Premium — $29/mo</Button>
               </div>
             </Card>
 
+            {/* Portfolio Section - Only for subscribers/admins */}
             {(subscribed || isAdmin) && (
+              <>
+                <Card className="p-4 grid gap-3">
+                  <h2 className="text-lg font-semibold">Portfolio Management</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
+                    <Input type="number" placeholder="Shares" value={shares} onChange={(e) => setShares(Number(e.target.value))} />
+                    <Button onClick={addOrUpdate}>Add / Update</Button>
+                  </div>
+                </Card>
 
-
-              <Card className="p-4 grid gap-3">
-                <div className="grid grid-cols-3 gap-2">
-                  <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
-                  <Input type="number" placeholder="Shares" value={shares} onChange={(e) => setShares(Number(e.target.value))} />
-                  <Button onClick={addOrUpdate}>Add / Update</Button>
-                </div>
-              </Card>
+                <Card className="p-4 overflow-x-auto">
+                  <h3 className="text-md font-semibold mb-3">Portfolio Positions</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ticker</TableHead>
+                        <TableHead className="text-right">Shares</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Value</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow>
+                      ) : positions.length === 0 ? (
+                        <TableRow><TableCell colSpan={5}>No positions yet.</TableCell></TableRow>
+                      ) : (
+                        positions.map((p) => {
+                          const price = (prices[p.ticker] ?? 0) as number;
+                          const value = price * (Number(p.shares) || 0);
+                          return (
+                            <TableRow key={p.id}>
+                              <TableCell>{p.ticker}</TableCell>
+                              <TableCell className="text-right">{Number(p.shares)}</TableCell>
+                              <TableCell className="text-right">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
+                              <TableCell className="text-right">{price ? `$${value.toFixed(2)}` : "-"}</TableCell>
+                              <TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button></TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                  <div className="mt-3 text-right font-semibold">Total: ${total.toFixed(2)}</div>
+                </Card>
+              </>
             )}
 
-            {(subscribed || isAdmin) && (
-              <Card className="p-4 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Ticker</TableHead>
-                      <TableHead className="text-right">Shares</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-right">Value</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow>
-                    ) : positions.length === 0 ? (
-                      <TableRow><TableCell colSpan={5}>No positions yet.</TableCell></TableRow>
-                    ) : (
-                      positions.map((p) => {
-                        const price = (prices[p.ticker] ?? 0) as number;
-                        const value = price * (Number(p.shares) || 0);
-                        return (
-                          <TableRow key={p.id}>
-                            <TableCell>{p.ticker}</TableCell>
-                            <TableCell className="text-right">{Number(p.shares)}</TableCell>
-                            <TableCell className="text-right">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
-                            <TableCell className="text-right">{price ? `$${value.toFixed(2)}` : "-"}</TableCell>
-                            <TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button></TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-                <div className="mt-3 text-right font-semibold">Total: ${total.toFixed(2)}</div>
-              </Card>
-            )}
-
-            {isAdmin && (
+            {/* Admin Section */}
+            {isAdmin && !adminLoading && (
               <>
                 <Card className="p-4 grid gap-3 mt-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="font-medium">Export/Import ETFs CSV</div>
                       <div className="text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button onClick={exportEtfs}>Export CSV</Button>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button onClick={exportEtfs} size="sm">Export CSV</Button>
                       <label className={`cursor-pointer ${importing ? 'pointer-events-none' : ''}`}>
                         <input 
                           type="file" 
@@ -626,7 +544,7 @@ const Profile = () => {
                             e.currentTarget.value = '';
                           }} 
                         />
-                        <span className={`inline-flex items-center justify-center h-9 px-4 rounded-md border bg-background gap-2 ${importing ? 'opacity-50' : ''}`}>
+                        <span className={`inline-flex items-center justify-center h-9 px-4 rounded-md border bg-background gap-2 text-sm ${importing ? 'opacity-50' : ''}`}>
                           {importing && <Loader2 className="h-4 w-4 animate-spin" />}
                           Import CSV
                         </span>
@@ -634,14 +552,96 @@ const Profile = () => {
                     </div>
                   </div>
                 </Card>
-                
-                
 
+                <div className="space-y-6">
+                  <h2 className="text-xl sm:text-2xl font-semibold">WebSocket vs Cron Jobs Test</h2>
+                  <div className="text-center space-y-2">
+                    <p className="text-muted-foreground">Test WebSocket streaming vs traditional cron jobs</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                          <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+                          Current Cron Jobs
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="p-3 border rounded-lg">
+                            <div className="font-medium text-sm sm:text-base">dividend-updater-daily</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground">Schedule: 0 6 * * * (Daily at 6 AM)</div>
+                            <Badge variant="outline" className="mt-1 text-xs">Active</Badge>
+                          </div>
+                          <div className="p-3 border rounded-lg">
+                            <div className="font-medium text-sm sm:text-base">fetch-etf-data-every-5min</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground">Schedule: */5 * * * * (Every 5 minutes)</div>
+                            <Badge variant="outline" className="mt-1 text-xs">Active</Badge>
+                          </div>
+                        </div>
+                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <p className="text-xs sm:text-sm text-yellow-800">
+                            <strong>Recommendation:</strong> The 5-minute cron job can be removed if WebSocket streaming works reliably.
+                            Keep the daily dividend updater for scheduled maintenance.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                          <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
+                          WebSocket Test
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <Button onClick={testSampleStocks} className="w-full text-sm sm:text-base">
+                            Test 10 Sample Stocks
+                          </Button>
+                          
+                          {testResults.length > 0 && (
+                            <ScrollArea className="h-48 sm:h-64">
+                              <div className="space-y-2">
+                                {testResults.map((result, index) => (
+                                  <div key={index} className="p-2 border rounded text-xs sm:text-sm">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <Badge variant={result.country === 'US' ? 'default' : 'secondary'} className="text-xs">
+                                          {result.ticker} ({result.country})
+                                        </Badge>
+                                        <div className="mt-1 text-xs text-muted-foreground">
+                                          Price: ${result.data.price?.toFixed(2) || 'N/A'}
+                                          {result.data.yield && ` | Yield: ${result.data.yield.toFixed(2)}%`}
+                                        </div>
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {new Date(result.timestamp).toLocaleTimeString()}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <QuickPriceTest />
+                    <HistoricalPriceTest />
+                    <PriceSystemTest />
+                  </div>
+                </div>
               </>
             )}
-           </>
+          </>
         )}
-        <p className="text-xs text-muted-foreground">Not investment advice.</p>
+        <p className="text-xs text-muted-foreground mt-4">Not investment advice.</p>
       </main>
     </div>
   );
