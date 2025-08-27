@@ -37,38 +37,38 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
   const [range, setRange] = useState<string>("1Y");
   const [nextDividends, setNextDividends] = useState<Record<string, any>>({});
-  const [rsiSignals, setRsiSignals] = useState<Record<string, { rsi: number; signal: string }>>({});
+  const [rsiSignals, setRsiSignals] = useState<Record<string, { signal: string; momentum_1m?: number; momentum_3m?: number; trend_strength?: number }>>({});
   
   // Memoize tickers to prevent unnecessary refetches
   const tickers = useMemo(() => items.map(item => item.ticker), [items]);
   
   // Fetch RSI signals when tickers change
   useEffect(() => {
-    const fetchRSISignals = async () => {
+    const fetchMomentumSignals = async () => {
       if (tickers.length === 0) return;
       
       try {
-        console.log('Fetching RSI signals for', tickers.length, 'tickers');
-        const response = await supabase.functions.invoke('yfinance-rsi', {
+        console.log('Fetching momentum signals for', tickers.length, 'tickers');
+        const response = await supabase.functions.invoke('momentum-signals', {
           body: { tickers }
         });
         
         if (response.error) {
-          console.error('Error fetching RSI signals:', response.error);
+          console.error('Error fetching momentum signals:', response.error);
           return;
         }
         
         const { signals } = response.data;
-        console.log('Received RSI signals for', Object.keys(signals || {}).length, 'tickers');
+        console.log('Received momentum signals for', Object.keys(signals || {}).length, 'tickers');
         setRsiSignals(signals || {});
         
       } catch (error) {
-        console.error('Failed to fetch RSI signals:', error);
+        console.error('Failed to fetch momentum signals:', error);
       }
     };
     
-    // Fetch RSI signals with a small delay to avoid rapid calls
-    const timeoutId = setTimeout(fetchRSISignals, 500);
+    // Fetch momentum signals with a small delay to avoid rapid calls
+    const timeoutId = setTimeout(fetchMomentumSignals, 500);
     return () => clearTimeout(timeoutId);
   }, [tickers]);
   
@@ -248,13 +248,13 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         case "drip52w": return getDripPercent(etf.ticker, "52w");
         case "score": return getDripSum(etf.ticker); // Use DRIP sum instead of composite score
         case "signal": {
-          const rsiSignal = rsiSignals[etf.ticker];
-          if (rsiSignal) {
+          const momentumSignal = rsiSignals[etf.ticker];
+          if (momentumSignal) {
             // Return numeric value for sorting: BUY=2, HOLD=1, SELL=0
-            return rsiSignal.signal === 'BUY' ? 2 : (rsiSignal.signal === 'HOLD' ? 1 : 0);
+            return momentumSignal.signal === 'BUY' ? 2 : (momentumSignal.signal === 'HOLD' ? 1 : 0);
           }
-          // Return neutral value when no data available
-          return -1; // Sort "NO DATA" to bottom
+          // Return neutral value when loading
+          return 0.5; // Sort loading items in middle
         }
         case "rank":
         default:
@@ -439,25 +439,27 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                  </TableCell>
                 <TableCell className="text-right">
                   {(() => {
-                    const rsiSignal = rsiSignals[etf.ticker];
-                    if (rsiSignal) {
-                      const { signal, rsi } = rsiSignal;
+                    const momentumSignal = rsiSignals[etf.ticker];
+                    if (momentumSignal) {
+                      const { signal, momentum_1m = 0, trend_strength = 0 } = momentumSignal;
                       const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
                                         signal === 'SELL' ? "bg-red-500 text-white" : 
                                         "bg-gray-500 text-white";
                       return (
                         <div className="inline-flex flex-col items-end leading-tight">
                           <Badge className={badgeClass}>{signal}</Badge>
-                          <span className="text-muted-foreground text-xs">RSI: {rsi.toFixed(0)}</span>
+                          <span className="text-muted-foreground text-xs">
+                            1M: {momentum_1m > 0 ? '+' : ''}{momentum_1m.toFixed(1)}%
+                          </span>
                         </div>
                       );
                     }
                     
-                    // Show "No Signal" instead of misleading fallback
+                    // Show "Loading..." while fetching
                     return (
                       <div className="inline-flex flex-col items-end leading-tight">
-                        <Badge className="bg-gray-400 text-white">NO DATA</Badge>
-                        <span className="text-muted-foreground text-xs">RSI unavailable</span>
+                        <Badge className="bg-gray-400 text-white">LOADING</Badge>
+                        <span className="text-muted-foreground text-xs">Calculating...</span>
                       </div>
                     );
                   })()}
