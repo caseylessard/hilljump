@@ -253,12 +253,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
             // Return numeric value for sorting: BUY=2, HOLD=1, SELL=0
             return rsiSignal.signal === 'BUY' ? 2 : (rsiSignal.signal === 'HOLD' ? 1 : 0);
           }
-          // Fallback to old logic if no RSI data
-          const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
-          const r28d = (Math.pow(1 + daily, 28) - 1) * 100;
-          const r3m = (Math.pow(1 + daily, 90) - 1) * 100;
-          const buy = r28d > 0 && r3m > 0;
-          return buy ? 1 : 0;
+          // Return neutral value when no data available
+          return -1; // Sort "NO DATA" to bottom
         }
         case "rank":
         default:
@@ -457,11 +453,12 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                       );
                     }
                     
-                    // Fallback to old logic if no RSI data
-                    return buy ? (
-                      <Badge className="bg-emerald-500 text-white">BUY</Badge>
-                    ) : (
-                      <Badge variant="destructive" className="bg-red-500 text-white">SELL</Badge>
+                    // Show "No Signal" instead of misleading fallback
+                    return (
+                      <div className="inline-flex flex-col items-end leading-tight">
+                        <Badge className="bg-gray-400 text-white">NO DATA</Badge>
+                        <span className="text-muted-foreground text-xs">RSI unavailable</span>
+                      </div>
                     );
                   })()}
                 </TableCell>
