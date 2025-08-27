@@ -17,6 +17,8 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { QuickPriceTest } from "@/components/QuickPriceTest";
 import HistoricalPriceTest from "@/components/HistoricalPriceTest";
 import PriceSystemTest from "@/components/PriceSystemTest";
+import { ETFEditor } from "@/components/admin/ETFEditor";
+import { DistributionEditor } from "@/components/admin/DistributionEditor";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -521,9 +523,37 @@ const Profile = () => {
               </>
             )}
 
-            {/* Admin Section */}
+            {/* Admin Section - ETF Management */}
             {isAdmin && !adminLoading && (
               <>
+                <Card className="p-4">
+                  <h2 className="text-lg font-semibold mb-4">Admin - ETF Management</h2>
+                  <div className="space-y-4">
+                    <ETFEditor />
+                    <DistributionEditor />
+                    
+                    {/* Fetch Latest Dividends Function */}
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-2">Fetch Latest Dividends</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Fetch latest dividend data from Polygon API (prevents duplicates)
+                      </p>
+                      <Button 
+                        onClick={async () => {
+                          const { data, error } = await supabase.functions.invoke('fetch-latest-dividends');
+                          if (error) {
+                            toast({ title: "Fetch failed", description: error.message, variant: "destructive" });
+                          } else {
+                            toast({ title: "Success", description: data.message });
+                          }
+                        }}
+                      >
+                        Fetch Latest Dividends
+                      </Button>
+                    </Card>
+                  </div>
+                </Card>
+
                 <Card className="p-4 grid gap-3 mt-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>

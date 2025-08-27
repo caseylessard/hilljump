@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { predictNextDistribution } from "@/lib/dividends";
 import { useCachedDRIP } from "@/hooks/useCachedETFData";
 
-import { ComparisonChart, type RangeKey } from "@/components/dashboard/ComparisonChart";
+import { DistributionHistory } from "@/components/dashboard/DistributionHistory";
 import { ArrowUpRight, ArrowDownRight, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +35,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
-  const [range, setRange] = useState<RangeKey>("1Y");
+  const [range, setRange] = useState<string>("1Y");
   const [nextDividends, setNextDividends] = useState<Record<string, any>>({});
   const [rsiSignals, setRsiSignals] = useState<Record<string, { rsi: number; signal: string }>>({});
   
@@ -528,17 +528,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 </div>
               </div>
               <div className={`${isMobile ? 'p-2 max-h-[60vh] overflow-y-auto' : 'p-4'}`}>
-                <Tabs value={range} onValueChange={(v) => setRange(v as RangeKey)}>
-                  <TabsList className="grid grid-cols-4 w-full">
-                    <TabsTrigger value="1M">1M</TabsTrigger>
-                    <TabsTrigger value="3M">3M</TabsTrigger>
-                    <TabsTrigger value="6M">6M</TabsTrigger>
-                    <TabsTrigger value="1Y">1Y</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value={range} className="mt-4">
-                    <ComparisonChart etf={selected} underlyingTicker={UNDERLYING_MAP[selected.ticker]} range={range} />
-                  </TabsContent>
-                </Tabs>
+                {/* Distribution History */}
+                <DistributionHistory ticker={selected.ticker} />
                 <div className={`mt-4 grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
                   <div>
                     <div className="text-sm text-muted-foreground">1Y Total Return</div>
