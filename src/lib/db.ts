@@ -33,7 +33,6 @@ function mapRow(row: any): ETF {
     dataSource: row.data_source ?? undefined,
     polygonSupported: row.polygon_supported ?? false,
     twelveSymbol: row.twelve_symbol ?? undefined,
-    finnhubSymbol: row.finnhub_symbol ?? undefined,
     eodhSymbol: row.eodhd_symbol ?? undefined,
   };
 }

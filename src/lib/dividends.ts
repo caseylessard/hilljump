@@ -17,7 +17,10 @@ export async function fetchLatestDistributions(
     .in("ticker", tickers)
     .order("ex_date", { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error("Failed to fetch distributions from database:", error);
+    return {}; // Return empty object as fallback instead of throwing
+  }
 
   const map: Record<string, Distribution> = {};
 

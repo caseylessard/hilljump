@@ -183,7 +183,6 @@ export type Database = {
           eodhd_symbol: string | null
           exchange: string
           expense_ratio: number
-          finnhub_symbol: string | null
           fund: string | null
           id: string
           industry: string | null
@@ -218,7 +217,6 @@ export type Database = {
           eodhd_symbol?: string | null
           exchange: string
           expense_ratio: number
-          finnhub_symbol?: string | null
           fund?: string | null
           id?: string
           industry?: string | null
@@ -253,7 +251,6 @@ export type Database = {
           eodhd_symbol?: string | null
           exchange?: string
           expense_ratio?: number
-          finnhub_symbol?: string | null
           fund?: string | null
           id?: string
           industry?: string | null

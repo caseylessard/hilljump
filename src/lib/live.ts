@@ -82,7 +82,7 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
   
   const { data: etfData, error: etfError } = await supabase
     .from('etfs')
-    .select('ticker, country, data_source, polygon_supported, twelve_symbol, finnhub_symbol, eodhd_symbol, yield_ttm, aum, avg_volume, total_return_1y, current_price, price_updated_at')
+    .select('ticker, country, data_source, polygon_supported, twelve_symbol, eodhd_symbol, yield_ttm, aum, avg_volume, total_return_1y, current_price, price_updated_at')
     .in('ticker', tickerVariations);
   
   if (etfError) {

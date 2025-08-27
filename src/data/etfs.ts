@@ -28,7 +28,6 @@ export type ETF = {
   dataSource?: string; // e.g., 'polygon', 'twelvedata'
   polygonSupported?: boolean; // whether ticker is supported by Polygon
   twelveSymbol?: string; // symbol format for TwelveData API
-  finnhubSymbol?: string; // symbol format for Finnhub API
   eodhSymbol?: string; // symbol format for EOD Historical Data API
 };
 
