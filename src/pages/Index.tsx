@@ -19,6 +19,8 @@ import { useCachedETFs, useCachedPrices, useCachedYields, useCachedStoredScores,
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
 import { LoadingProgress } from "@/components/LoadingProgress";
+import { DataUpdater } from "@/components/admin/DataUpdater";
+import { useAdmin } from "@/hooks/useAdmin";
 
 
 
@@ -26,6 +28,7 @@ const Index = () => {
   const { toast } = useToast();
   const [weights, setWeights] = useState({ return: 0.6, yield: 0.2, risk: 0.2 });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const { isAdmin } = useAdmin();
   
   // Load order: 1. Stored scores, 2. Stored prices, 3. Distributions, 4. Live prices (background)
   
@@ -232,6 +235,7 @@ const Index = () => {
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <CacheMonitor />
+      {isAdmin && <DataUpdater />}
     </div>
   );
 };
