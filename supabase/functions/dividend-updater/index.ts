@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const POLYGON_API_KEY = Deno.env.get("POLYGON_API_KEY");
+// Removed POLYGON_API_KEY - now using Yahoo Finance
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -17,7 +17,6 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!POLYGON_API_KEY) throw new Error("Missing POLYGON_API_KEY secret");
     if (!SUPABASE_URL || !SERVICE_ROLE) throw new Error("Missing Supabase service credentials");
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
@@ -35,26 +34,75 @@ serve(async (req: Request) => {
     if (e1) throw e1;
     const tickers: { id: string; ticker: string }[] = etfs || [];
 
-    // helper: fetch dividends for one ticker
+    // helper: fetch dividends for one ticker using Yahoo Finance
     async function fetchDividends(ticker: string) {
-      const url = new URL("https://api.polygon.io/v3/reference/dividends");
-      url.searchParams.set("ticker", ticker);
-      url.searchParams.set("order", "desc");
-      url.searchParams.set("limit", "100");
-      url.searchParams.set("apiKey", POLYGON_API_KEY!);
-      const res = await fetch(url.toString());
-      if (!res.ok) throw new Error(`polygon dividends ${ticker} ${res.status}`);
-      const json = await res.json();
-      return Array.isArray(json?.results) ? json.results : [];
+      try {
+        // Yahoo Finance events API for dividends
+        const endDate = Math.floor(Date.now() / 1000);
+        const startDate = endDate - (365 * 24 * 60 * 60); // 1 year ago
+        
+        const url = `https://query1.finance.yahoo.com/v7/finance/download/${ticker}?period1=${startDate}&period2=${endDate}&interval=1d&events=div`;
+        
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+        
+        if (!res.ok) {
+          console.warn(`Yahoo Finance dividends failed for ${ticker}: ${res.status}`);
+          return [];
+        }
+        
+        const csvText = await res.text();
+        const lines = csvText.trim().split('\n');
+        
+        if (lines.length <= 1) return [];
+        
+        const dividends = [];
+        for (let i = 1; i < lines.length; i++) {
+          const columns = lines[i].split(',');
+          if (columns.length >= 2) {
+            const date = columns[0]; // Date
+            const amount = parseFloat(columns[1]); // Dividend amount
+            
+            if (!isNaN(amount) && amount > 0) {
+              dividends.push({
+                ex_dividend_date: date,
+                pay_date: null, // Yahoo doesn't provide pay date in this API
+                cash_amount: amount,
+                currency: 'USD' // Assume USD for now
+              });
+            }
+          }
+        }
+        
+        return dividends;
+      } catch (error) {
+        console.error(`Error fetching Yahoo Finance dividends for ${ticker}:`, error);
+        return [];
+      }
     }
 
     async function fetchPrevClose(ticker: string) {
-      const url = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/prev?adjusted=true&apiKey=${POLYGON_API_KEY}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`polygon prev close ${ticker} ${res.status}`);
-      const json = await res.json();
-      const close = Number(json?.results?.[0]?.c);
-      return Number.isFinite(close) ? close : null;
+      try {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+        
+        if (!res.ok) return null;
+        
+        const data = await res.json();
+        const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+        
+        return typeof price === 'number' && price > 0 ? price : null;
+      } catch (error) {
+        console.error(`Error fetching Yahoo Finance price for ${ticker}:`, error);
+        return null;
+      }
     }
 
     const oneYearAgo = new Date();

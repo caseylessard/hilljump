@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const POLYGON_API_KEY = Deno.env.get("POLYGON_API_KEY");
+// Removed POLYGON_API_KEY - now using Yahoo Finance
 
 async function fetchStooqPrice(symbol: string): Promise<number | null> {
   const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol.toLowerCase())}&f=sd2t2ohlcv&h&e=csv`;
@@ -46,38 +46,37 @@ serve(async (req: Request) => {
     
     const results: Record<string, any> = {};
     
-    // Handle US symbols with Polygon (if available) or Stooq
+    // Handle US symbols with Yahoo Finance first, then Stooq fallback
     if (usSymbols.length > 0) {
-      if (POLYGON_API_KEY) {
-        console.log("Using Polygon for US symbols");
-        try {
-          const url = new URL("https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers");
-          url.searchParams.set("tickers", usSymbols.join(","));
-          url.searchParams.set("apiKey", POLYGON_API_KEY);
-
-          const res = await fetch(url.toString());
-          if (res.ok) {
-            const data = await res.json();
-            const list = Array.isArray(data?.tickers) ? data.tickers : [];
+      console.log("Using Yahoo Finance for US symbols");
+      try {
+        // Process US symbols with Yahoo Finance
+        for (const symbol of usSymbols) {
+          try {
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
+            const res = await fetch(url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+            });
             
-            for (const item of list) {
-              const sym = item?.ticker as string;
-              const lastPrice = Number(item?.lastTrade?.p ?? item?.day?.c ?? item?.min?.c);
-              if (sym && Number.isFinite(lastPrice) && lastPrice > 0) {
-                results[sym] = { price: lastPrice };
-                console.log(`Polygon: ${sym} = $${lastPrice}`);
-              } else if (sym) {
-                console.log(`Polygon: ${sym} = $0 (invalid price data)`);
+            if (res.ok) {
+              const data = await res.json();
+              const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+              
+              if (typeof price === 'number' && price > 0) {
+                results[symbol] = { price };
+                console.log(`Yahoo Finance: ${symbol} = $${price}`);
               }
             }
-            
-            console.log(`Polygon API returned data for ${list.length} symbols, ${Object.keys(results).filter(k => usSymbols.includes(k)).length} with valid prices`);
-          } else {
-            console.error(`Polygon API HTTP error: ${res.status} ${res.statusText}`);
+          } catch (err) {
+            console.warn(`Yahoo Finance failed for ${symbol}:`, err);
           }
-        } catch (err) {
-          console.error("Polygon failed, falling back to Stooq for US:", err);
         }
+        
+        console.log(`Yahoo Finance returned data for ${Object.keys(results).filter(k => usSymbols.includes(k)).length} US symbols`);
+      } catch (err) {
+        console.error("Yahoo Finance failed, falling back to Stooq for US:", err);
       }
       
       // Use Stooq for any missing US symbols

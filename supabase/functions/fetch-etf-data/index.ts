@@ -163,15 +163,16 @@ serve(async (req: Request) => {
 
       let etfData: any = null;
 
-      // Try multiple data sources in order of preference
-      if (alphaVantageKey && !etfData) {
-        etfData = await fetchAlphaVantageData(ticker, country, alphaVantageKey);
-        if (etfData) log('INFO', `Alpha Vantage data found for ${ticker}`);
-      }
-
+      // Try Yahoo Finance first (free and reliable)
       if (!etfData) {
         etfData = await fetchYahooFinanceData(ticker, country);
         if (etfData) log('INFO', `Yahoo Finance data found for ${ticker}`);
+      }
+
+      // Try Alpha Vantage as fallback
+      if (alphaVantageKey && !etfData) {
+        etfData = await fetchAlphaVantageData(ticker, country, alphaVantageKey);
+        if (etfData) log('INFO', `Alpha Vantage data found for ${ticker}`);
       }
 
       if (!etfData) {

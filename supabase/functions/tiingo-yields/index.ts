@@ -19,17 +19,15 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔄 Starting Tiingo yield update process');
+    console.log('🔄 Starting Yahoo Finance yield update process');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const tiingoApiKey = Deno.env.get('TIINGO_API_KEY');
 
-    if (!supabaseUrl || !supabaseKey || !tiingoApiKey) {
+    if (!supabaseUrl || !supabaseKey) {
       const missingVars = [];
       if (!supabaseUrl) missingVars.push('SUPABASE_URL');
       if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
-      if (!tiingoApiKey) missingVars.push('TIINGO_API_KEY');
       
       console.error(`❌ Missing environment variables: ${missingVars.join(', ')}`);
       throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
@@ -64,21 +62,28 @@ serve(async (req) => {
 
       const promises = batch.map(async (etf) => {
         try {
-          // Fetch fundamentals from Tiingo
-          const url = `https://api.tiingo.com/tiingo/fundamentals/${etf.ticker}/daily?token=${tiingoApiKey}`;
-          const response = await fetch(url);
+          // Fetch yield data from Yahoo Finance
+          const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${etf.ticker}?modules=summaryDetail`;
+          const response = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+          });
           
           if (!response.ok) {
-            console.warn(`⚠️ Tiingo API error for ${etf.ticker}: ${response.status}`);
+            console.warn(`⚠️ Yahoo Finance API error for ${etf.ticker}: ${response.status}`);
             return { ticker: etf.ticker, success: false, error: `API error: ${response.status}` };
           }
 
           const data = await response.json();
           
-          // Extract yield data from the response
+          // Extract yield data from Yahoo Finance response
+          const summaryDetail = data?.quoteSummary?.result?.[0]?.summaryDetail;
           let divYield = null;
-          if (data && data[0] && data[0].statementData && data[0].statementData.divYield) {
-            divYield = data[0].statementData.divYield;
+          
+          if (summaryDetail?.dividendYield?.raw && typeof summaryDetail.dividendYield.raw === 'number') {
+            // Convert from decimal to percentage (e.g., 0.05 -> 5.0)
+            divYield = summaryDetail.dividendYield.raw * 100;
           }
 
           // Update ETF with yield data
@@ -86,8 +91,8 @@ serve(async (req) => {
             const { error: updateError } = await supabase
               .from('etfs')
               .update({
-                yield: divYield,
-                last_yield_update: new Date().toISOString()
+                yield_ttm: divYield,
+                price_updated_at: new Date().toISOString()
               })
               .eq('ticker', etf.ticker);
 
@@ -96,7 +101,7 @@ serve(async (req) => {
               return { ticker: etf.ticker, success: false, error: updateError.message };
             }
 
-            console.log(`✅ Updated ${etf.ticker} with yield: ${divYield}%`);
+            console.log(`✅ Updated ${etf.ticker} with yield: ${divYield.toFixed(2)}%`);
             return { ticker: etf.ticker, success: true, yield: divYield };
           } else {
             console.warn(`⚠️ No yield data found for ${etf.ticker}`);
@@ -128,7 +133,7 @@ serve(async (req) => {
 
     const result = {
       success: true,
-      message: 'Tiingo yield update completed',
+      message: 'Yahoo Finance yield update completed',
       timestamp: new Date().toISOString(),
       summary: {
         totalETFs: etfs?.length || 0,
@@ -138,7 +143,7 @@ serve(async (req) => {
       }
     };
 
-    console.log('🎉 Tiingo yield update process completed');
+    console.log('🎉 Yahoo Finance yield update process completed');
     console.log(`📊 Success: ${successCount}, Errors: ${errorCount}`);
 
     return new Response(
@@ -148,7 +153,7 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error('❌ Error in Tiingo yields function:', error);
+    console.error('❌ Error in Yahoo Finance yields function:', error);
     
     return new Response(
       JSON.stringify({ 
