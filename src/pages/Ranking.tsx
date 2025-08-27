@@ -60,6 +60,11 @@ const Ranking = () => {
   const [cachedRanking, setCachedRanking] = useState<ScoredETF[]>(cachedState.cachedRanking || []);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState({
+    prices: { current: 0, total: 0 },
+    distributions: { current: 0, total: 0 },
+    scores: { current: 0, total: 0 }
+  });
 
   const { toast } = useToast();
   const { profile } = useUserProfile();
@@ -160,6 +165,13 @@ const Ranking = () => {
       try {
         const tickers = etfs.map(e => e.ticker);
         console.log('📦 Loading cached data for immediate display...');
+        
+        // Set initial progress
+        setLoadingProgress(prev => ({
+          ...prev,
+          prices: { current: 0, total: tickers.length },
+          distributions: { current: 0, total: tickers.length }
+        }));
 
         // Load all cached data in parallel
         const [cachedPricesData, cachedDripData, distributionsData] = await Promise.allSettled([
@@ -173,7 +185,12 @@ const Ranking = () => {
         // Set cached data for immediate display
         if (cachedPricesData.status === 'fulfilled') {
           setCachedPrices(cachedPricesData.value);
-          console.log('✅ Loaded cached prices:', Object.keys(cachedPricesData.value).length);
+          const priceCount = Object.keys(cachedPricesData.value).length;
+          setLoadingProgress(prev => ({
+            ...prev,
+            prices: { current: priceCount, total: tickers.length }
+          }));
+          console.log('✅ Loaded cached prices:', priceCount);
         }
         
         if (cachedDripData.status === 'fulfilled') {
@@ -183,7 +200,12 @@ const Ranking = () => {
         
         if (distributionsData.status === 'fulfilled') {
           setDistributions(distributionsData.value);
-          console.log('✅ Loaded distributions:', Object.keys(distributionsData.value).length);
+          const distCount = Object.keys(distributionsData.value).length;
+          setLoadingProgress(prev => ({
+            ...prev,
+            distributions: { current: distCount, total: tickers.length }
+          }));
+          console.log('✅ Loaded distributions:', distCount);
         }
 
       } catch (e) {
@@ -207,13 +229,25 @@ const Ranking = () => {
         
         console.log('🔄 Loading live prices and recalculating...');
         
+        // Set initial progress for live data
+        setLoadingProgress(prev => ({
+          ...prev,
+          prices: { current: 0, total: tickers.length },
+          scores: { current: 0, total: tickers.length }
+        }));
+        
         // 1. Fetch live prices
         const { getCachedETFPrices } = await import('@/lib/cache');
         const liveData = await getCachedETFPrices(tickers);
         
         if (cancelled) return;
         setLivePrices(liveData);
-        console.log(`✅ Updated ${Object.keys(liveData).length} live prices`);
+        const liveCount = Object.keys(liveData).length;
+        setLoadingProgress(prev => ({
+          ...prev,
+          prices: { current: liveCount, total: tickers.length }
+        }));
+        console.log(`✅ Updated ${liveCount} live prices`);
         
         // 2. Recalculate DRIP with live prices
         console.log('🧮 Recalculating DRIP with live prices...');
@@ -226,6 +260,8 @@ const Ranking = () => {
         }
         
         const newDripData: Record<string, any> = {};
+        let processedCount = 0;
+        
         for (const batch of batches) {
           if (cancelled) break;
           
@@ -241,6 +277,11 @@ const Ranking = () => {
             
             if (error) throw new Error(error.message);
             Object.assign(newDripData, data?.dripData || {});
+            processedCount += batch.length;
+            setLoadingProgress(prev => ({
+              ...prev,
+              scores: { current: processedCount, total: tickers.length }
+            }));
             console.log(`✅ Recalculated DRIP for ${batch.length} tickers`);
           } catch (error) {
             console.warn('Failed to recalculate DRIP batch:', error);
@@ -337,6 +378,9 @@ const Ranking = () => {
             scoresLoading={ranked.length === 0 && etfs.length > 0}
             yieldsLoading={false}
             lastUpdated={lastUpdated}
+            pricesProgress={loadingProgress.prices}
+            distributionsProgress={loadingProgress.distributions}
+            scoresProgress={loadingProgress.scores}
           />
         </div>
       </header>

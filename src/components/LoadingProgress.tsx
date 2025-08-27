@@ -7,6 +7,9 @@ interface LoadingProgressProps {
   scoresLoading: boolean;
   yieldsLoading: boolean;
   lastUpdated?: Date;
+  pricesProgress?: { current: number; total: number };
+  distributionsProgress?: { current: number; total: number };
+  scoresProgress?: { current: number; total: number };
 }
 
 export const LoadingProgress = ({ 
@@ -15,14 +18,36 @@ export const LoadingProgress = ({
   distributionsLoading, 
   scoresLoading, 
   yieldsLoading,
-  lastUpdated 
+  lastUpdated,
+  pricesProgress,
+  distributionsProgress,
+  scoresProgress
 }: LoadingProgressProps) => {
   // Determine current loading state
   const getCurrentState = () => {
     if (etfsLoading) return { text: "Loading ETF data", loading: true };
-    if (pricesLoading) return { text: "Loading prices", loading: true };
-    if (distributionsLoading) return { text: "Loading distributions", loading: true };
-    if (scoresLoading) return { text: "Calculating scores", loading: true };
+    
+    if (pricesLoading) {
+      const progressText = pricesProgress 
+        ? `Loading ${pricesProgress.current} of ${pricesProgress.total} prices`
+        : "Loading prices";
+      return { text: progressText, loading: true };
+    }
+    
+    if (distributionsLoading) {
+      const progressText = distributionsProgress 
+        ? `Loading ${distributionsProgress.current} of ${distributionsProgress.total} distributions`
+        : "Loading distributions";
+      return { text: progressText, loading: true };
+    }
+    
+    if (scoresLoading) {
+      const progressText = scoresProgress 
+        ? `Calculating ${scoresProgress.current} of ${scoresProgress.total} scores`
+        : "Calculating scores";
+      return { text: progressText, loading: true };
+    }
+    
     if (yieldsLoading) return { text: "Loading yields", loading: true };
     
     // All done - show last updated
