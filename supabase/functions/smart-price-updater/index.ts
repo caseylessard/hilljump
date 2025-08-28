@@ -17,79 +17,50 @@ interface ETFUpdateData {
   timestamp: string;
 }
 
-// EODHD - Primary data source (most reliable)
+// EODHD - Primary data source for REAL-TIME PRICES ONLY (fundamentals not included in basic plan)
 async function fetchEODHDData(ticker: string, apiKey: string): Promise<Partial<ETFUpdateData>> {
   try {
-    console.log(`🎯 [EODHD] Fetching data for ${ticker}`);
+    console.log(`🎯 [EODHD] Fetching real-time price for ${ticker}`);
     
-    // Get real-time price
-    const priceUrl = `https://eodhd.com/api/real-time/${ticker}?api_token=${apiKey}&fmt=json`;
+    // Format symbol for EODHD
+    let eodhSymbol = ticker;
+    if (ticker.endsWith('.TO')) {
+      eodhSymbol = ticker; // EODHD uses .TO format directly
+    } else if (ticker.endsWith('.NE')) {
+      eodhSymbol = ticker.replace('.NE', '.TO'); // NEO Exchange - try .TO format
+    } else if (ticker.endsWith('.VN')) {
+      eodhSymbol = ticker.replace('.VN', '.V'); // TSX Venture - try .V format
+    } else if (!ticker.includes('.')) {
+      eodhSymbol = `${ticker}.US`; // US tickers - add .US suffix
+    }
+    
+    // Get real-time price ONLY (fundamentals not included in basic plan)
+    const priceUrl = `https://eodhd.com/api/real-time/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
     const priceResponse = await fetch(priceUrl);
     
     if (!priceResponse.ok) {
-      console.warn(`❌ [EODHD] Price fetch failed for ${ticker}: ${priceResponse.status}`);
+      console.warn(`❌ [EODHD] Price fetch failed for ${eodhSymbol}: ${priceResponse.status}, falling back to Yahoo`);
       return {};
     }
     
     const priceData = await priceResponse.json();
-    const currentPrice = priceData.close || priceData.price;
+    const currentPrice = priceData.close || priceData.price || priceData.regularMarketPrice;
     
     if (!currentPrice || currentPrice <= 0) {
-      console.warn(`❌ [EODHD] Invalid price for ${ticker}: ${currentPrice}`);
+      console.warn(`❌ [EODHD] Invalid price for ${eodhSymbol}: ${currentPrice}, falling back to Yahoo`);
       return {};
     }
 
-    // Get fundamentals for additional data
-    const fundUrl = `https://eodhd.com/api/fundamentals/${ticker}?api_token=${apiKey}&fmt=json`;
-    const fundResponse = await fetch(fundUrl);
+    // Get volume from real-time data if available
+    const volume = priceData.volume;
     
-    let yieldTtm, aum, avgVolume;
-    
-    if (fundResponse.ok) {
-      const fundData = await fundResponse.json();
-      
-      // Extract yield and AUM from fundamentals
-      yieldTtm = fundData?.AnalystRatings?.DividendYield || 
-                 fundData?.Highlights?.DividendYield || 
-                 fundData?.SplitsDividends?.ForwardAnnualDividendYield;
-      
-      aum = fundData?.General?.TotalAssets || fundData?.Highlights?.TotalAssets;
-      
-      // Get volume from fundamentals or price data
-      avgVolume = fundData?.Highlights?.SharesOutstanding || priceData.volume;
-    }
-
-    // Get historical data for 1-year return
-    const endDate = new Date().toISOString().split('T')[0];
-    const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    
-    const histUrl = `https://eodhd.com/api/eod/${ticker}?api_token=${apiKey}&period=d&from=${startDate}&to=${endDate}`;
-    const histResponse = await fetch(histUrl);
-    
-    let totalReturn1Y;
-    if (histResponse.ok) {
-      const histData = await histResponse.json();
-      
-      if (Array.isArray(histData) && histData.length >= 2) {
-        const oldestPrice = histData[0]?.close;
-        const newestPrice = histData[histData.length - 1]?.close || currentPrice;
-        
-        if (oldestPrice && newestPrice && oldestPrice > 0) {
-          totalReturn1Y = ((newestPrice - oldestPrice) / oldestPrice) * 100;
-        }
-      }
-    }
-    
-    console.log(`✅ [EODHD] Success for ${ticker}: $${currentPrice}, yield: ${yieldTtm}%, return: ${totalReturn1Y?.toFixed(2)}%`);
+    console.log(`✅ [EODHD] Success for ${ticker}: $${currentPrice}${volume ? `, vol: ${volume}` : ''}`);
     
     return {
       ticker,
       current_price: currentPrice,
-      yield_ttm: yieldTtm,
-      aum: aum,
-      avg_volume: avgVolume,
-      total_return_1y: totalReturn1Y,
-      data_source: 'eodhd',
+      avg_volume: volume,
+      data_source: 'eodhd_realtime',
       timestamp: new Date().toISOString()
     };
     
@@ -99,12 +70,13 @@ async function fetchEODHDData(ticker: string, apiKey: string): Promise<Partial<E
   }
 }
 
-// Yahoo Finance - Fallback source
+// Enhanced Yahoo Finance - Now handles fundamentals and historical data (since EODHD basic plan doesn't include these)
 async function fetchYahooFinanceData(ticker: string): Promise<Partial<ETFUpdateData>> {
   try {
-    console.log(`📊 [YAHOO] Fallback fetch for ${ticker}`);
+    console.log(`📊 [YAHOO] Comprehensive fetch for ${ticker} (fundamentals + price + historical)`);
     
-    const quoteUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail,price,defaultKeyStatistics`;
+    // Get quote and fundamentals
+    const quoteUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail,price,defaultKeyStatistics,fundProfile`;
     const quoteResponse = await fetch(quoteUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -117,26 +89,67 @@ async function fetchYahooFinanceData(ticker: string): Promise<Partial<ETFUpdateD
     });
     
     if (!quoteResponse.ok) {
-      console.warn(`❌ [YAHOO] Failed for ${ticker}: ${quoteResponse.status}`);
+      console.warn(`❌ [YAHOO] Quote failed for ${ticker}: ${quoteResponse.status}`);
       return {};
     }
     
     const quoteData = await quoteResponse.json();
     const result = quoteData?.quoteSummary?.result?.[0];
     
-    if (!result) return {};
+    if (!result) {
+      console.warn(`❌ [YAHOO] No quote data for ${ticker}`);
+      return {};
+    }
     
     const summaryDetail = result.summaryDetail;
     const price = result.price;
+    const keyStatistics = result.defaultKeyStatistics;
+    const fundProfile = result.fundProfile;
     
-    console.log(`✅ [YAHOO] Success for ${ticker}: $${price?.regularMarketPrice?.raw}`);
+    // Get historical data for 1-year return
+    const endTimestamp = Math.floor(Date.now() / 1000);
+    const startTimestamp = Math.floor((Date.now() - 365 * 24 * 60 * 60 * 1000) / 1000);
+    
+    const histUrl = `https://query1.finance.yahoo.com/v7/finance/download/${ticker}?period1=${startTimestamp}&period2=${endTimestamp}&interval=1d&events=history`;
+    
+    let totalReturn1Y;
+    try {
+      const histResponse = await fetch(histUrl);
+      if (histResponse.ok) {
+        const histText = await histResponse.text();
+        const lines = histText.trim().split('\n');
+        
+        if (lines.length > 2) { // Header + at least 2 data lines
+          const firstDataLine = lines[1].split(',');
+          const lastDataLine = lines[lines.length - 1].split(',');
+          
+          const oldPrice = parseFloat(firstDataLine[4]); // Close price
+          const newPrice = parseFloat(lastDataLine[4]); // Close price
+          
+          if (oldPrice > 0 && newPrice > 0) {
+            totalReturn1Y = ((newPrice - oldPrice) / oldPrice) * 100;
+          }
+        }
+      }
+    } catch (histError) {
+      console.warn(`⚠️ [YAHOO] Historical data failed for ${ticker}:`, histError);
+    }
+    
+    const currentPrice = price?.regularMarketPrice?.raw;
+    const yieldTtm = summaryDetail?.dividendYield?.raw ? summaryDetail.dividendYield.raw * 100 : undefined;
+    const avgVolume = summaryDetail?.averageVolume?.raw;
+    const aum = keyStatistics?.totalAssets?.raw || fundProfile?.totalNetAssets?.raw;
+    
+    console.log(`✅ [YAHOO] Success for ${ticker}: $${currentPrice}, yield: ${yieldTtm?.toFixed(2)}%, return: ${totalReturn1Y?.toFixed(2)}%, AUM: ${aum ? `$${(aum/1e9).toFixed(1)}B` : 'N/A'}`);
     
     return {
       ticker,
-      current_price: price?.regularMarketPrice?.raw,
-      yield_ttm: summaryDetail?.dividendYield?.raw ? summaryDetail.dividendYield.raw * 100 : undefined,
-      avg_volume: summaryDetail?.averageVolume?.raw,
-      data_source: 'yahoo_finance',
+      current_price: currentPrice,
+      yield_ttm: yieldTtm,
+      avg_volume: avgVolume,
+      total_return_1y: totalReturn1Y,
+      aum: aum,
+      data_source: 'yahoo_comprehensive',
       timestamp: new Date().toISOString()
     };
     
@@ -146,20 +159,36 @@ async function fetchYahooFinanceData(ticker: string): Promise<Partial<ETFUpdateD
   }
 }
 
-// Smart data fetcher - tries EODHD first, falls back to Yahoo
+// Hybrid data fetcher - EODHD for real-time prices, Yahoo for comprehensive data
 async function fetchSmartETFData(ticker: string, eodhApiKey: string): Promise<Partial<ETFUpdateData>> {
-  // Try EODHD first (most reliable)
+  console.log(`🧠 [HYBRID] Smart fetch for ${ticker} - EODHD price + Yahoo fundamentals`);
+  
+  // Step 1: Try EODHD for real-time price (what we're paying for)
   const eodhData = await fetchEODHDData(ticker, eodhApiKey);
   
-  if (eodhData.current_price && eodhData.current_price > 0) {
-    return eodhData;
-  }
-  
-  // Fallback to Yahoo Finance
-  console.log(`🔄 [SMART] EODHD failed for ${ticker}, trying Yahoo Finance`);
+  // Step 2: Get comprehensive data from Yahoo (fundamentals, yield, AUM, historical)
   const yahooData = await fetchYahooFinanceData(ticker);
   
-  return yahooData;
+  // Step 3: Merge data - prioritize EODHD price, Yahoo fundamentals
+  const mergedData: Partial<ETFUpdateData> = {
+    ticker,
+    // Use EODHD price if available (real-time, professional grade)
+    current_price: eodhData.current_price || yahooData.current_price,
+    // Use Yahoo for fundamentals (not included in basic EODHD plan)
+    yield_ttm: yahooData.yield_ttm,
+    aum: yahooData.aum,
+    total_return_1y: yahooData.total_return_1y,
+    // Use best available volume data
+    avg_volume: eodhData.avg_volume || yahooData.avg_volume,
+    // Track data source combination
+    data_source: eodhData.current_price ? 
+      (yahooData.yield_ttm ? 'eodhd_price+yahoo_fundamentals' : 'eodhd_price_only') : 
+      'yahoo_comprehensive',
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log(`✅ [HYBRID] Merged data for ${ticker}: $${mergedData.current_price} (${mergedData.data_source})`);
+  return mergedData;
 }
 
 serve(async (req) => {
@@ -169,7 +198,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Starting Smart ETF Price Updater (EODHD + Yahoo fallback)');
+    console.log('🚀 Starting Hybrid ETF Updater (EODHD prices + Yahoo fundamentals)');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -208,8 +237,9 @@ serve(async (req) => {
     console.log(`📈 Found ${etfs?.length || 0} active ETFs to process`);
 
     let totalUpdated = 0;
-    let eodhCount = 0;
-    let yahooCount = 0;
+    let eodhPriceCount = 0;
+    let yahooFundamentalsCount = 0;
+    let yahooOnlyCount = 0;
     const errorMessages = [];
     const batchSize = 3; // Conservative batch size
 
@@ -254,10 +284,13 @@ serve(async (req) => {
             }
 
             // Track source statistics
-            if (updateData.data_source === 'eodhd') {
-              eodhCount++;
-            } else {
-              yahooCount++;
+            if (updateData.data_source?.includes('eodhd_price')) {
+              eodhPriceCount++;
+              if (updateData.data_source.includes('yahoo_fundamentals')) {
+                yahooFundamentalsCount++;
+              }
+            } else if (updateData.data_source === 'yahoo_comprehensive') {
+              yahooOnlyCount++;
             }
 
             console.log(`✅ Updated ${etf.ticker} via ${updateData.data_source}: $${updateData.current_price}`);
@@ -299,23 +332,24 @@ serve(async (req) => {
 
     const result = {
       success: true,
-      message: 'Smart ETF price update completed',
+      message: 'Hybrid ETF update completed (EODHD prices + Yahoo fundamentals)',
       timestamp: new Date().toISOString(),
       summary: {
         totalETFs: etfs?.length || 0,
         updatedETFs: totalUpdated,
         skippedETFs: (etfs?.length || 0) - totalUpdated,
         sourceBreakdown: {
-          eodhd: eodhCount,
-          yahoo_finance: yahooCount
+          eodhd_prices: eodhPriceCount,
+          yahoo_fundamentals: yahooFundamentalsCount,  
+          yahoo_only: yahooOnlyCount
         }
       },
       errors: errorMessages
     };
 
-    console.log('🎉 Smart price update completed');
+    console.log('🎉 Hybrid update completed');
     console.log(`📊 Updated: ${totalUpdated}/${etfs?.length || 0} ETFs`);
-    console.log(`📈 EODHD: ${eodhCount}, Yahoo: ${yahooCount}`);
+    console.log(`📈 EODHD Prices: ${eodhPriceCount}, Yahoo Fundamentals: ${yahooFundamentalsCount}, Yahoo Only: ${yahooOnlyCount}`);
 
     return new Response(
       JSON.stringify(result),
@@ -323,7 +357,7 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('❌ Error in Smart Price Updater:', error);
+    console.error('❌ Error in Hybrid ETF Updater:', error);
     
     return new Response(
       JSON.stringify({ 

@@ -34,9 +34,9 @@ export default function ComprehensiveEodhdTest() {
         throw new Error(`Quotes function failed: ${quotesError.message}`);
       }
       
-      // Test smart price updater (for comparison)
+      // Test smart price updater (hybrid approach)
       const { data: smartData, error: smartError } = await supabase.functions.invoke('smart-price-updater', {
-        body: { tickers: testTickers.slice(0, 3) } // Test smaller subset
+        body: { tickers: testTickers.slice(0, 3) } // Test smaller subset for hybrid approach
       });
       
       // Test individual MSTY data quality
@@ -53,11 +53,12 @@ export default function ComprehensiveEodhdTest() {
           sample_prices: quotesData?.prices ? Object.entries(quotesData.prices).slice(0, 3) : [],
           all_prices: quotesData?.prices
         },
-        smart_updater: {
+        hybrid_updater: {
           success: !smartError,
           error: smartError?.message,
           summary: smartData?.summary,
-          source_breakdown: smartData?.summary?.sourceBreakdown
+          source_breakdown: smartData?.summary?.sourceBreakdown,
+          message: smartData?.message
         },
         msty_quality_test: {
           success: !mstyError,
@@ -84,8 +85,8 @@ export default function ComprehensiveEodhdTest() {
         testResults.analysis.recommendations.push('❌ EODHD integration needs attention - no prices retrieved');
       }
       
-      if (testResults.smart_updater.source_breakdown?.eodhd > 0) {
-        testResults.analysis.recommendations.push(`📊 Smart updater using EODHD for ${testResults.smart_updater.source_breakdown.eodhd} tickers`);
+      if (testResults.hybrid_updater.source_breakdown?.eodhd_prices > 0) {
+        testResults.analysis.recommendations.push(`📊 Hybrid updater using EODHD prices for ${testResults.hybrid_updater.source_breakdown.eodhd_prices} tickers + Yahoo fundamentals for ${testResults.hybrid_updater.source_breakdown.yahoo_fundamentals || 0}`);
       }
       
       if (testResults.msty_quality_test.real_time_price) {
@@ -113,7 +114,7 @@ export default function ComprehensiveEodhdTest() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Comprehensive EODHD Integration Test 
-          <Badge variant="outline">Professional Data</Badge>
+          <Badge variant="outline">Hybrid Approach</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -122,7 +123,7 @@ export default function ComprehensiveEodhdTest() {
           disabled={loading}
           className="w-full"
         >
-          {loading ? 'Testing EODHD Integration...' : 'Run Comprehensive EODHD Test'}
+          {loading ? 'Testing Hybrid EODHD Integration...' : 'Run Comprehensive EODHD Test'}
         </Button>
         
         {results && (
@@ -142,8 +143,8 @@ export default function ComprehensiveEodhdTest() {
                   {results.quotes_function.success ? ' ✅ Working' : ' ❌ Failed'}
                 </div>
                 <div>
-                  <span className="font-medium">Smart Updater:</span> 
-                  {results.smart_updater.success ? ' ✅ Working' : ' ❌ Failed'}
+                  <span className="font-medium">Hybrid Updater:</span> 
+                  {results.hybrid_updater.success ? ' ✅ Working' : ' ❌ Failed'}
                 </div>
               </div>
             </div>
