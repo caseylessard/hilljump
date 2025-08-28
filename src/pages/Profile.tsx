@@ -19,6 +19,7 @@ import HistoricalPriceTest from "@/components/HistoricalPriceTest";
 import PriceSystemTest from "@/components/PriceSystemTest";
 import MstyEodhdTest from "@/components/admin/MstyEodhdTest";
 import ComprehensiveEodhdTest from "@/components/admin/ComprehensiveEodhdTest";
+import { DividendSystemTest } from "@/components/admin/DividendSystemTest";
 import { ETFEditor } from "@/components/admin/ETFEditor";
 import { DistributionEditor } from "@/components/admin/DistributionEditor";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
@@ -664,7 +665,8 @@ const Profile = () => {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4">
-                    <ComprehensiveEodhdTest />
+              <ComprehensiveEodhdTest />
+              <DividendSystemTest />
                     <MstyEodhdTest />
                     <QuickPriceTest />
                     <HistoricalPriceTest />
