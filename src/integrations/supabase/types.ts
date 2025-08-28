@@ -130,6 +130,36 @@ export type Database = {
           },
         ]
       }
+      etf_rankings: {
+        Row: {
+          composite_score: number
+          created_at: string
+          id: string
+          rank_position: number
+          ticker: string
+          updated_at: string
+          week_date: string
+        }
+        Insert: {
+          composite_score: number
+          created_at?: string
+          id?: string
+          rank_position: number
+          ticker: string
+          updated_at?: string
+          week_date?: string
+        }
+        Update: {
+          composite_score?: number
+          created_at?: string
+          id?: string
+          rank_position?: number
+          ticker?: string
+          updated_at?: string
+          week_date?: string
+        }
+        Relationships: []
+      }
       etf_scores: {
         Row: {
           composite_score: number | null

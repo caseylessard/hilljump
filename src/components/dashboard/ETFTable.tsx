@@ -10,9 +10,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { predictNextDistribution } from "@/lib/dividends";
 import { useCachedDRIP } from "@/hooks/useCachedETFData";
+import { useRankingHistory, type RankingChange } from "@/hooks/useRankingHistory";
 
 import { DistributionHistory } from "@/components/dashboard/DistributionHistory";
-import { ArrowUpRight, ArrowDownRight, X } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, X, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import type { LivePrice } from "@/lib/live";
@@ -28,9 +29,10 @@ type Props = {
   distributions?: Record<string, { amount: number; date: string; currency?: string }>;
   allowSorting?: boolean;
   cachedDripData?: Record<string, any>;
+  originalRanking?: ScoredETF[]; // Full original ranking to preserve rank numbers
 };
 
-export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {} }: Props) => {
+export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [] }: Props) => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
@@ -41,6 +43,18 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   
   // Memoize tickers to prevent unnecessary refetches
   const tickers = useMemo(() => items.map(item => item.ticker), [items]);
+  
+  // Get ranking history for change indicators
+  const { data: rankingChanges = {} } = useRankingHistory(tickers);
+  
+  // Create original ranking lookup for persistent rank numbers
+  const originalRankMap = useMemo(() => {
+    const map = new Map<string, number>();
+    originalRanking.forEach((etf, index) => {
+      map.set(etf.ticker, index + 1);
+    });
+    return map;
+  }, [originalRanking]);
   
   // Fetch RSI signals when tickers change
   useEffect(() => {
@@ -177,6 +191,27 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   const displayTicker = (ticker: string) => {
     return ticker.replace(/\.(TO|NE)$/, '');
   }
+
+  // Component for ranking change indicator
+  const RankingChangeIndicator = ({ ticker }: { ticker: string }) => {
+    const change = rankingChanges[ticker];
+    if (!change || change.isNew) return null;
+    
+    if (change.change === 0) {
+      return <Minus className="h-3 w-3 text-muted-foreground" />;
+    }
+    
+    const isImprovement = change.change > 0;
+    const Icon = isImprovement ? TrendingUp : TrendingDown;
+    const colorClass = isImprovement ? "text-emerald-600" : "text-red-600";
+    
+    return (
+      <div className={`flex items-center gap-1 ${colorClass}`}>
+        <Icon className="h-3 w-3" />
+        <span className="text-xs">{Math.abs(change.change)}</span>
+      </div>
+    );
+  };
   // Sorting state and helpers
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "score" | "signal";
   const [sortKey, setSortKey] = useState<SortKey>("score");
@@ -368,9 +403,20 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
               <TableRow
                 key={etf.ticker}
                 className={idx < 3 ? "font-semibold cursor-pointer hover:bg-accent" : "cursor-pointer hover:bg-accent"}
-                onClick={() => { setSelected(etf); setSelectedRank(idx + 1); setRange("1Y"); setOpen(true); }}
-              >
-                <TableCell>{idx + 1}</TableCell>
+                 onClick={() => { 
+                   const originalRank = originalRankMap.get(etf.ticker) || idx + 1;
+                   setSelected(etf); 
+                   setSelectedRank(originalRank); 
+                   setRange("1Y"); 
+                   setOpen(true); 
+                 }}
+               >
+                 <TableCell>
+                   <div className="flex items-center gap-2">
+                     <span className="font-mono">{originalRankMap.get(etf.ticker) || idx + 1}</span>
+                     <RankingChangeIndicator ticker={etf.ticker} />
+                   </div>
+                 </TableCell>
                 <TableCell>
                   <div className="inline-flex flex-col">
                     <span className="inline-flex items-center">

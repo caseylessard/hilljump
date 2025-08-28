@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ScoredETF, scoreETFs } from '@/lib/scoring';
 import { fetchLivePricesWithDataSources, LivePrice } from '@/lib/live';
 import { Distribution, fetchLatestDistributions } from '@/lib/dividends';
+import { saveCurrentRankings } from '@/hooks/useRankingHistory';
 import { getETFs } from '@/lib/db';
 import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -329,12 +330,23 @@ const Ranking = () => {
     if (etfs.length > 0 && ranked.length > 0 && Object.keys(livePrices).length > 0) {
       setCachedRanking(ranked);
       
-      // Also save to cache service
+      // Also save to cache service and database for historical tracking
       const saveRankingToCache = async () => {
         try {
           const { cache } = await import('@/lib/cache');
           cache.set('ranking', ranked, 'live-calculated');
           console.log('💾 Saved updated ranking to cache');
+
+          // Save to database for historical tracking (only once per day)
+          const lastSaveKey = 'ranking-last-saved-date';
+          const today = new Date().toISOString().split('T')[0];
+          const lastSaved = localStorage.getItem(lastSaveKey);
+          
+          if (lastSaved !== today) {
+            await saveCurrentRankings(ranked);
+            localStorage.setItem(lastSaveKey, today);
+            console.log('📊 Saved current rankings to database for historical tracking');
+          }
         } catch (e) {
           console.warn('Failed to cache ranking:', e);
         }
@@ -458,6 +470,7 @@ const Ranking = () => {
             live={Object.keys(livePrices).length > 0 ? livePrices : cachedPrices}
             distributions={distributions}
             cachedDripData={dripData}
+            originalRanking={ranked}
           />
         </section>
 
