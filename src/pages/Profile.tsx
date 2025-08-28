@@ -17,6 +17,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { QuickPriceTest } from "@/components/QuickPriceTest";
 import HistoricalPriceTest from "@/components/HistoricalPriceTest";
 import PriceSystemTest from "@/components/PriceSystemTest";
+import MstyEodhdTest from "@/components/admin/MstyEodhdTest";
 import { ETFEditor } from "@/components/admin/ETFEditor";
 import { DistributionEditor } from "@/components/admin/DistributionEditor";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
@@ -665,6 +666,7 @@ const Profile = () => {
                     <QuickPriceTest />
                     <HistoricalPriceTest />
                     <PriceSystemTest />
+                    <MstyEodhdTest />
                   </div>
                 </div>
               </>
