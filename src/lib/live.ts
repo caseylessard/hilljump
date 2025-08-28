@@ -5,6 +5,7 @@ export type LivePrice = {
   prevClose?: number;
   change?: number;
   changePercent?: number;
+  priceUpdatedAt?: string;
   // 4W/12W/52W DRIP enrichment (optional)
   price4wStart?: number;
   dividends4w?: number;
@@ -148,68 +149,46 @@ export async function fetchLivePricesWithDataSources(tickers: string[]): Promise
   
   // For EODHD tickers, try database first, then fallback to live quotes
   if (eodhTickers.length > 0) {
-    const tickersWithPrices: string[] = [];
-    const tickersNeedingPrices: string[] = [];
-    
     try {
-      console.log('Using database data for EODHD tickers:', eodhTickers);
+      console.log('🎯 Fetching EODHD prices directly for fresh data:', eodhTickers);
       
-      // Get the latest data from database (updated by WebSocket)
-      const { data: dbData, error: dbError } = await supabase
-        .from('etfs')
-        .select('ticker, yield_ttm, aum, avg_volume, total_return_1y, current_price, price_updated_at')
-        .in('ticker', eodhTickers);
-      
-      if (dbError) throw dbError;
-      
-      // Convert database data to LivePrice format and track which need prices
-      dbData?.forEach((etf: any) => {
-        if (etf.current_price && etf.current_price > 0) {
-          results[etf.ticker] = {
-            price: etf.current_price,
-            // Add any other data we have from the database
-            ...(etf.yield_ttm && { yieldTTM: etf.yield_ttm }),
-            ...(etf.aum && { aum: etf.aum }),
-            ...(etf.avg_volume && { volume: etf.avg_volume }),
-            ...(etf.total_return_1y && { totalReturn1Y: etf.total_return_1y }),
-            ...(etf.price_updated_at && { priceUpdatedAt: etf.price_updated_at })
-          };
-          tickersWithPrices.push(etf.ticker);
-        } else {
-          tickersNeedingPrices.push(etf.ticker);
-        }
+      // Use the quotes function which now prioritizes EODHD
+      const { data, error } = await supabase.functions.invoke("quotes", {
+        body: { tickers: eodhTickers },
       });
       
-      console.log(`Retrieved database data for ${tickersWithPrices.length} EODHD tickers`);
-      console.log(`${tickersNeedingPrices.length} EODHD tickers need live prices:`, tickersNeedingPrices);
-      
-    } catch (error) {
-      console.warn('Database fetch failed for EODHD tickers:', eodhTickers, error);
-      // If database fetch fails, all tickers need live prices
-      tickersNeedingPrices.push(...eodhTickers);
-    }
-    
-    // For tickers without database prices, fetch live prices
-    if (tickersNeedingPrices.length > 0) {
-      try {
-        console.log('Fetching live prices for tickers without database data:', tickersNeedingPrices);
-        const { data, error } = await supabase.functions.invoke("quotes", {
-          body: { tickers: tickersNeedingPrices },
-        });
-        if (error) throw error;
-        const liveData = (data?.prices as Record<string, number>) || {};
+      if (!error && data?.prices) {
+        const eodhData = data.prices as Record<string, number>;
         
         // Convert to LivePrice format and add to results
-        Object.entries(liveData).forEach(([ticker, price]) => {
+        Object.entries(eodhData).forEach(([ticker, price]) => {
           if (price > 0) {
             results[ticker] = { price };
           }
         });
         
-        console.log(`Fetched live prices for ${Object.keys(liveData).length} tickers`);
-      } catch (fallbackError) {
-        console.warn('Live quotes fallback failed:', fallbackError);
+        console.log(`✅ Retrieved ${Object.keys(eodhData).length} EODHD prices`);
+      } else {
+        console.warn('EODHD quotes failed, trying database fallback:', error);
+        
+        // Fallback to database data
+        const { data: dbData, error: dbError } = await supabase
+          .from('etfs')
+          .select('ticker, current_price, price_updated_at')
+          .in('ticker', eodhTickers);
+        
+        dbData?.forEach((etf: any) => {
+          if (etf.current_price && etf.current_price > 0) {
+            results[etf.ticker] = {
+              price: etf.current_price,
+              priceUpdatedAt: etf.price_updated_at
+            };
+          }
+        });
       }
+      
+    } catch (error) {
+      console.warn('EODHD fetch completely failed:', eodhTickers, error);
     }
   }
 

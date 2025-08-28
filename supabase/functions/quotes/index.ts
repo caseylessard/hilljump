@@ -98,41 +98,50 @@ async function fetchCanadianPrice(symbol: string): Promise<number | null> {
 async function fetchEODHDPrice(symbol: string): Promise<number | null> {
   const apiKey = Deno.env.get('EODHD_API_KEY');
   if (!apiKey) {
-    console.warn('EODHD_API_KEY not found, falling back to Stooq');
-    return fetchStooqPrice(symbol);
+    console.warn('EODHD_API_KEY not found, falling back to Yahoo Finance');
+    return fetchYahooFinancePrice(symbol);
   }
 
   try {
-    // For Canadian tickers, convert to appropriate EODHD format
+    // Format symbol for EODHD
     let eodhSymbol = symbol;
     if (symbol.endsWith('.TO')) {
       eodhSymbol = symbol; // EODHD uses .TO format directly
     } else if (symbol.endsWith('.NE')) {
-      // NEO Exchange tickers - try .TO format first for EODHD
+      // NEO Exchange - try .TO format for EODHD
       eodhSymbol = symbol.replace('.NE', '.TO');
+    } else if (symbol.endsWith('.VN')) {
+      // TSX Venture - try .V format for EODHD  
+      eodhSymbol = symbol.replace('.VN', '.V');
+    } else if (!symbol.includes('.')) {
+      // US tickers - add .US suffix for EODHD
+      eodhSymbol = `${symbol}.US`;
     }
 
     const url = `https://eodhd.com/api/real-time/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
-    console.log(`Fetching EODHD price for: ${eodhSymbol}`);
+    console.log(`🎯 EODHD fetching: ${eodhSymbol}`);
     
     const response = await fetch(url);
     if (!response.ok) {
-      console.error(`EODHD API error for ${eodhSymbol}: ${response.status}`);
-      return fetchStooqPrice(symbol);
+      console.warn(`⚠️ EODHD API error for ${eodhSymbol}: ${response.status}, falling back to Yahoo`);
+      return fetchYahooFinancePrice(symbol);
     }
 
     const data = await response.json();
     
-    if (data.close && typeof data.close === 'number' && data.close > 0) {
-      console.log(`✅ EODHD ${eodhSymbol}: $${data.close}`);
-      return data.close;
+    // EODHD returns different field names based on market status
+    const price = data.close || data.price || data.regularMarketPrice;
+    
+    if (price && typeof price === 'number' && price > 0) {
+      console.log(`✅ EODHD ${eodhSymbol}: $${price}`);
+      return price;
     }
 
-    console.warn(`Invalid EODHD data for ${eodhSymbol}:`, data);
-    return fetchStooqPrice(symbol);
+    console.warn(`⚠️ Invalid EODHD data for ${eodhSymbol}, falling back to Yahoo:`, data);
+    return fetchYahooFinancePrice(symbol);
   } catch (error) {
-    console.error(`EODHD fetch error for ${symbol}:`, error);
-    return fetchStooqPrice(symbol);
+    console.error(`❌ EODHD fetch error for ${symbol}, falling back to Yahoo:`, error);
+    return fetchYahooFinancePrice(symbol);
   }
 }
 
@@ -166,17 +175,21 @@ serve(async (req: Request) => {
     
     const prices: Record<string, number> = {};
     
-    // Fetch all prices first
+    // Fetch all prices - EODHD FIRST (most reliable with subscription)
     await Promise.all(
       tickers.map(async (t: string) => {
         const sym = String(t || "").toUpperCase();
         if (!sym) return;
         
-        // Use Yahoo Finance for ALL tickers (most reliable free source)
-        let p: number | null = null;
-        p = await fetchYahooFinancePrice(sym);
+        // Priority 1: EODHD (professional data with subscription)
+        let p: number | null = await fetchEODHDPrice(sym);
         
-        // If Yahoo fails, fallback to Stooq
+        // Priority 2: Yahoo Finance fallback
+        if (p == null) {
+          p = await fetchYahooFinancePrice(sym);
+        }
+        
+        // Priority 3: Stooq final fallback
         if (p == null) {
           p = await fetchStooqPrice(sym);
         }
@@ -218,7 +231,7 @@ serve(async (req: Request) => {
             .upsert({
               ticker,
               price,
-              source: 'yahoo_quotes',
+              source: 'eodhd_primary',
               updated_at: new Date().toISOString()
             }, { 
               onConflict: 'ticker' 
