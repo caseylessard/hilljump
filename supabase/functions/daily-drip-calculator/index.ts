@@ -179,7 +179,8 @@ function dripOverPeriod(
 function dripWindows(
   prices: PriceRow[],
   distributions: DistRow[],
-  endDateISO: string
+  endDateISO: string,
+  options: DripOptions = {}
 ): Record<string, DripResult> {
   const endDate = new Date(endDateISO + 'T00:00:00Z');
   
@@ -198,7 +199,7 @@ function dripWindows(
     const startDateISO = startDate.toISOString().split('T')[0];
     
     try {
-      results[period.key] = dripOverPeriod(prices, distributions, startDateISO, endDateISO);
+      results[period.key] = dripOverPeriod(prices, distributions, startDateISO, endDateISO, 1, options);
     } catch (error) {
       console.warn(`Could not calculate ${period.key} DRIP for period ${startDateISO} to ${endDateISO}:`, error.message);
     }
@@ -258,6 +259,13 @@ serve(async (req) => {
 
       for (const ticker of batch) {
         try {
+          // Fetch ETF info for tax calculations
+          const { data: etfInfo } = await supabase
+            .from('etfs')
+            .select('country')
+            .eq('ticker', ticker)
+            .maybeSingle();
+
           // Fetch price data (last 400 days to ensure we have enough for 52w)
           const { data: priceData } = await supabase
             .from('historical_prices')
@@ -275,7 +283,11 @@ serve(async (req) => {
             .order('ex_date', { ascending: true });
 
           if (priceData && priceData.length > 0 && divData) {
-            const dripData = dripWindows(priceData, divData, endDateISO);
+            // Apply 15% withholding tax on foreign ETFs (assume CA user for daily calculation)
+            const fundCountry = etfInfo?.country || 'US';
+            const taxWithholding = (fundCountry === 'US') ? 0.15 : 0; // Default to CA user perspective
+            
+            const dripData = dripWindows(priceData, divData, endDateISO, { taxWithholding });
             
             batchResults.push({
               ticker,

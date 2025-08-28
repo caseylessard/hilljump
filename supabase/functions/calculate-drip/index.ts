@@ -380,8 +380,12 @@ serve(async (req) => {
         const etfInfo = etfsWithData?.find(etf => etf.ticker === ticker)
         const fundCountry = etfInfo?.country || 'US'
         
-        // Apply 15% withholding tax for Canadian users on US funds
-        const taxRate = (userCountry === 'CA' && fundCountry === 'US') ? 0.15 : 0
+        // Apply 15% withholding tax on foreign ETFs
+        // Canadian users: 15% on US ETFs, US users: 15% on Canadian ETFs
+        const taxRate = (
+          (userCountry === 'CA' && fundCountry === 'US') || 
+          (userCountry === 'US' && fundCountry === 'CA')
+        ) ? 0.15 : 0
         
         if (taxRate > 0) {
           console.log(`  💰 Applying ${(taxRate * 100).toFixed(0)}% withholding tax (${userCountry} user, ${fundCountry} fund)`)
