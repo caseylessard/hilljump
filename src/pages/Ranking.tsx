@@ -295,10 +295,10 @@ const Ranking = () => {
                   livePrices: Object.fromEntries(
                     batch.map(ticker => [ticker, liveData[ticker]]).filter(([, price]) => price)
                   ),
-                  taxPreferences: {
+                  taxPrefs: {
                     country: taxCountry,
-                    enabled: taxEnabled,
-                    rate: taxRate / 100 // Convert percentage to decimal
+                    withholdingTax: taxEnabled,
+                    taxRate: taxRate // Already in percentage format
                   }
                 }
               });

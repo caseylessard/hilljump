@@ -243,7 +243,11 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
         const { data, error } = await supabase.functions.invoke('calculate-drip', {
           body: { 
             tickers,
-            taxPreferences: taxPreferences || { country: 'US', enabled: true, rate: 0.15 }
+            taxPrefs: {
+              country: taxPreferences?.country || 'US',
+              withholdingTax: taxPreferences?.enabled || false,
+              taxRate: (taxPreferences?.rate || 0.15) * 100 // Convert decimal to percentage
+            }
           }
         });
         
