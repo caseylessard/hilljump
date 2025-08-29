@@ -183,8 +183,15 @@ serve(async (req) => {
     const { 
       tickers, 
       livePrices = {}, 
-      taxPreferences = { country: 'US', enabled: false, rate: 0.15 } 
+      taxPrefs = { country: 'US', withholdingTax: false, taxRate: 15.0 } 
     } = await req.json()
+    
+    // Convert taxPrefs to expected format for backward compatibility
+    const taxPreferences = {
+      country: taxPrefs.country,
+      enabled: taxPrefs.withholdingTax,
+      rate: taxPrefs.taxRate / 100 // Convert percentage to decimal
+    }
     
     // Initialize Supabase client early to get user info
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
