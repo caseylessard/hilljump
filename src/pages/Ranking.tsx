@@ -20,6 +20,7 @@ import Navigation from '@/components/Navigation';
 import { LoadingProgress } from '@/components/LoadingProgress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import DripCalculationTest from '@/components/DripCalculationTest';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -568,6 +569,13 @@ const Ranking = () => {
         </Dialog>
 
         <p className="text-muted-foreground text-xs">Not investment advice.</p>
+        
+        {/* DRIP Calculation Test - temporary for debugging */}
+        {isAdmin && (
+          <div className="border-t pt-8">
+            <DripCalculationTest />
+          </div>
+        )}
       </main>
     </div>
   );
