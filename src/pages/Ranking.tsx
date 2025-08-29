@@ -76,12 +76,19 @@ const Ranking = () => {
     staleTime: 60_000 
   });
 
-  // Tax preference state - country comes from profile, rate managed locally
-  const [taxEnabled, setTaxEnabled] = useState(true);
-  const [taxRate, setTaxRate] = useState(15);
-
   // Get tax country from profile, fallback to US
   const taxCountry = profile?.country === 'CA' ? 'CA' : 'US';
+  
+  // Tax preference state - for US users, always 0% tax and hidden controls
+  const [taxEnabled, setTaxEnabled] = useState(taxCountry === 'CA');
+  const [taxRate, setTaxRate] = useState(taxCountry === 'CA' ? 15 : 0);
+
+  // Update tax preferences when profile country changes
+  useEffect(() => {
+    const isCA = profile?.country === 'CA';
+    setTaxEnabled(isCA);
+    setTaxRate(isCA ? 15 : 0);
+  }, [profile?.country]);
 
   // Get tickers for DRIP data
   const tickers = etfs.map(e => e.ticker);
@@ -452,35 +459,37 @@ const Ranking = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                {/* Tax Preferences */}
-                <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="tax-enabled"
-                      checked={taxEnabled}
-                      onCheckedChange={(checked) => {
-                        setTaxEnabled(checked);
-                        if (!checked) setTaxRate(0);
-                        else setTaxRate(15);
-                      }}
-                    />
-                    <Label htmlFor="tax-enabled" className="text-sm">Withholding Tax</Label>
+                {/* Tax Preferences - only show for Canadian users */}
+                {taxCountry === 'CA' && (
+                  <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="tax-enabled"
+                        checked={taxEnabled}
+                        onCheckedChange={(checked) => {
+                          setTaxEnabled(checked);
+                          if (!checked) setTaxRate(0);
+                          else setTaxRate(15);
+                        }}
+                      />
+                      <Label htmlFor="tax-enabled" className="text-sm">Withholding Tax</Label>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={taxRate}
+                        onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))}
+                        className="w-16 h-7 text-xs text-center"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        disabled={!taxEnabled}
+                      />
+                      <Label className="text-xs text-muted-foreground">%</Label>
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={taxRate}
-                      onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))}
-                      className="w-16 h-7 text-xs text-center"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      disabled={!taxEnabled}
-                    />
-                    <Label className="text-xs text-muted-foreground">%</Label>
-                  </div>
-                </div>
+                )}
                 
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
