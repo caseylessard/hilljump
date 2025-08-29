@@ -459,6 +459,16 @@ const Ranking = () => {
               </div>
               
               <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by ticker or underlying..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 w-64"
+                  />
+                </div>
+                
                 {/* Tax Preferences - only show for Canadian users */}
                 {taxCountry === 'CA' && (
                   <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
@@ -490,16 +500,6 @@ const Ranking = () => {
                     </div>
                   </div>
                 )}
-                
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by ticker or underlying..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
-                  />
-                </div>
               </div>
             </div>
             
@@ -525,6 +525,38 @@ const Ranking = () => {
                   className="pl-10"
                 />
               </div>
+              
+              {/* Tax Preferences - only show for Canadian users */}
+              {taxCountry === 'CA' && (
+                <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="tax-enabled-mobile"
+                      checked={taxEnabled}
+                      onCheckedChange={(checked) => {
+                        setTaxEnabled(checked);
+                        if (!checked) setTaxRate(0);
+                        else setTaxRate(15);
+                      }}
+                    />
+                    <Label htmlFor="tax-enabled-mobile" className="text-sm">Withholding Tax</Label>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))}
+                      className="w-16 h-7 text-xs text-center"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      disabled={!taxEnabled}
+                    />
+                    <Label className="text-xs text-muted-foreground">%</Label>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
