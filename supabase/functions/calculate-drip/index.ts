@@ -362,16 +362,18 @@ serve(async (req) => {
         const etfInfo = etfsWithData?.find(etf => etf.ticker === ticker)
         const fundCountry = etfInfo?.country || 'US'
         
-        // Apply user-specified tax preferences  
+        // Apply user-specified tax preferences based on real withholding tax rules
         let taxRate = 0
         if (taxPreferences.enabled) {
-          // Check if this is a foreign ETF based on user's country preference
-          const isForeignETF = (taxPreferences.country === 'US' && fundCountry === 'CA') ||
-                             (taxPreferences.country === 'CA' && fundCountry === 'US')
+          // Apply withholding tax only when Canadian customers receive US dividends
+          // US customers receiving Canadian dividends have NO withholding due to tax treaty
+          const shouldApplyWithholding = (taxPreferences.country === 'CA' && fundCountry === 'US')
           
-          if (isForeignETF) {
+          if (shouldApplyWithholding) {
             taxRate = taxPreferences.rate
             console.log(`  💰 Applying ${(taxPreferences.rate * 100).toFixed(1)}% withholding tax (${taxPreferences.country} user, ${fundCountry} fund)`)
+          } else {
+            console.log(`  💰 No withholding tax (${taxPreferences.country} user, ${fundCountry} fund)`)
           }
         }
         
