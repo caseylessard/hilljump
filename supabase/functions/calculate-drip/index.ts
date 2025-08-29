@@ -191,23 +191,35 @@ serve(async (req) => {
     let userCountry = 'US' // Default
     try {
       const authHeader = req.headers.get('authorization')
+      console.log(`🔍 Auth header present: ${!!authHeader}`)
+      
       if (authHeader) {
-        const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
-        if (user) {
-          const { data: profile } = await supabase
+        const token = authHeader.replace('Bearer ', '')
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+        console.log(`👤 User ID: ${user?.id}, Error: ${userError?.message}`)
+        
+        if (user && !userError) {
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('country')
             .eq('id', user.id)
             .maybeSingle()
           
+          console.log(`🌍 Profile country: ${profile?.country}, Error: ${profileError?.message}`)
+          
           if (profile?.country) {
             userCountry = profile.country
+            console.log(`✅ Using user country: ${userCountry}`)
+          } else {
+            console.log(`⚠️ No profile country found, using default: ${userCountry}`)
           }
         }
       }
     } catch (e) {
-      console.log('Could not determine user country, using default US')
+      console.log(`❌ Error determining user country: ${e.message}, using default US`)
     }
+    
+    console.log(`🎯 Final user country for tax calculation: ${userCountry}`)
     
     if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
       return new Response(JSON.stringify({ error: 'Invalid or empty tickers array' }), {
