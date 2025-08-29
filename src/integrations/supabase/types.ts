@@ -130,6 +130,72 @@ export type Database = {
           },
         ]
       }
+      drip_cache_ca: {
+        Row: {
+          created_at: string
+          id: string
+          period_13w: Json | null
+          period_26w: Json | null
+          period_4w: Json | null
+          period_52w: Json | null
+          ticker: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          period_13w?: Json | null
+          period_26w?: Json | null
+          period_4w?: Json | null
+          period_52w?: Json | null
+          ticker: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          period_13w?: Json | null
+          period_26w?: Json | null
+          period_4w?: Json | null
+          period_52w?: Json | null
+          ticker?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      drip_cache_us: {
+        Row: {
+          created_at: string
+          id: string
+          period_13w: Json | null
+          period_26w: Json | null
+          period_4w: Json | null
+          period_52w: Json | null
+          ticker: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          period_13w?: Json | null
+          period_26w?: Json | null
+          period_4w?: Json | null
+          period_52w?: Json | null
+          ticker: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          period_13w?: Json | null
+          period_26w?: Json | null
+          period_4w?: Json | null
+          period_52w?: Json | null
+          ticker?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       etf_rankings: {
         Row: {
           composite_score: number

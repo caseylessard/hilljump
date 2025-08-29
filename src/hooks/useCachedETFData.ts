@@ -239,7 +239,7 @@ export const useCachedDRIP = (tickers: string[]) => {
       console.log('🧮 Loading cached DRIP data for', tickers.length, 'tickers...');
       
       try {
-        // First try to get cached DRIP data from database
+        // Get cached DRIP data from the appropriate country-specific table
         const { data, error } = await supabase.functions.invoke('get-cached-drip', {
           body: { tickers }
         });
@@ -252,8 +252,9 @@ export const useCachedDRIP = (tickers: string[]) => {
         const cachedResults = data?.dripData || {};
         const foundCount = Object.keys(cachedResults).length;
         const missingTickers = data?.missing || [];
+        const userCountry = data?.userCountry || 'US';
         
-        console.log(`✅ Loaded ${foundCount}/${tickers.length} cached DRIP entries`);
+        console.log(`✅ Loaded ${foundCount}/${tickers.length} cached DRIP entries (country: ${userCountry})`);
         
         // If we have missing tickers and it's a small number, calculate them on-demand
         if (missingTickers.length > 0 && missingTickers.length <= 5) {

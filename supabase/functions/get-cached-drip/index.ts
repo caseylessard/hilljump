@@ -23,11 +23,38 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log(`📊 Fetching cached DRIP data for ${tickers.length} tickers`);
-
-    // Fetch cached DRIP data from database - get most recent calculation for each ticker
+    
+    // Determine user country from auth header
+    let userCountry = 'US'; // Default
+    try {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+        
+        if (user && !userError) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('country')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (profile?.country) {
+            userCountry = profile.country;
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Could not determine user country, using default US');
+    }
+    
+    console.log(`🎯 Using DRIP cache for country: ${userCountry}`);
+    
+    // Query the appropriate cache table based on user country
+    const tableName = userCountry === 'CA' ? 'drip_cache_ca' : 'drip_cache_us';
     const { data: cachedData, error } = await supabase
-      .from('drip_cache')
-      .select('ticker, data, calculation_date, created_at')
+      .from(tableName)
+      .select('*')
       .in('ticker', tickers)
       .order('created_at', { ascending: false });
 
@@ -36,49 +63,50 @@ serve(async (req: Request) => {
       throw error;
     }
 
-    // Group by ticker and take the most recent entry for each
+    // Process data to get most recent entry per ticker
     const dripData: Record<string, any> = {};
-    const seenTickers = new Set<string>();
+    const processed = new Set<string>();
     
-    (cachedData || []).forEach((entry: any) => {
-      if (!seenTickers.has(entry.ticker)) {
-        seenTickers.add(entry.ticker);
-        dripData[entry.ticker] = entry.data;
+    for (const row of cachedData || []) {
+      if (!processed.has(row.ticker)) {
+        dripData[row.ticker] = {
+          '4w': row.period_4w,
+          '13w': row.period_13w,
+          '26w': row.period_26w,
+          '52w': row.period_52w,
+          lastUpdated: row.updated_at
+        };
+        processed.add(row.ticker);
       }
-    });
-
-    const foundCount = Object.keys(dripData).length;
-    const missingTickers = tickers.filter(ticker => !dripData[ticker]);
-    
-    console.log(`✅ Found cached DRIP data for ${foundCount}/${tickers.length} tickers`);
-    if (missingTickers.length > 0) {
-      console.log(`⚠️ Missing DRIP data for: ${missingTickers.join(', ')}`);
     }
-    
-    return new Response(JSON.stringify({ 
+
+    const cached = Object.keys(dripData).length;
+    const total = tickers.length;
+    const missing = tickers.filter(ticker => !processed.has(ticker));
+
+    console.log(`✅ Found cached DRIP data from ${tableName} for ${cached}/${total} tickers`);
+    if (missing.length > 0) {
+      console.log(`⚠️ Missing DRIP data for: ${missing.join(', ')}`);
+    }
+
+    return new Response(JSON.stringify({
       dripData,
-      cached: foundCount,
-      total: tickers.length,
-      missing: missingTickers
+      cached,
+      total,
+      missing,
+      userCountry
     }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders
-      }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('Error fetching cached DRIP data:', error);
-    return new Response(
-      JSON.stringify({ error: String(error?.message || error) }), 
-      {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      }
-    );
+    return new Response(JSON.stringify({ 
+      error: 'Failed to fetch cached DRIP data',
+      details: error.message 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

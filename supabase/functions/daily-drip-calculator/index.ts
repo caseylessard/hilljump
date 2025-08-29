@@ -219,7 +219,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🕰️ Starting daily DRIP calculation...');
+    console.log('🕰️ Starting daily DRIP calculation for both US and CA users...');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -228,7 +228,7 @@ serve(async (req) => {
     // Get all active ETFs
     const { data: etfs, error: etfError } = await supabase
       .from('etfs')
-      .select('ticker')
+      .select('ticker, country')
       .eq('active', true);
 
     if (etfError) throw etfError;
@@ -249,22 +249,30 @@ serve(async (req) => {
     for (const [batchIndex, batch] of batches.entries()) {
       console.log(`🔄 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} tickers)`);
       
-      // Calculate DRIP for this batch
       const endDateISO = new Date().toISOString().split('T')[0];
-      const batchResults: Array<{
+      const usBatchResults: Array<{
         ticker: string;
-        calculation_date: string;
-        data: any;
+        period_4w: any;
+        period_13w: any;
+        period_26w: any;
+        period_52w: any;
+        updated_at: string;
+      }> = [];
+      
+      const caBatchResults: Array<{
+        ticker: string;
+        period_4w: any;
+        period_13w: any;
+        period_26w: any;
+        period_52w: any;
+        updated_at: string;
       }> = [];
 
       for (const ticker of batch) {
         try {
-          // Fetch ETF info for tax calculations
-          const { data: etfInfo } = await supabase
-            .from('etfs')
-            .select('country')
-            .eq('ticker', ticker)
-            .maybeSingle();
+          // Find ETF info for tax calculations
+          const etfInfo = etfs?.find(e => e.ticker === ticker);
+          const fundCountry = etfInfo?.country || 'US';
 
           // Fetch price data (last 400 days to ensure we have enough for 52w)
           const { data: priceData } = await supabase
@@ -283,16 +291,31 @@ serve(async (req) => {
             .order('ex_date', { ascending: true });
 
           if (priceData && priceData.length > 0 && divData) {
-            // Apply 15% withholding tax on foreign ETFs (assume CA user for daily calculation)
-            const fundCountry = etfInfo?.country || 'US';
-            const taxWithholding = (fundCountry === 'US') ? 0.15 : 0; // Default to CA user perspective
+            // Calculate DRIP for US users (with 15% withholding on CA funds)
+            const usTaxWithholding = (fundCountry === 'CA') ? 0.15 : 0;
+            const usDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: usTaxWithholding });
             
-            const dripData = dripWindows(priceData, divData, endDateISO, { taxWithholding });
+            // Calculate DRIP for CA users (no withholding)
+            const caDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: 0 });
             
-            batchResults.push({
+            const timestamp = new Date().toISOString();
+            
+            usBatchResults.push({
               ticker,
-              calculation_date: endDateISO,
-              data: dripData
+              period_4w: usDripData['4w'] || null,
+              period_13w: usDripData['13w'] || null,
+              period_26w: usDripData['26w'] || null,
+              period_52w: usDripData['52w'] || null,
+              updated_at: timestamp
+            });
+            
+            caBatchResults.push({
+              ticker,
+              period_4w: caDripData['4w'] || null,
+              period_13w: caDripData['13w'] || null,
+              period_26w: caDripData['26w'] || null,
+              period_52w: caDripData['52w'] || null,
+              updated_at: timestamp
             });
             
             totalProcessed++;
@@ -303,19 +326,34 @@ serve(async (req) => {
         }
       }
 
-      // Store batch results in database
-      if (batchResults.length > 0) {
-        const { error: insertError } = await supabase
-          .from('drip_cache')
-          .upsert(batchResults, { 
-            onConflict: 'ticker,calculation_date',
+      // Store batch results in both US and CA tables
+      if (usBatchResults.length > 0) {
+        const { error: usInsertError } = await supabase
+          .from('drip_cache_us')
+          .upsert(usBatchResults, { 
+            onConflict: 'ticker',
             ignoreDuplicates: false 
           });
 
-        if (insertError) {
-          console.error('❌ Error storing DRIP batch:', insertError);
+        if (usInsertError) {
+          console.error('❌ Error storing US DRIP batch:', usInsertError);
         } else {
-          console.log(`✅ Stored ${batchResults.length} DRIP calculations`);
+          console.log(`✅ Stored ${usBatchResults.length} US DRIP calculations`);
+        }
+      }
+      
+      if (caBatchResults.length > 0) {
+        const { error: caInsertError } = await supabase
+          .from('drip_cache_ca')
+          .upsert(caBatchResults, { 
+            onConflict: 'ticker',
+            ignoreDuplicates: false 
+          });
+
+        if (caInsertError) {
+          console.error('❌ Error storing CA DRIP batch:', caInsertError);
+        } else {
+          console.log(`✅ Stored ${caBatchResults.length} CA DRIP calculations`);
         }
       }
 
