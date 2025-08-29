@@ -86,13 +86,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     return () => clearTimeout(timeoutId);
   }, [tickers]);
   
-  // Use cached DRIP data first, then fetch fresh data if needed
-  const { data: liveDripData = {} } = useCachedDRIP(tickers);
-  
-  // Combine cached and live DRIP data (live data takes precedence)
-  const dripData = useMemo(() => {
-    return { ...cachedDripData, ...liveDripData };
-  }, [cachedDripData, liveDripData]);
+  // Use the DRIP data passed from parent (includes tax preferences)
+  const dripData = cachedDripData;
   const fmtCompact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
   const DRIPCell = ({ ticker, period }: { ticker: string; period: '4w' | '13w' | '26w' | '52w' }) => {
     const tickerData = dripData[ticker];

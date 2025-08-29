@@ -101,13 +101,16 @@ const Ranking = () => {
     // Determine which price data to use (cached prices only since we removed livePrices)
     const priceData = cachedPrices;
     
-    // Use cached ranking if it's recent and no new price data
+    // Always recalculate when DRIP data changes to ensure tax preference updates
+    // Use cached ranking if it's recent, no new price data, and no DRIP data changes
     const now = Date.now();
     const cacheAge = cachedState.lastRankingUpdate ? now - cachedState.lastRankingUpdate : Infinity;
     const isCacheRecent = cacheAge < 15 * 60 * 1000; // 15 minutes
     const hasNewPriceData = Object.keys(priceData).length > 0;
+    const hasDripData = dripData && Object.keys(dripData).length > 0;
     
-    if (isCacheRecent && !hasNewPriceData && cachedRanking.length > 0) {
+    // Only use cached ranking if no DRIP data is available (prevents stale rankings)
+    if (isCacheRecent && !hasNewPriceData && !hasDripData && cachedRanking.length > 0) {
       return cachedRanking;
     }
     
