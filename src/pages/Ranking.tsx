@@ -20,7 +20,7 @@ import Navigation from '@/components/Navigation';
 import { LoadingProgress } from '@/components/LoadingProgress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import DripCalculationTest from '@/components/DripCalculationTest';
+import ShowDripWork from '@/components/ShowDripWork';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -573,7 +573,7 @@ const Ranking = () => {
         {/* DRIP Calculation Test - temporary for debugging */}
         {isAdmin && (
           <div className="border-t pt-8">
-            <DripCalculationTest />
+            <ShowDripWork />
           </div>
         )}
       </main>
