@@ -236,52 +236,28 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      console.log('🧮 Loading DRIP data for', tickers.length, 'tickers with tax preferences:', taxPreferences);
+      console.log('🧮 Calculating DRIP data for', tickers.length, 'tickers with tax preferences:', taxPreferences);
       
-      // If no tax preferences or default settings, try cached data first
-      const useCache = !taxPreferences || 
-        (!taxPreferences.enabled || taxPreferences.rate === 0.15);
+      // Always calculate live when tax preferences are custom
+      const hasCustomTax = taxPreferences?.enabled && taxPreferences.rate !== 0.15;
       
-      if (useCache) {
-        try {
-          // Try to get cached DRIP data first
-          const { data: cachedData, error } = await supabase.functions.invoke('get-cached-drip', {
-            body: { tickers }
-          });
-          
-          if (!error && cachedData?.dripData) {
-            const cachedResults = cachedData.dripData || {};
-            const foundCount = Object.keys(cachedResults).length;
-            
-            console.log(`✅ Loaded ${foundCount}/${tickers.length} cached DRIP entries`);
-            
-            // If we have most of the data cached, return it
-            if (foundCount >= tickers.length * 0.8) { // 80% threshold
-              return cachedResults;
-            }
-          }
-        } catch (error) {
-          console.warn('⚠️ Cached DRIP data fetch failed, calculating live:', error);
-        }
-      }
-      
-      // Calculate live DRIP data with tax preferences
       try {
+        // Calculate live DRIP data with tax preferences
         const { data, error } = await supabase.functions.invoke('calculate-drip', {
           body: { 
             tickers,
-            taxPreferences: taxPreferences || { country: 'US', enabled: false, rate: 0.15 }
+            taxPreferences: taxPreferences || { country: 'US', enabled: true, rate: 0.15 }
           }
         });
         
         if (error) {
-          console.warn('❌ Failed to calculate live DRIP data:', error);
+          console.warn('❌ Failed to calculate DRIP data:', error);
           return {};
         }
         
-        const liveResults = data?.dripData || {};
-        console.log(`✅ Calculated live DRIP data for ${Object.keys(liveResults).length} tickers`);
-        return liveResults;
+        const results = data?.dripData || {};
+        console.log(`✅ Calculated DRIP data for ${Object.keys(results).length} tickers with tax settings`);
+        return results;
         
       } catch (error) {
         console.error('❌ DRIP calculation failed:', error);
@@ -289,8 +265,8 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
       }
     },
     enabled: tickers.length > 0,
-    staleTime: taxPreferences?.enabled ? 5 * 60 * 1000 : 24 * 60 * 60 * 1000, // 5 min for custom tax, 24h for default
+    staleTime: 0, // Always fetch fresh data when tax preferences change
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
   });
 };
