@@ -67,11 +67,6 @@ const Ranking = () => {
     scores: { current: 0, total: 0 }
   });
   
-  // Tax preference state
-  const [taxCountry, setTaxCountry] = useState<'US' | 'CA'>('US');
-  const [taxEnabled, setTaxEnabled] = useState(false);
-  const [taxRate, setTaxRate] = useState(15);
-
   const { toast } = useToast();
   const { profile } = useUserProfile();
   const { data: etfs = [], isLoading, error } = useQuery({ 
@@ -79,6 +74,18 @@ const Ranking = () => {
     queryFn: getETFs, 
     staleTime: 60_000 
   });
+
+  // Tax preference state - initialize with defaults, update from profile when available
+  const [taxCountry, setTaxCountry] = useState<'US' | 'CA'>('US');
+  const [taxEnabled, setTaxEnabled] = useState(true);
+  const [taxRate, setTaxRate] = useState(15);
+
+  // Update tax country when profile changes
+  useEffect(() => {
+    if (profile?.country) {
+      setTaxCountry(profile.country === 'CA' ? 'CA' : 'US');
+    }
+  }, [profile?.country]);
 
   // Get tickers for DRIP data
   const tickers = etfs.map(e => e.ticker);
