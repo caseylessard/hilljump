@@ -13,7 +13,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { tickers } = await req.json();
+    const { tickers, taxPreferences } = await req.json();
     if (!Array.isArray(tickers)) {
       throw new Error("tickers must be an array");
     }
@@ -23,35 +23,37 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log(`📊 Fetching cached DRIP data for ${tickers.length} tickers`);
+    console.log(`🎯 Tax preferences:`, taxPreferences);
     
-    // Determine user country from auth header
-    let userCountry = 'US'; // Default
-    try {
-      const authHeader = req.headers.get('authorization');
-      if (authHeader) {
-        const token = authHeader.replace('Bearer ', '');
-        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-        
-        if (user && !userError) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('country')
-            .eq('id', user.id)
-            .maybeSingle();
-          
-          if (profile?.country) {
-            userCountry = profile.country;
-          }
-        }
+    // Determine which cache table to use based on tax preferences
+    let tableName = 'drip_cache_us'; // Default
+    
+    if (taxPreferences) {
+      if (!taxPreferences.enabled) {
+        // Tax disabled = use CA cache (no withholding)
+        tableName = 'drip_cache_ca';
+        console.log(`📊 Using CA cache (no tax)`);
+      } else if (taxPreferences.enabled && taxPreferences.rate === 0.15) {
+        // Standard 15% tax = use country-appropriate cache
+        tableName = taxPreferences.country === 'CA' ? 'drip_cache_ca' : 'drip_cache_us';
+        console.log(`📊 Using ${tableName} (standard ${taxPreferences.country} tax)`);
+      } else {
+        // Custom tax rate = no cache available, will need live calculation
+        console.log(`⚠️ Custom tax rate ${(taxPreferences.rate * 100).toFixed(1)}% - no cache available`);
+        return new Response(JSON.stringify({
+          dripData: {},
+          cached: 0,
+          total: tickers.length,
+          missing: tickers,
+          useCache: false,
+          reason: 'Custom tax rate requires live calculation'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-    } catch (e) {
-      console.log('Could not determine user country, using default US');
     }
     
-    console.log(`🎯 Using DRIP cache for country: ${userCountry}`);
-    
-    // Query the appropriate cache table based on user country
-    const tableName = userCountry === 'CA' ? 'drip_cache_ca' : 'drip_cache_us';
+    console.log(`🎯 Using DRIP cache table: ${tableName}`);
     const { data: cachedData, error } = await supabase
       .from(tableName)
       .select('*')
@@ -94,7 +96,8 @@ serve(async (req: Request) => {
       cached,
       total,
       missing,
-      userCountry
+      useCache: true,
+      tableName
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
