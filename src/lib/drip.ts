@@ -166,7 +166,72 @@ export function dripOverPeriod(
   };
 }
 
-// Convenience: fixed windows ending at endISO
+// Infer distribution frequency from historical dividend data
+function inferDistributionFrequency(dists: DistRow[]): 'weekly' | 'monthly' | 'quarterly' | 'unknown' {
+  if (dists.length < 2) return 'unknown';
+  
+  // Calculate average days between distributions
+  const sortedDists = dists.slice().sort((a, b) => a.exDate.localeCompare(b.exDate));
+  const intervals: number[] = [];
+  
+  for (let i = 1; i < sortedDists.length; i++) {
+    const prev = new Date(sortedDists[i-1].exDate);
+    const curr = new Date(sortedDists[i].exDate);
+    const daysDiff = Math.abs((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
+    intervals.push(daysDiff);
+  }
+  
+  if (intervals.length === 0) return 'unknown';
+  
+  const avgInterval = intervals.reduce((sum, int) => sum + int, 0) / intervals.length;
+  
+  // Classify based on average interval
+  if (avgInterval <= 10) return 'weekly'; // 7 days ± tolerance
+  if (avgInterval <= 40) return 'monthly'; // 30 days ± tolerance
+  if (avgInterval <= 120) return 'quarterly'; // 90 days ± tolerance
+  
+  return 'unknown';
+}
+
+// Calculate smart window that ensures minimum distribution count
+function calculateSmartWindow(
+  dists: DistRow[], 
+  endISO: string, 
+  targetDays: number,
+  minDistributions: number
+): { startISO: string; actualDays: number } {
+  const end = new Date(endISO);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  
+  // Start with target window
+  let windowDays = targetDays;
+  const maxWindowDays = targetDays * 2; // Don't extend beyond 2x target
+  
+  while (windowDays <= maxWindowDays) {
+    const start = new Date(end);
+    start.setDate(start.getDate() - windowDays);
+    const startISO = fmt(start);
+    
+    // Count distributions in this window (open-closed policy)
+    const distributionsInWindow = dists.filter(d => 
+      d.exDate > startISO && d.exDate <= endISO
+    ).length;
+    
+    if (distributionsInWindow >= minDistributions) {
+      return { startISO, actualDays: windowDays };
+    }
+    
+    // Extend window by 7 days and try again
+    windowDays += 7;
+  }
+  
+  // Fallback to original target if we can't meet minimum
+  const start = new Date(end);
+  start.setDate(start.getDate() - targetDays);
+  return { startISO: fmt(start), actualDays: targetDays };
+}
+
+// Enhanced windows that ensure minimum distribution counts
 export function dripWindows(
   prices: PriceRow[],
   dists: DistRow[],
@@ -175,13 +240,55 @@ export function dripWindows(
   startShares = 1,
   opts?: DripOptions
 ): Record<number, DripResult> {
-  const end = new Date(endISO);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   const out: Record<number, DripResult> = {};
+  
+  // Infer distribution frequency for smart windowing
+  const frequency = inferDistributionFrequency(dists);
+  
   for (const days of windowsDays) {
-    const start = new Date(end);
-    start.setDate(start.getDate() - days);
-    out[days] = dripOverPeriod(prices, dists, fmt(start), fmt(end), startShares, opts);
+    let startISO: string;
+    let actualDays = days;
+    
+    // For 4w period, ensure minimum distributions based on frequency
+    if (days === 28) {
+      let minDistributions = 1; // Default minimum
+      
+      switch (frequency) {
+        case 'weekly':
+          minDistributions = 4; // 4 weeks should have 4 weekly distributions
+          break;
+        case 'monthly':
+          minDistributions = 1; // 4 weeks should have 1 monthly distribution
+          break;
+        case 'quarterly':
+          minDistributions = 1; // Quarterly is fine with 1 in 4w if available
+          break;
+      }
+      
+      const smartWindow = calculateSmartWindow(dists, endISO, days, minDistributions);
+      startISO = smartWindow.startISO;
+      actualDays = smartWindow.actualDays;
+    } else {
+      // For longer periods, use standard calculation
+      const end = new Date(endISO);
+      const start = new Date(end);
+      start.setDate(start.getDate() - days);
+      startISO = fmt(start);
+    }
+    
+    const result = dripOverPeriod(prices, dists, startISO, endISO, startShares, opts);
+    
+    // Add metadata about the window calculation
+    (result as any).windowMetadata = {
+      requestedDays: days,
+      actualDays,
+      inferredFrequency: frequency,
+      distributionsInWindow: dists.filter(d => d.exDate > startISO && d.exDate <= endISO).length
+    };
+    
+    out[days] = result;
   }
+  
   return out;
 }
