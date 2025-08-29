@@ -219,8 +219,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   };
   const headerBtnClass = allowSorting ? "flex items-center gap-1" : "flex items-center gap-1 opacity-50 pointer-events-none";
 
-  // Percent formatter that also handles fractional DB values (e.g., 0.12 -> 12%)
+  // Percent formatter that preserves negative values
   const formatPct = (v: number, digits = 1) => {
+    // Don't use Math.abs() - we need to preserve negative percentages!
     const scaled = Math.abs(v) <= 1 ? v * 100 : v;
     return `${scaled.toFixed(digits)}%`;
   };
@@ -426,15 +427,15 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                      const price = liveItem?.price;
                      const cp = liveItem?.changePercent;
                      
-                     // Debug logging
-                     if (etf.ticker === 'YBTC' || etf.ticker === 'AAPW') {
-                       console.log(`🔍 Debug ${etf.ticker}:`, {
-                         liveItem,
-                         price,
-                         liveKeys: Object.keys(live),
-                         tickerInLive: etf.ticker in live
-                       });
-                     }
+      // Debug logging for MSTY
+      if (etf.ticker === 'MSTY') {
+        console.log(`🔍 MSTY Debug:`, {
+          ticker: etf.ticker,
+          dripData: dripData[etf.ticker],
+          liveItem,
+          dripDataKeys: Object.keys(dripData)
+        });
+      }
                      
                      if (price == null) return "—";
                     const up = (cp ?? 0) >= 0;
