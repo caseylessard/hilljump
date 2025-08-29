@@ -231,10 +231,6 @@ export const useCachedScoring = (preferences: any, country?: string) => {
 };
 
 export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: string, enabled: boolean, rate: number }) => {
-  // Check if we should use cache or force live calculation
-  const hasCustomTaxRate = taxPreferences?.enabled && 
-    taxPreferences.rate !== 0 && taxPreferences.rate !== 0.15;
-  
   return useQuery({
     queryKey: ["cached-drip", tickers.sort().join(','), JSON.stringify(taxPreferences)],
     queryFn: async () => {
@@ -242,38 +238,7 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
       
       console.log('🧮 Loading DRIP data for', tickers.length, 'tickers with tax preferences:', taxPreferences);
       
-      if (!hasCustomTaxRate) {
-        // Try cache first for standard rates (0% or 15%)
-        try {
-          const { data: cachedData, error } = await supabase.functions.invoke('get-cached-drip', {
-            body: { 
-              tickers,
-              taxPreferences: taxPreferences || { country: 'US', enabled: true, rate: 0.15 }
-            }
-          });
-          
-          if (!error && cachedData?.useCache && cachedData?.dripData) {
-            const cachedResults = cachedData.dripData || {};
-            const foundCount = Object.keys(cachedResults).length;
-            const missingCount = cachedData.missing?.length || 0;
-            
-            console.log(`✅ Loaded ${foundCount}/${tickers.length} DRIP entries from ${cachedData.tableName}`);
-            
-            // If we have most data cached and few missing, return cached data
-            if (foundCount >= tickers.length * 0.7) { // 70% threshold
-              return cachedResults;
-            }
-          } else if (cachedData?.reason) {
-            console.log(`⚠️ Cache not used: ${cachedData.reason}`);
-          }
-        } catch (error) {
-          console.warn('⚠️ Cached DRIP fetch failed, will calculate live:', error);
-        }
-      } else {
-        console.log(`🔄 Custom tax rate ${(taxPreferences.rate * 100).toFixed(1)}% - forcing live calculation`);
-      }
-      
-      // Calculate live DRIP data
+      // Always calculate live DRIP data to ensure tax changes are reflected immediately
       try {
         const { data, error } = await supabase.functions.invoke('calculate-drip', {
           body: { 
@@ -297,7 +262,8 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
       }
     },
     enabled: tickers.length > 0,
-    staleTime: hasCustomTaxRate ? 0 : 5 * 60 * 1000, // Fresh data for custom rates, 5min cache for standard
+    staleTime: 0, // Always fetch fresh data when tax preferences change
+    gcTime: 0, // Don't cache results in memory
     refetchOnWindowFocus: false,
     refetchOnMount: true,
   });
