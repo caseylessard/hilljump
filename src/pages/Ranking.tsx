@@ -53,7 +53,6 @@ const cachedState = loadCachedState();
 const Ranking = () => {
   const [weights, setWeights] = useState(cachedState.weights);
   const [showDialog, setShowDialog] = useState(false);
-  const [cachedPrices, setCachedPrices] = useState<Record<string, any>>({});
   const [distributions, setDistributions] = useState<Record<string, Distribution>>({});
   const [filter, setFilter] = useState<string>(cachedState.filter);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,8 +89,11 @@ const Ranking = () => {
     setTaxRate(isCA ? 15 : 0);
   }, [profile?.country]);
 
-  // Get tickers for DRIP data
+  // Get tickers for price and DRIP data
   const tickers = etfs.map(e => e.ticker);
+  
+  // Use proper hooks for cached data that loads prices first
+  const { data: cachedPrices = {}, isLoading: pricesLoading } = useCachedPrices(tickers);
   const { data: dripData } = useCachedDRIP(tickers, { 
     country: taxCountry, 
     enabled: taxEnabled, 
@@ -101,7 +103,7 @@ const Ranking = () => {
   const ranked: ScoredETF[] = useMemo(() => {
     if (etfs.length === 0) return [];
     
-    // Determine which price data to use (cached prices only since we removed livePrices)
+    // Use the cached prices from the hook
     const priceData = cachedPrices;
     
     // Always recalculate when DRIP data changes to ensure tax preference updates
@@ -183,176 +185,51 @@ const Ranking = () => {
     meta.setAttribute('content', 'HillJump quick reference: All high-yield dividend ETFs ranked by risk-aware total return.');
   }, []);
 
-  // Load all cached data immediately on mount
+  // Load distributions separately (prices now handled by hook)
   useEffect(() => {
     if (!etfs.length) return;
     let cancelled = false;
 
-    const loadCachedData = async () => {
+    const loadDistributions = async () => {
       try {
         const tickers = etfs.map(e => e.ticker);
-        console.log('📦 Loading cached data for immediate display...');
+        console.log('📦 Loading distributions...');
         
-        // Set initial progress
+        const distributionsData = await fetchLatestDistributions(tickers);
+        
+        if (cancelled) return;
+        
+        setDistributions(distributionsData);
+        const distCount = Object.keys(distributionsData).length;
         setLoadingProgress(prev => ({
           ...prev,
-          prices: { current: 0, total: tickers.length },
-          distributions: { current: 0, total: tickers.length }
+          distributions: { current: distCount, total: tickers.length }
         }));
-
-        // Load all cached data in parallel
-        const [cachedPricesData, cachedDripData, distributionsData] = await Promise.allSettled([
-          import('@/lib/cache').then(({ cache }) => cache.get('price', tickers.sort().join(',')) || {}),
-          import('@/lib/cache').then(({ cache }) => cache.get('drip4w', tickers.sort().join(',')) || {}),
-          fetchLatestDistributions(tickers)
-        ]);
-
-        if (cancelled) return;
-
-        // Set cached data for immediate display
-        if (cachedPricesData.status === 'fulfilled') {
-          setCachedPrices(cachedPricesData.value);
-          const priceCount = Object.keys(cachedPricesData.value).length;
-          setLoadingProgress(prev => ({
-            ...prev,
-            prices: { current: priceCount, total: tickers.length }
-          }));
-          console.log('✅ Loaded cached prices:', priceCount);
-        }
-        
-        if (cachedDripData.status === 'fulfilled') {
-          console.log('✅ Loaded cached DRIP data:', Object.keys(cachedDripData.value).length);
-        }
-        
-        if (distributionsData.status === 'fulfilled') {
-          setDistributions(distributionsData.value);
-          const distCount = Object.keys(distributionsData.value).length;
-          setLoadingProgress(prev => ({
-            ...prev,
-            distributions: { current: distCount, total: tickers.length }
-          }));
-          console.log('✅ Loaded distributions:', distCount);
-        }
+        console.log('✅ Loaded distributions:', distCount);
 
       } catch (e) {
-        console.warn('Failed to load cached data:', e);
+        console.warn('Failed to load distributions:', e);
       }
     };
 
-    loadCachedData();
+    loadDistributions();
     return () => { cancelled = true; };
   }, [etfs]);
 
-  // Load live prices and recalculate after cached data is shown
+  // Update loading progress when prices are loaded
   useEffect(() => {
     if (!etfs.length) return;
-    let cancelled = false;
-
-    const loadLiveDataAndRecalculate = async () => {
-      try {
-        setIsLoadingLive(true);
-        const tickers = etfs.map(e => e.ticker);
-        
-        console.log('🔄 Loading live prices and recalculating...');
-        
-        // Set initial progress for live data
-        setLoadingProgress(prev => ({
-          ...prev,
-          prices: { current: 0, total: tickers.length },
-          scores: { current: 0, total: tickers.length }
-        }));
-        
-        // 1. Fetch live prices
-        const { getCachedETFPrices } = await import('@/lib/cache');
-        const liveData = await getCachedETFPrices(tickers);
-        
-        if (cancelled) return;
-        const liveCount = Object.keys(liveData).length;
-        setLoadingProgress(prev => ({
-          ...prev,
-          prices: { current: liveCount, total: tickers.length }
-        }));
-        console.log(`✅ Updated ${liveCount} live prices`);
-        
-        // 2. Recalculate DRIP with live prices
-        console.log('🧮 Recalculating DRIP with live prices...');
-        const { supabase } = await import('@/integrations/supabase/client');
-        
-        const batchSize = 30;
-        const batches = [];
-        for (let i = 0; i < tickers.length; i += batchSize) {
-          batches.push(tickers.slice(i, i + batchSize));
-        }
-        
-        const newDripData: Record<string, any> = {};
-        let processedCount = 0;
-        
-        for (const batch of batches) {
-          if (cancelled) break;
-          
-            try {
-              const { data, error } = await supabase.functions.invoke('calculate-drip', {
-                body: { 
-                  tickers: batch,
-                  livePrices: Object.fromEntries(
-                    batch.map(ticker => [ticker, liveData[ticker]]).filter(([, price]) => price)
-                  ),
-                  taxPrefs: {
-                    country: taxCountry,
-                    withholdingTax: taxEnabled,
-                    taxRate: taxRate // Already in percentage format
-                  }
-                }
-              });
-            
-            if (error) throw new Error(error.message);
-            Object.assign(newDripData, data?.dripData || {});
-            processedCount += batch.length;
-            setLoadingProgress(prev => ({
-              ...prev,
-              scores: { current: processedCount, total: tickers.length }
-            }));
-            console.log(`✅ Recalculated DRIP for ${batch.length} tickers`);
-          } catch (error) {
-            console.warn('Failed to recalculate DRIP batch:', error);
-          }
-        }
-        
-        if (cancelled) return;
-        console.log('✅ Recalculated DRIP for all tickers');
-        
-        // 3. Write updated data back to cache
-        console.log('💾 Writing updated data to cache...');
-        const { cache } = await import('@/lib/cache');
-        
-        // Cache the live prices
-        cache.set('price', liveData, tickers.sort().join(','));
-        
-        // Cache the new DRIP data
-        cache.set('drip4w', newDripData, tickers.sort().join(','));
-        
-        console.log('✅ Cache updated successfully');
-        setLastUpdated(new Date());
-        
-      } catch (e) {
-        console.warn('Live data update failed, keeping cached data:', e);
-      } finally {
-        setIsLoadingLive(false);
-      }
-    };
-
-    // Delay live data loading to show cached data first
-    const liveDataTimeout = setTimeout(loadLiveDataAndRecalculate, 500);
     
-    // Then refresh periodically
-    const refreshInterval = setInterval(loadLiveDataAndRecalculate, 5 * 60 * 1000); // 5 minutes
+    const priceCount = Object.keys(cachedPrices).length;
+    setLoadingProgress(prev => ({
+      ...prev,
+      prices: { current: priceCount, total: etfs.length }
+    }));
     
-    return () => { 
-      cancelled = true; 
-      clearTimeout(liveDataTimeout);
-      clearInterval(refreshInterval);
-    };
-  }, [etfs, taxCountry, taxEnabled, taxRate]);
+    if (priceCount > 0) {
+      console.log('✅ Prices loaded via hook:', priceCount);
+    }
+  }, [cachedPrices, etfs.length]);
 
   // Debug logging
   useEffect(() => {
@@ -425,7 +302,7 @@ const Ranking = () => {
         <div className="container">
           <LoadingProgress 
             etfsLoading={isLoading}
-            pricesLoading={isLoadingLive && Object.keys(cachedPrices).length === 0}
+            pricesLoading={pricesLoading}
             distributionsLoading={Object.keys(distributions).length === 0 && etfs.length > 0}
             scoresLoading={ranked.length === 0 && etfs.length > 0}
             yieldsLoading={false}
