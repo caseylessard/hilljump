@@ -180,55 +180,18 @@ serve(async (req) => {
   }
 
   try {
-    const { tickers } = await req.json()
+    const { 
+      tickers, 
+      livePrices = {}, 
+      taxPreferences = { country: 'US', enabled: false, rate: 0.15 } 
+    } = await req.json()
     
     // Initialize Supabase client early to get user info
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Get user country from auth header for tax calculations
-    let userCountry = 'US' // Default
-    try {
-      const authHeader = req.headers.get('authorization')
-      console.log(`🔍 Auth header present: ${!!authHeader}`)
-      
-      if (authHeader) {
-        const token = authHeader.replace('Bearer ', '')
-        const { data: { user }, error: userError } = await supabase.auth.getUser(token)
-        console.log(`👤 User ID: ${user?.id}, Error: ${userError?.message}`)
-        
-        if (user && !userError) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('country')
-            .eq('id', user.id)
-            .maybeSingle()
-          
-          console.log(`🌍 Profile country: ${profile?.country}, Error: ${profileError?.message}`)
-          
-          if (profile?.country) {
-            userCountry = profile.country
-            console.log(`✅ Using user country: ${userCountry}`)
-          } else {
-            console.log(`⚠️ No profile country found, using default: ${userCountry}`)
-          }
-        }
-      }
-    } catch (e) {
-      console.log(`❌ Error determining user country: ${e.message}, using default US`)
-    }
-    
-    console.log(`🎯 Final user country for tax calculation: ${userCountry}`)
-    
-    if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
-      return new Response(JSON.stringify({ error: 'Invalid or empty tickers array' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    console.log(`🧮 Calculating DRIP data for ${tickers.length} tickers (User country: ${userCountry})`)
+    console.log(`🧮 Calculating DRIP data for ${tickers.length} tickers (Tax: ${taxPreferences.country}, ${taxPreferences.enabled ? (taxPreferences.rate * 100).toFixed(1) : 0}%)`)
 
     // Pre-filter tickers to only process those with ETF data - include country for tax calculations
     const { data: etfsWithData, error: etfError } = await supabase
@@ -388,19 +351,25 @@ serve(async (req) => {
 
         console.log(`  📊 Found ${dists.length} dividends for ${ticker}`)
 
-        // Determine withholding tax rate based on user and fund country
+        // Determine withholding tax rate based on user preferences
         const etfInfo = etfsWithData?.find(etf => etf.ticker === ticker)
         const fundCountry = etfInfo?.country || 'US'
         
-        // Apply 15% withholding tax on foreign ETFs
-        // Canadian users: 15% on US ETFs, US users: 15% on Canadian ETFs
-        const taxRate = (
-          (userCountry === 'CA' && fundCountry === 'US') || 
-          (userCountry === 'US' && fundCountry === 'CA')
-        ) ? 0.15 : 0
+        // Apply user-specified tax preferences  
+        let taxRate = 0
+        if (taxPreferences.enabled) {
+          // Check if this is a foreign ETF based on user's country preference
+          const isForeignETF = (taxPreferences.country === 'US' && fundCountry === 'CA') ||
+                             (taxPreferences.country === 'CA' && fundCountry === 'US')
+          
+          if (isForeignETF) {
+            taxRate = taxPreferences.rate
+            console.log(`  💰 Applying ${(taxPreferences.rate * 100).toFixed(1)}% withholding tax (${taxPreferences.country} user, ${fundCountry} fund)`)
+          }
+        }
         
         if (taxRate > 0) {
-          console.log(`  💰 Applying ${(taxRate * 100).toFixed(0)}% withholding tax (${userCountry} user, ${fundCountry} fund)`)
+          console.log(`  💰 Tax rate applied: ${(taxRate * 100).toFixed(0)}% (${taxPreferences.country} user, ${fundCountry} fund)`)
         }
 
         // Calculate DRIP for all periods using business days for more accurate pay dates

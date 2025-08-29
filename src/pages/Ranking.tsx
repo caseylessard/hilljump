@@ -9,7 +9,7 @@ import { ScoringControls } from '@/components/dashboard/ScoringControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { ScoredETF, scoreETFs } from '@/lib/scoring';
-import { fetchLivePricesWithDataSources, LivePrice } from '@/lib/live';
+import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedDRIP } from '@/hooks/useCachedETFData';
 import { Distribution, fetchLatestDistributions } from '@/lib/dividends';
 import { saveCurrentRankings } from '@/hooks/useRankingHistory';
 import { getETFs } from '@/lib/db';
@@ -18,6 +18,8 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
 import { LoadingProgress } from '@/components/LoadingProgress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -50,10 +52,8 @@ const cachedState = loadCachedState();
 const Ranking = () => {
   const [weights, setWeights] = useState(cachedState.weights);
   const [showDialog, setShowDialog] = useState(false);
-  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
   const [cachedPrices, setCachedPrices] = useState<Record<string, any>>({});
   const [distributions, setDistributions] = useState<Record<string, Distribution>>({});
-  const [dripData, setDripData] = useState<Record<string, any>>({});
   const [filter, setFilter] = useState<string>(cachedState.filter);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -66,6 +66,11 @@ const Ranking = () => {
     distributions: { current: 0, total: 0 },
     scores: { current: 0, total: 0 }
   });
+  
+  // Tax preference state
+  const [taxCountry, setTaxCountry] = useState<'US' | 'CA'>('US');
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [taxRate, setTaxRate] = useState(15);
 
   const { toast } = useToast();
   const { profile } = useUserProfile();
@@ -75,11 +80,19 @@ const Ranking = () => {
     staleTime: 60_000 
   });
 
+  // Get tickers for DRIP data
+  const tickers = etfs.map(e => e.ticker);
+  const { data: dripData } = useCachedDRIP(tickers, { 
+    country: taxCountry, 
+    enabled: taxEnabled, 
+    rate: taxRate / 100 
+  });
+
   const ranked: ScoredETF[] = useMemo(() => {
     if (etfs.length === 0) return [];
     
-    // Determine which price data to use (live prices override cached prices)
-    const priceData = Object.keys(livePrices).length > 0 ? livePrices : cachedPrices;
+    // Determine which price data to use (cached prices only since we removed livePrices)
+    const priceData = cachedPrices;
     
     // Use cached ranking if it's recent and no new price data
     const now = Date.now();
@@ -92,8 +105,8 @@ const Ranking = () => {
     }
     
     // Score with available price and DRIP data
-    return scoreETFs(etfs, weights, priceData, dripData);
-  }, [etfs, weights, livePrices, cachedPrices, cachedRanking]);
+    return scoreETFs(etfs, weights, priceData, dripData || {});
+  }, [etfs, weights, cachedPrices, cachedRanking, dripData]);
 
   
   const filtered: ScoredETF[] = useMemo(() => {
@@ -195,7 +208,6 @@ const Ranking = () => {
         }
         
         if (cachedDripData.status === 'fulfilled') {
-          setDripData(cachedDripData.value);
           console.log('✅ Loaded cached DRIP data:', Object.keys(cachedDripData.value).length);
         }
         
@@ -242,7 +254,6 @@ const Ranking = () => {
         const liveData = await getCachedETFPrices(tickers);
         
         if (cancelled) return;
-        setLivePrices(liveData);
         const liveCount = Object.keys(liveData).length;
         setLoadingProgress(prev => ({
           ...prev,
@@ -266,15 +277,20 @@ const Ranking = () => {
         for (const batch of batches) {
           if (cancelled) break;
           
-          try {
-            const { data, error } = await supabase.functions.invoke('calculate-drip', {
-              body: { 
-                tickers: batch,
-                livePrices: Object.fromEntries(
-                  batch.map(ticker => [ticker, liveData[ticker]]).filter(([, price]) => price)
-                )
-              }
-            });
+            try {
+              const { data, error } = await supabase.functions.invoke('calculate-drip', {
+                body: { 
+                  tickers: batch,
+                  livePrices: Object.fromEntries(
+                    batch.map(ticker => [ticker, liveData[ticker]]).filter(([, price]) => price)
+                  ),
+                  taxPreferences: {
+                    country: taxCountry,
+                    enabled: taxEnabled,
+                    rate: taxRate / 100 // Convert percentage to decimal
+                  }
+                }
+              });
             
             if (error) throw new Error(error.message);
             Object.assign(newDripData, data?.dripData || {});
@@ -290,7 +306,7 @@ const Ranking = () => {
         }
         
         if (cancelled) return;
-        setDripData(newDripData);
+        console.log('✅ Recalculated DRIP for all tickers');
         
         // 3. Write updated data back to cache
         console.log('💾 Writing updated data to cache...');
@@ -323,11 +339,11 @@ const Ranking = () => {
       clearTimeout(liveDataTimeout);
       clearInterval(refreshInterval);
     };
-  }, [etfs]);
+  }, [etfs, taxCountry, taxEnabled, taxRate]);
 
   // Cache the ranking when it changes (after live data calculations)
   useEffect(() => {
-    if (etfs.length > 0 && ranked.length > 0 && Object.keys(livePrices).length > 0) {
+    if (etfs.length > 0 && ranked.length > 0) {
       setCachedRanking(ranked);
       
       // Also save to cache service and database for historical tracking
@@ -354,7 +370,7 @@ const Ranking = () => {
       
       saveRankingToCache();
     }
-  }, [ranked, etfs.length, livePrices]);
+  }, [ranked, etfs.length]);
 
   // Save state to localStorage whenever weights, filter, or ranking changes
   useEffect(() => {
@@ -429,14 +445,68 @@ const Ranking = () => {
                 </Button>
               </div>
               
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search by ticker or underlying..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-64"
-                />
+              <div className="flex items-center gap-4">
+                {/* Tax Preferences */}
+                <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium">Country:</Label>
+                    <div className="flex items-center gap-1 border rounded p-1">
+                      <Button
+                        variant={taxCountry === "US" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setTaxCountry("US")}
+                        className="h-7 px-2 text-xs"
+                      >
+                        US
+                      </Button>
+                      <Button
+                        variant={taxCountry === "CA" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setTaxCountry("CA")}
+                        className="h-7 px-2 text-xs"
+                      >
+                        CA
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="tax-enabled"
+                      checked={taxEnabled}
+                      onCheckedChange={(checked) => {
+                        setTaxEnabled(checked);
+                        if (!checked) setTaxRate(0);
+                        else setTaxRate(15);
+                      }}
+                    />
+                    <Label htmlFor="tax-enabled" className="text-sm">Withholding Tax</Label>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))}
+                      className="w-16 h-7 text-xs text-center"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      disabled={!taxEnabled}
+                    />
+                    <Label className="text-xs text-muted-foreground">%</Label>
+                  </div>
+                </div>
+                
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by ticker or underlying..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 w-64"
+                  />
+                </div>
               </div>
             </div>
             
@@ -467,9 +537,9 @@ const Ranking = () => {
 
           <ETFTable 
             items={filtered} 
-            live={Object.keys(livePrices).length > 0 ? livePrices : cachedPrices}
+            live={cachedPrices}
             distributions={distributions}
-            cachedDripData={dripData}
+            cachedDripData={dripData || {}}
             originalRanking={ranked}
           />
         </section>

@@ -562,6 +562,9 @@ export type Database = {
           period_52w_weight: number
           return_weight: number
           risk_weight: number
+          tax_country: string
+          tax_enabled: boolean
+          tax_rate: number
           updated_at: string
           user_id: string
           yield_weight: number
@@ -574,6 +577,9 @@ export type Database = {
           period_52w_weight?: number
           return_weight?: number
           risk_weight?: number
+          tax_country?: string
+          tax_enabled?: boolean
+          tax_rate?: number
           updated_at?: string
           user_id: string
           yield_weight?: number
@@ -586,6 +592,9 @@ export type Database = {
           period_52w_weight?: number
           return_weight?: number
           risk_weight?: number
+          tax_country?: string
+          tax_enabled?: boolean
+          tax_rate?: number
           updated_at?: string
           user_id?: string
           yield_weight?: number

@@ -230,59 +230,67 @@ export const useCachedScoring = (preferences: any, country?: string) => {
   });
 };
 
-export const useCachedDRIP = (tickers: string[]) => {
+export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: string, enabled: boolean, rate: number }) => {
   return useQuery({
-    queryKey: ["cached-drip", tickers.sort().join(',')],
+    queryKey: ["cached-drip", tickers.sort().join(','), JSON.stringify(taxPreferences)],
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      console.log('🧮 Loading cached DRIP data for', tickers.length, 'tickers...');
+      console.log('🧮 Loading DRIP data for', tickers.length, 'tickers with tax preferences:', taxPreferences);
       
+      // If no tax preferences or default settings, try cached data first
+      const useCache = !taxPreferences || 
+        (!taxPreferences.enabled || taxPreferences.rate === 0.15);
+      
+      if (useCache) {
+        try {
+          // Try to get cached DRIP data first
+          const { data: cachedData, error } = await supabase.functions.invoke('get-cached-drip', {
+            body: { tickers }
+          });
+          
+          if (!error && cachedData?.dripData) {
+            const cachedResults = cachedData.dripData || {};
+            const foundCount = Object.keys(cachedResults).length;
+            
+            console.log(`✅ Loaded ${foundCount}/${tickers.length} cached DRIP entries`);
+            
+            // If we have most of the data cached, return it
+            if (foundCount >= tickers.length * 0.8) { // 80% threshold
+              return cachedResults;
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Cached DRIP data fetch failed, calculating live:', error);
+        }
+      }
+      
+      // Calculate live DRIP data with tax preferences
       try {
-        // Get cached DRIP data from the appropriate country-specific table
-        const { data, error } = await supabase.functions.invoke('get-cached-drip', {
-          body: { tickers }
+        const { data, error } = await supabase.functions.invoke('calculate-drip', {
+          body: { 
+            tickers,
+            taxPreferences: taxPreferences || { country: 'US', enabled: false, rate: 0.15 }
+          }
         });
         
         if (error) {
-          console.warn('❌ Failed to fetch cached DRIP data:', error);
+          console.warn('❌ Failed to calculate live DRIP data:', error);
           return {};
         }
         
-        const cachedResults = data?.dripData || {};
-        const foundCount = Object.keys(cachedResults).length;
-        const missingTickers = data?.missing || [];
-        const userCountry = data?.userCountry || 'US';
-        
-        console.log(`✅ Loaded ${foundCount}/${tickers.length} cached DRIP entries (country: ${userCountry})`);
-        
-        // If we have missing tickers and it's a small number, calculate them on-demand
-        if (missingTickers.length > 0 && missingTickers.length <= 5) {
-          console.log('🔄 Calculating missing DRIP data for:', missingTickers);
-          try {
-            const { data: liveData, error: liveError } = await supabase.functions.invoke('calculate-drip', {
-              body: { tickers: missingTickers }
-            });
-            
-            if (!liveError && liveData?.dripData) {
-              Object.assign(cachedResults, liveData.dripData);
-              console.log('✅ Added live DRIP data for missing tickers');
-            }
-          } catch (liveError) {
-            console.warn('⚠️ Failed to calculate missing DRIP data:', liveError);
-          }
-        }
-        
-        return cachedResults;
+        const liveResults = data?.dripData || {};
+        console.log(`✅ Calculated live DRIP data for ${Object.keys(liveResults).length} tickers`);
+        return liveResults;
         
       } catch (error) {
-        console.error('❌ DRIP data fetch failed:', error);
+        console.error('❌ DRIP calculation failed:', error);
         return {};
       }
     },
     enabled: tickers.length > 0,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours - use cached data longer
+    staleTime: taxPreferences?.enabled ? 5 * 60 * 1000 : 24 * 60 * 60 * 1000, // 5 min for custom tax, 24h for default
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Don't refetch on mount - use cached data
+    refetchOnMount: false,
   });
 };
