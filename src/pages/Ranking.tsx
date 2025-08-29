@@ -76,17 +76,12 @@ const Ranking = () => {
     staleTime: 60_000 
   });
 
-  // Tax preference state - initialize with defaults, update from profile when available
-  const [taxCountry, setTaxCountry] = useState<'US' | 'CA'>('US');
+  // Tax preference state - country comes from profile, rate managed locally
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [taxRate, setTaxRate] = useState(15);
 
-  // Update tax country when profile changes
-  useEffect(() => {
-    if (profile?.country) {
-      setTaxCountry(profile.country === 'CA' ? 'CA' : 'US');
-    }
-  }, [profile?.country]);
+  // Get tax country from profile, fallback to US
+  const taxCountry = profile?.country === 'CA' ? 'CA' : 'US';
 
   // Get tickers for DRIP data
   const tickers = etfs.map(e => e.ticker);
@@ -459,28 +454,6 @@ const Ranking = () => {
               <div className="flex items-center gap-4">
                 {/* Tax Preferences */}
                 <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm font-medium">Country:</Label>
-                    <div className="flex items-center gap-1 border rounded p-1">
-                      <Button
-                        variant={taxCountry === "US" ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => setTaxCountry("US")}
-                        className="h-7 px-2 text-xs"
-                      >
-                        US
-                      </Button>
-                      <Button
-                        variant={taxCountry === "CA" ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => setTaxCountry("CA")}
-                        className="h-7 px-2 text-xs"
-                      >
-                        CA
-                      </Button>
-                    </div>
-                  </div>
-                  
                   <div className="flex items-center gap-2">
                     <Switch
                       id="tax-enabled"
