@@ -16,7 +16,7 @@ export default function DripCalculationTest() {
       console.log('🧮 Calling calculate-drip for NVHE and YBTC...');
       const { data, error } = await supabase.functions.invoke('calculate-drip', {
         body: { 
-          tickers: ['NVHE', 'YBTC'],
+          tickers: ['NVHE.TO', 'YBTC'],
           taxPrefs: {
             country: 'US',
             withholdingTax: true // US client with tax
@@ -62,7 +62,7 @@ export default function DripCalculationTest() {
             disabled={loading}
             className="w-full"
           >
-            {loading ? 'Calculating...' : 'Calculate 52-week DRIP for NVHE & YBTC'}
+            {loading ? 'Calculating...' : 'Calculate 52-week DRIP for NVHE.TO & YBTC'}
           </Button>
 
           {results && (
@@ -72,7 +72,7 @@ export default function DripCalculationTest() {
                 Errors: {results.errors?.length || 0}
               </div>
 
-              {['NVHE', 'YBTC'].map(ticker => {
+              {['NVHE.TO', 'YBTC'].map(ticker => {
                 const tickerData = results.dripData?.[ticker];
                 if (!tickerData) {
                   return (
