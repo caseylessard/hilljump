@@ -461,8 +461,11 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                     const currency = dist.currency || (etf.currency === 'CAD' ? 'CAD' : 'USD');
                     const symbol = currency === 'CAD' ? 'CA$' : '$';
                     
-                    const amountStr = `${symbol}${dist.amount.toFixed(3)}`;
-                    const dateStr = format(new Date(dist.date), "MM/dd");
+                     const amountStr = `${symbol}${dist.amount.toFixed(3)}`;
+                     // Parse date as local date to avoid timezone issues
+                     const [year, month, day] = dist.date.split('-').map(Number);
+                     const localDate = new Date(year, month - 1, day);
+                     const dateStr = format(localDate, "MM/dd");
                     return (
                       <div className="inline-flex flex-col items-end leading-tight">
                         <span>{amountStr}</span>
