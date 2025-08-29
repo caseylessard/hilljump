@@ -2,25 +2,40 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 export default function ShowDripWork() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
+  const [ticker1, setTicker1] = useState('NVHE.TO');
+  const [ticker2, setTicker2] = useState('YBTC');
+  const [taxCountry, setTaxCountry] = useState('US');
+  const [withTax, setWithTax] = useState(true);
+  const [taxRate, setTaxRate] = useState(15.0);
   
   const calculateDrip = async () => {
+    if (!ticker1.trim() || !ticker2.trim()) {
+      toast.error('Please enter both tickers');
+      return;
+    }
+
     setLoading(true);
     setResults(null);
     
     try {
-      console.log('🧮 Calculating DRIP for NVHE.TO and YBTC (US client with tax)...');
+      const tickers = [ticker1.trim().toUpperCase(), ticker2.trim().toUpperCase()];
+      console.log(`🧮 Calculating DRIP for ${tickers.join(' and ')} (${taxCountry} client ${withTax ? 'with' : 'without'} tax)...`);
+      
       const { data, error } = await supabase.functions.invoke('calculate-drip', {
         body: { 
-          tickers: ['NVHE.TO', 'YBTC'],
+          tickers: tickers,
           taxPrefs: {
-            country: 'US',
-            withholdingTax: true,
-            taxRate: 15.0
+            country: taxCountry,
+            withholdingTax: withTax,
+            taxRate: taxRate
           }
         }
       });
@@ -55,25 +70,95 @@ export default function ShowDripWork() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>52-Week DRIP Calculations - Show the Work</CardTitle>
+          <CardTitle>52-Week DRIP Calculations - Compare Two Tickers</CardTitle>
           <p className="text-sm text-muted-foreground">
-            US client viewing Canadian (NVHE.TO) and US (YBTC) funds with 15% withholding tax on Canadian distributions
+            Select any two tickers and tax preferences to compare their DRIP performance
           </p>
         </CardHeader>
         <CardContent>
+          {/* Ticker Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="space-y-2">
+              <Label htmlFor="ticker1">First Ticker</Label>
+              <Input
+                id="ticker1"
+                value={ticker1}
+                onChange={(e) => setTicker1(e.target.value)}
+                placeholder="e.g. NVHE.TO"
+                className="uppercase"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ticker2">Second Ticker</Label>
+              <Input
+                id="ticker2"
+                value={ticker2}
+                onChange={(e) => setTicker2(e.target.value)}
+                placeholder="e.g. YBTC"
+                className="uppercase"
+              />
+            </div>
+          </div>
+
+          {/* Tax Preferences */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted rounded-lg">
+            <div className="space-y-2">
+              <Label htmlFor="taxCountry">Client Country</Label>
+              <Select value={taxCountry} onValueChange={setTaxCountry}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="US">🇺🇸 United States</SelectItem>
+                  <SelectItem value="CA">🇨🇦 Canada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="withTax">Withholding Tax</Label>
+              <Select value={withTax.toString()} onValueChange={(value) => setWithTax(value === 'true')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Apply Tax</SelectItem>
+                  <SelectItem value="false">No Tax</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="taxRate">Tax Rate (%)</Label>
+              <Input
+                id="taxRate"
+                type="number"
+                value={taxRate}
+                onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                placeholder="15.0"
+                step="0.1"
+                min="0"
+                max="50"
+              />
+            </div>
+          </div>
+
           <Button 
             onClick={calculateDrip} 
-            disabled={loading}
+            disabled={loading || !ticker1.trim() || !ticker2.trim()}
             className="w-full mb-4"
           >
-            {loading ? 'Calculating...' : 'Calculate & Show DRIP Work'}
+            {loading ? 'Calculating...' : `Calculate & Compare ${ticker1.toUpperCase()} vs ${ticker2.toUpperCase()}`}
           </Button>
 
           {results && (
             <div className="space-y-6">
-              <div className="text-sm bg-muted p-4 rounded">
-                <strong>Summary:</strong> Processed {results.processed || 0} tickers | 
-                Errors: {results.errors?.length || 0}
+              <div className="text-sm bg-muted p-4 rounded flex justify-between items-center">
+                <div>
+                  <strong>Summary:</strong> Processed {results.processed || 0} tickers | 
+                  Errors: {results.errors?.length || 0}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {taxCountry} client • {withTax ? `${taxRate}% tax` : 'No tax'}
+                </div>
               </div>
 
               {results.dripData && Object.entries(results.dripData).map(([ticker, data]: [string, any]) => (
@@ -82,7 +167,10 @@ export default function ShowDripWork() {
                     <CardTitle className="flex items-center justify-between">
                       <span>{ticker}</span>
                       <span className="text-sm font-normal text-muted-foreground">
-                        {ticker.includes('.TO') ? 'Canadian Fund (15% tax)' : 'US Fund (0% tax)'}
+                        {ticker.includes('.TO') ? 
+                          `🇨🇦 Canadian Fund ${withTax ? `(${taxRate}% tax)` : '(No tax)'}` : 
+                          `🇺🇸 US Fund ${withTax && taxCountry === 'CA' ? `(${taxRate}% tax)` : '(No tax)'}`
+                        }
                       </span>
                     </CardTitle>
                   </CardHeader>
@@ -151,10 +239,21 @@ export default function ShowDripWork() {
                     <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-sm">
                       <h5 className="font-medium text-yellow-800 mb-1">Tax Impact:</h5>
                       <p className="text-yellow-700">
-                        {ticker.includes('.TO') 
-                          ? "🇨🇦 Canadian fund: 15% withholding tax applied to all dividends before reinvestment"
-                          : "🇺🇸 US fund: No withholding tax for US clients"
-                        }
+                        {(() => {
+                          const isCanadianFund = ticker.includes('.TO');
+                          const isUSClient = taxCountry === 'US';
+                          const isCAClient = taxCountry === 'CA';
+                          
+                          if (isCanadianFund && isUSClient && withTax) {
+                            return `🇨🇦➡️🇺🇸 Canadian fund, US client: ${taxRate}% withholding tax applied to all dividends`;
+                          } else if (!isCanadianFund && isCAClient && withTax) {
+                            return `🇺🇸➡️🇨🇦 US fund, Canadian client: ${taxRate}% withholding tax applied to all dividends`;
+                          } else if (!withTax) {
+                            return `No withholding tax applied (tax disabled)`;
+                          } else {
+                            return `No withholding tax (domestic ${isCanadianFund ? 'Canadian' : 'US'} fund for ${taxCountry} client)`;
+                          }
+                        })()}
                       </p>
                     </div>
                   </CardContent>
