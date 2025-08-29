@@ -420,12 +420,23 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                     <span className="text-xs text-muted-foreground">{getFundManager(etf)}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
-                  {(() => {
-                    // Use full ticker for live data lookup
-                    const price = liveItem?.price;
-                    const cp = liveItem?.changePercent;
-                    if (price == null) return "—";
+                 <TableCell className="text-right">
+                   {(() => {
+                     // Use full ticker for live data lookup
+                     const price = liveItem?.price;
+                     const cp = liveItem?.changePercent;
+                     
+                     // Debug logging
+                     if (etf.ticker === 'YBTC' || etf.ticker === 'AAPW') {
+                       console.log(`🔍 Debug ${etf.ticker}:`, {
+                         liveItem,
+                         price,
+                         liveKeys: Object.keys(live),
+                         tickerInLive: etf.ticker in live
+                       });
+                     }
+                     
+                     if (price == null) return "—";
                     const up = (cp ?? 0) >= 0;
                     return (
                       <div className="inline-flex flex-col items-end leading-tight">

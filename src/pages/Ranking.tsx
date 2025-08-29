@@ -354,6 +354,17 @@ const Ranking = () => {
     };
   }, [etfs, taxCountry, taxEnabled, taxRate]);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 Ranking Debug:', {
+      cachedPricesKeys: Object.keys(cachedPrices),
+      cachedPricesCount: Object.keys(cachedPrices).length,
+      sampleCachedPrice: cachedPrices['YBTC'] || cachedPrices['AAPW'],
+      filteredCount: filtered.length,
+      sampleTicker: filtered[0]?.ticker
+    });
+  }, [cachedPrices, filtered]);
+
   // Cache the ranking when it changes (after live data calculations)
   useEffect(() => {
     if (etfs.length > 0 && ranked.length > 0) {
