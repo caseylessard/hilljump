@@ -103,7 +103,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       const up = (p as number ?? 0) >= 0;
       return (
         <div className="inline-flex flex-col items-end leading-tight">
-          <span>{d != null ? `$${(d as number).toFixed(2)}` : "—"}</span>
+          <span>{d != null ? `${(d as number) >= 0 ? '+' : ''}$${Math.abs(d as number).toFixed(2)}` : "—"}</span>
           <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
             {p != null ? `${up ? "+" : ""}${(p as number).toFixed(1)}%` : "—"}
           </span>
@@ -122,7 +122,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     const up = percent >= 0;
     return (
       <div className="inline-flex flex-col items-end leading-tight">
-        <span>${dollar.toFixed(3)}</span>
+        <span>{dollar >= 0 ? '+' : '-'}${Math.abs(dollar).toFixed(3)}</span>
         <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
           {up ? "+" : ""}{percent.toFixed(1)}%
         </span>
