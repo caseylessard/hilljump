@@ -107,6 +107,17 @@ export function scoreETFsWithPrefs(
     
     const compositeScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
     
+    // Debug logging for MSTY specifically
+    if (d.ticker === 'MSTY') {
+      console.log('🔍 MSTY Ladder-Delta Scoring:', {
+        ticker: d.ticker,
+        rawDrip: { drip4w: drip4w[i], drip13w: drip13w[i], drip26w: drip26w[i], drip52w: drip52w[i] },
+        perWeek: { p4, p13, p26, p52 },
+        deltas: { d1, d2, d3 },
+        scoring: { baseScore, positiveDeltaBonus, negativeDeltaPenalty, compositeScore }
+      });
+    }
+    
     // Keep dripSumScore for compatibility
     const dripSumScore = (drip4w[i] || 0) + (drip13w[i] || 0) + (drip26w[i] || 0) + (drip52w[i] || 0);
 

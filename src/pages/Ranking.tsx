@@ -115,10 +115,16 @@ const Ranking = () => {
     const hasNewPriceData = Object.keys(priceData).length > 0;
     const hasDripData = dripData && Object.keys(dripData).length > 0;
     
+    // Clear localStorage cache for testing
+    localStorage.removeItem('ranking-state');
+    console.log('🧹 Cleared localStorage cache for testing new scoring model');
+    
     // CACHE CHECK DISABLED - Always recalculate to test new Ladder-Delta Trend model
     // if (isCacheRecent && !hasNewPriceData && !hasDripData && cachedRanking.length > 0) {
     //   return cachedRanking;
     // }
+    
+    console.log('🧮 Recalculating rankings with NEW Ladder-Delta Trend model');
     
     // Score with available price and DRIP data
     return scoreETFs(etfs, weights, priceData, dripData || {});
