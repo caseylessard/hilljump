@@ -88,42 +88,11 @@ export function scoreETFsWithPrefs(
   });
 
   const scored = data.map((d, i) => {
-    // Calculate per-week returns for each horizon
-    const t = [4, 13, 26, 52]; // time horizons
-    const p = [
-      (drip4w[i] || 0) / 4,    // r4/4
-      (drip13w[i] || 0) / 13,  // r13/13
-      (drip26w[i] || 0) / 26,  // r26/26
-      (drip52w[i] || 0) / 52   // r52/52
-    ];
-    
-    // Calculate OLS slope: m = cov(t,p)/var(t)
-    const t_mean = t.reduce((sum, val) => sum + val, 0) / t.length;
-    const p_mean = p.reduce((sum, val) => sum + val, 0) / p.length;
-    
-    let covariance = 0;
-    let variance = 0;
-    
-    for (let j = 0; j < t.length; j++) {
-      const t_diff = t[j] - t_mean;
-      const p_diff = p[j] - p_mean;
-      covariance += t_diff * p_diff;
-      variance += t_diff * t_diff;
-    }
-    
-    const slope = variance > 0 ? covariance / variance : 0;
-    
-    // Trend score: -m (bigger is better, inverts negative slope)
-    let trendScore = -slope;
-    
-    // Optional tie-breaker: add 0.25 * p4 (4-week per-week return)
-    trendScore += 0.25 * p[0];
-    
-    // Sum of all DRIP percentages for backward compatibility
+    // Sum of all DRIP percentages - this is our only score now
     const dripSumScore = (drip4w[i] || 0) + (drip13w[i] || 0) + (drip26w[i] || 0) + (drip52w[i] || 0);
     
-    // Composite score is now the trend score
-    const compositeScore = trendScore;
+    // Composite score is just the DRIP sum
+    const compositeScore = dripSumScore;
 
     // Keep normalized values for compatibility (set to defaults)
     const returnNorm = 0.5;
