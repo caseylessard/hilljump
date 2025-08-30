@@ -88,7 +88,7 @@ export function scoreETFsWithPrefs(
   });
 
   const scored = data.map((d, i) => {
-    // Ladder-Delta Trend Model
+    // Ladder-Delta Trend Model for SIGNAL (not composite score)
     // Convert to per-week returns
     const p4 = (drip4w[i] || 0) / 4;
     const p13 = (drip13w[i] || 0) / 13;
@@ -100,26 +100,32 @@ export function scoreETFsWithPrefs(
     const d2 = p13 - p26;
     const d3 = p26 - p52;
     
-    // Calculate Ladder-Delta Trend score
+    // Calculate Ladder-Delta Trend SIGNAL score
     const baseScore = 0.60 * p4 + 0.25 * p13 + 0.10 * p26 + 0.05 * p52;
     const positiveDeltaBonus = 1.00 * Math.max(0, d1) + 0.70 * Math.max(0, d2) + 0.50 * Math.max(0, d3);
     const negativeDeltaPenalty = 0.50 * (Math.max(0, -d1) + Math.max(0, -d2) + Math.max(0, -d3));
     
-    const compositeScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
+    const ladderDeltaSignalScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
+    
+    // Buy signal based on Ladder-Delta Trend model (positive score = BUY)
+    const buySignal = ladderDeltaSignalScore > 0;
+    
+    // Composite score returns to simple DRIP sum for ranking
+    const dripSumScore = (drip4w[i] || 0) + (drip13w[i] || 0) + (drip26w[i] || 0) + (drip52w[i] || 0);
+    const compositeScore = dripSumScore;
     
     // Debug logging for MSTY specifically
     if (d.ticker === 'MSTY') {
-      console.log('🔍 MSTY Ladder-Delta Scoring:', {
+      console.log('🔍 MSTY Ladder-Delta SIGNAL:', {
         ticker: d.ticker,
         rawDrip: { drip4w: drip4w[i], drip13w: drip13w[i], drip26w: drip26w[i], drip52w: drip52w[i] },
         perWeek: { p4, p13, p26, p52 },
         deltas: { d1, d2, d3 },
-        scoring: { baseScore, positiveDeltaBonus, negativeDeltaPenalty, compositeScore }
+        signalScoring: { baseScore, positiveDeltaBonus, negativeDeltaPenalty, ladderDeltaSignalScore },
+        buySignal,
+        compositeScore: dripSumScore
       });
     }
-    
-    // Keep dripSumScore for compatibility
-    const dripSumScore = (drip4w[i] || 0) + (drip13w[i] || 0) + (drip26w[i] || 0) + (drip52w[i] || 0);
 
     // Keep normalized values for compatibility (set to defaults)
     const returnNorm = 0.5;
@@ -134,9 +140,6 @@ export function scoreETFsWithPrefs(
     const drip26wNorm = 0.5;
     const drip52wNorm = 0.5;
     const dripWeightedNorm = 0.5;
-    
-    // Simple buy signal based on positive DRIP momentum
-    const buySignal = (drip13w[i] ?? 0) > 0 && (drip4w[i] ?? 0) > 0;
     
     // Risk score (neutral since we're not using it)
     const riskScore = 0.5;
