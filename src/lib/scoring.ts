@@ -26,6 +26,7 @@ export type ScoredETF = ETF & {
   dripSumScore: number; // Sum of 4w+13w+26w+52w percentages
   // Signal derived from DRIP momentum
   buySignal: boolean;
+  position: number; // 1=Buy, 0=Hold, -1=Sell
   riskScore: number;      // 0..1 higher = riskier
   compositeScore: number; // higher is better
 };
@@ -140,6 +141,8 @@ export function scoreETFsWithPrefs(
         perWeek: { p4, p13, p26, p52 },
         deltas: { d1, d2, d3 },
         signalScoring: { baseScore, positiveDeltaBonus, negativeDeltaPenalty, ladderDeltaSignalScore },
+        conditions: { condBuy, condSell },
+        position,
         buySignal,
         compositeScore: dripSumScore
       });
@@ -178,6 +181,7 @@ export function scoreETFsWithPrefs(
       dripWeightedNorm,
       dripSumScore,
       buySignal,
+      position,
       riskScore,
       compositeScore,
     };

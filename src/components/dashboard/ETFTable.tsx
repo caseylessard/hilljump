@@ -279,13 +279,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         case "drip52w": return getDripPercent(etf.ticker, "52w");
         case "score": return getDripSum(etf.ticker); // Use DRIP sum instead of composite score
         case "signal": {
-          const momentumSignal = rsiSignals[etf.ticker];
-          if (momentumSignal) {
-            // Return numeric value for sorting: BUY=2, HOLD=1, SELL=0
-            return momentumSignal.signal === 'BUY' ? 2 : (momentumSignal.signal === 'HOLD' ? 1 : 0);
-          }
-          // Return neutral value when loading
-          return 0.5; // Sort loading items in middle
+          // Use position from Ladder-Delta Trend model: 1=Buy(2), 0=Hold(1), -1=Sell(0)
+          return etf.position === 1 ? 2 : (etf.position === 0 ? 1 : 0);
         }
         case "rank":
         default:
@@ -493,33 +488,23 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                  <TableCell className="text-right font-semibold">
                    {getDripSum(etf.ticker).toFixed(1)}
                  </TableCell>
-                <TableCell className="text-right">
-                  {(() => {
-                    const momentumSignal = rsiSignals[etf.ticker];
-                    if (momentumSignal) {
-                      const { signal, momentum_1m = 0, trend_strength = 0 } = momentumSignal;
-                      const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
-                                        signal === 'SELL' ? "bg-red-500 text-white" : 
-                                        "bg-gray-500 text-white";
-                      return (
-                        <div className="inline-flex flex-col items-end leading-tight">
-                          <Badge className={badgeClass}>{signal}</Badge>
-                          <span className="text-muted-foreground text-xs">
-                            1M: {momentum_1m > 0 ? '+' : ''}{momentum_1m.toFixed(1)}%
-                          </span>
-                        </div>
-                      );
-                    }
-                    
-                    // Show "Loading..." while fetching
-                    return (
-                      <div className="inline-flex flex-col items-end leading-tight">
-                        <Badge className="bg-gray-400 text-white">LOADING</Badge>
-                        <span className="text-muted-foreground text-xs">Calculating...</span>
-                      </div>
-                    );
-                  })()}
-                </TableCell>
+                 <TableCell className="text-right">
+                   {(() => {
+                     // Use Ladder-Delta Trend signal from scoring logic
+                     const signal = etf.position === 1 ? 'BUY' : (etf.position === 0 ? 'HOLD' : 'SELL');
+                     const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
+                                       signal === 'SELL' ? "bg-red-500 text-white" : 
+                                       "bg-gray-500 text-white";
+                     return (
+                       <div className="inline-flex flex-col items-end leading-tight">
+                         <Badge className={badgeClass}>{signal}</Badge>
+                         <span className="text-muted-foreground text-xs">
+                           DRIP Trend
+                         </span>
+                       </div>
+                     );
+                   })()}
+                 </TableCell>
               </TableRow>
             );
           })}
