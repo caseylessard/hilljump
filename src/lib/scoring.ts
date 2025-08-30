@@ -107,7 +107,7 @@ export function scoreETFsWithPrefs(
     
     const ladderDeltaSignalScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
     
-    // Buy signal based on Ladder-Delta Trend model (positive score = BUY)
+    // Buy signal based on Ladder-Delta Trend model (positive score = BUY) - FIXED
     const buySignal = ladderDeltaSignalScore > 0;
     
     // Composite score returns to simple DRIP sum for ranking
