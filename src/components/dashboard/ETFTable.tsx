@@ -374,7 +374,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
             </TableHead>
             <TableHead className="text-right">
               <button onClick={() => requestSort("signal")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                Signal <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
+                Trend <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
               </button>
             </TableHead>
           </TableRow>
@@ -496,12 +496,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                                        signal === 'SELL' ? "bg-red-500 text-white" : 
                                        "bg-gray-500 text-white";
                      return (
-                       <div className="inline-flex flex-col items-end leading-tight">
-                         <Badge className={badgeClass}>{signal}</Badge>
-                         <span className="text-muted-foreground text-xs">
-                           DRIP Trend
-                         </span>
-                       </div>
+                        <div className="inline-flex flex-col items-end leading-tight">
+                          <Badge className={badgeClass}>{signal}</Badge>
+                        </div>
                      );
                    })()}
                  </TableCell>
