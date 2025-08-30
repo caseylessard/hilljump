@@ -107,8 +107,26 @@ export function scoreETFsWithPrefs(
     
     const ladderDeltaSignalScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
     
-    // Buy signal based on Ladder-Delta Trend model (positive score = BUY) - FIXED
-    const buySignal = ladderDeltaSignalScore > 0;
+    // Simplified EMA smoothing (using current score as EMA since we don't have historical data)
+    const scoreEma5 = ladderDeltaSignalScore;
+    
+    // Buy/Sell conditions adapted from Python logic
+    const condBuy = (scoreEma5 > 0.005) && (d1 > 0) && (d2 > 0) && (d3 > 0);
+    const condSell = (scoreEma5 < 0) || (d1 <= 0);
+    
+    // Simplified position logic (without full hysteresis due to lack of historical state)
+    // 1 = Buy, 0 = Hold, -1 = Sell
+    let position: number;
+    if (condBuy) {
+      position = 1; // Buy signal
+    } else if (condSell) {
+      position = -1; // Sell signal
+    } else {
+      position = 0; // Hold signal
+    }
+    
+    // Legacy buySignal for compatibility (true if position is Buy)
+    const buySignal = position === 1;
     
     // Composite score returns to simple DRIP sum for ranking
     const dripSumScore = (drip4w[i] || 0) + (drip13w[i] || 0) + (drip26w[i] || 0) + (drip52w[i] || 0);
