@@ -88,11 +88,27 @@ export function scoreETFsWithPrefs(
   });
 
   const scored = data.map((d, i) => {
-    // Sum of all DRIP percentages - this is our only score now
-    const dripSumScore = (drip4w[i] || 0) + (drip13w[i] || 0) + (drip26w[i] || 0) + (drip52w[i] || 0);
+    // Ladder-Delta Trend Model
+    // Convert to per-week returns
+    const p4 = (drip4w[i] || 0) / 4;
+    const p13 = (drip13w[i] || 0) / 13;
+    const p26 = (drip26w[i] || 0) / 26;
+    const p52 = (drip52w[i] || 0) / 52;
     
-    // Composite score is just the DRIP sum
-    const compositeScore = dripSumScore;
+    // Calculate deltas (recent minus longer)
+    const d1 = p4 - p13;
+    const d2 = p13 - p26;
+    const d3 = p26 - p52;
+    
+    // Calculate Ladder-Delta Trend score
+    const baseScore = 0.60 * p4 + 0.25 * p13 + 0.10 * p26 + 0.05 * p52;
+    const positiveDeltaBonus = 1.00 * Math.max(0, d1) + 0.70 * Math.max(0, d2) + 0.50 * Math.max(0, d3);
+    const negativeDeltaPenalty = 0.50 * (Math.max(0, -d1) + Math.max(0, -d2) + Math.max(0, -d3));
+    
+    const compositeScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
+    
+    // Keep dripSumScore for compatibility
+    const dripSumScore = (drip4w[i] || 0) + (drip13w[i] || 0) + (drip26w[i] || 0) + (drip52w[i] || 0);
 
     // Keep normalized values for compatibility (set to defaults)
     const returnNorm = 0.5;
