@@ -106,6 +106,7 @@ const Ranking = () => {
     // Use the cached prices from the hook
     const priceData = cachedPrices;
     
+    // CACHING TEMPORARILY DISABLED FOR TESTING NEW SCORING MODEL
     // Always recalculate when DRIP data changes to ensure tax preference updates
     // Use cached ranking if it's recent, no new price data, and no DRIP data changes
     const now = Date.now();
@@ -114,10 +115,10 @@ const Ranking = () => {
     const hasNewPriceData = Object.keys(priceData).length > 0;
     const hasDripData = dripData && Object.keys(dripData).length > 0;
     
-    // Only use cached ranking if no DRIP data is available (prevents stale rankings)
-    if (isCacheRecent && !hasNewPriceData && !hasDripData && cachedRanking.length > 0) {
-      return cachedRanking;
-    }
+    // CACHE CHECK DISABLED - Always recalculate to test new Ladder-Delta Trend model
+    // if (isCacheRecent && !hasNewPriceData && !hasDripData && cachedRanking.length > 0) {
+    //   return cachedRanking;
+    // }
     
     // Score with available price and DRIP data
     return scoreETFs(etfs, weights, priceData, dripData || {});

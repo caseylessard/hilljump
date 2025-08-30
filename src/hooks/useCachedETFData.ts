@@ -15,7 +15,7 @@ export const useCachedETFs = () => {
     queryFn: async () => {
       return getCachedData('ranking', getETFs, 'all-etfs');
     },
-    staleTime: isAdmin ? 0 : 60_000, // No cache for admins
+    staleTime: 0, // TEMPORARILY DISABLED FOR TESTING - was: isAdmin ? 0 : 60_000
     refetchOnMount: isAdmin,
     refetchOnWindowFocus: isAdmin,
   });
