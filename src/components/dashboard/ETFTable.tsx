@@ -333,6 +333,11 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
               </button>
             </TableHead>
             <TableHead className="text-right">
+              <button onClick={() => requestSort("signal")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                Trend <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
               <button onClick={() => requestSort("price")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
                 Price <span className="text-muted-foreground text-xs">{indicator("price")}</span>
               </button>
@@ -372,11 +377,6 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 Score <span className="text-muted-foreground text-xs">{indicator("score")}</span>
               </button>
             </TableHead>
-            <TableHead className="text-right">
-              <button onClick={() => requestSort("signal")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                Trend <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
-              </button>
-            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -408,44 +408,58 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                      <RankingChangeIndicator ticker={etf.ticker} />
                    </div>
                  </TableCell>
-                <TableCell>
-                  <div className="inline-flex flex-col">
-                    <span className="inline-flex items-center">
-                      {displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
-                    </span>
-                    <span className="text-xs text-muted-foreground">{getFundManager(etf)}</span>
-                  </div>
-                </TableCell>
-                 <TableCell className="text-right">
-                   {(() => {
-                     // Use full ticker for live data lookup
-                     const price = liveItem?.price;
-                     const cp = liveItem?.changePercent;
-                     
-      // Debug logging for MSTY
-      if (etf.ticker === 'MSTY') {
-        console.log(`🔍 MSTY Debug:`, {
-          ticker: etf.ticker,
-          dripData: dripData[etf.ticker],
-          liveItem,
-          dripDataKeys: Object.keys(dripData)
-        });
-      }
-                     
-                     if (price == null) return "—";
-                    const up = (cp ?? 0) >= 0;
-                    return (
-                      <div className="inline-flex flex-col items-end leading-tight">
-                        <span>${price.toFixed(2)}</span>
-                        {cp != null && (
-                          <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
-                            {up ? "+" : ""}{cp.toFixed(2)}%
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </TableCell>
+                 <TableCell>
+                   <div className="inline-flex flex-col">
+                     <span className="inline-flex items-center">
+                       {displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{countryFlag(etf)}</span>
+                     </span>
+                     <span className="text-xs text-muted-foreground">{getFundManager(etf)}</span>
+                   </div>
+                 </TableCell>
+                  <TableCell className="text-right">
+                    {(() => {
+                      // Use Ladder-Delta Trend signal from scoring logic
+                      const signal = etf.position === 1 ? 'BUY' : (etf.position === 0 ? 'HOLD' : 'SELL');
+                      const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
+                                        signal === 'SELL' ? "bg-red-500 text-white" : 
+                                        "bg-gray-500 text-white";
+                      return (
+                         <div className="inline-flex flex-col items-end leading-tight">
+                           <Badge className={badgeClass}>{signal}</Badge>
+                         </div>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {(() => {
+                      // Use full ticker for live data lookup
+                      const price = liveItem?.price;
+                      const cp = liveItem?.changePercent;
+                      
+       // Debug logging for MSTY
+       if (etf.ticker === 'MSTY') {
+         console.log(`🔍 MSTY Debug:`, {
+           ticker: etf.ticker,
+           dripData: dripData[etf.ticker],
+           liveItem,
+           dripDataKeys: Object.keys(dripData)
+         });
+       }
+                      
+                      if (price == null) return "—";
+                     const up = (cp ?? 0) >= 0;
+                     return (
+                       <div className="inline-flex flex-col items-end leading-tight">
+                         <span>${price.toFixed(2)}</span>
+                         {cp != null && (
+                           <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
+                             {up ? "+" : ""}{cp.toFixed(2)}%
+                           </span>
+                         )}
+                       </div>
+                     );
+                   })()}
+                 </TableCell>
                 <TableCell className="text-right">
                   {(() => {
                     // Use full ticker for distributions lookup
@@ -484,24 +498,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 <TableCell className="text-right">
                   <DRIPCell ticker={etf.ticker} period="52w" />
                 </TableCell>
-                
-                 <TableCell className="text-right font-semibold">
-                   {getDripSum(etf.ticker).toFixed(1)}
-                 </TableCell>
-                 <TableCell className="text-right">
-                   {(() => {
-                     // Use Ladder-Delta Trend signal from scoring logic
-                     const signal = etf.position === 1 ? 'BUY' : (etf.position === 0 ? 'HOLD' : 'SELL');
-                     const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
-                                       signal === 'SELL' ? "bg-red-500 text-white" : 
-                                       "bg-gray-500 text-white";
-                     return (
-                        <div className="inline-flex flex-col items-end leading-tight">
-                          <Badge className={badgeClass}>{signal}</Badge>
-                        </div>
-                     );
-                   })()}
-                 </TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {getDripSum(etf.ticker).toFixed(1)}
+                  </TableCell>
               </TableRow>
             );
           })}
