@@ -417,18 +417,20 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                    </div>
                  </TableCell>
                   <TableCell className="text-right">
-                    {(() => {
-                      // Use Ladder-Delta Trend signal from scoring logic
-                      const signal = etf.position === 1 ? 'BUY' : (etf.position === 0 ? 'HOLD' : 'SELL');
-                      const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
-                                        signal === 'SELL' ? "bg-red-500 text-white" : 
-                                        "bg-gray-500 text-white";
-                      return (
-                         <div className="inline-flex flex-col items-end leading-tight">
-                           <Badge className={badgeClass}>{signal}</Badge>
-                         </div>
-                      );
-                    })()}
+                     {(() => {
+                       // Use Ladder-Delta Trend signal from scoring logic
+                       // Default to HOLD (0) if position is undefined/null
+                       const position = etf.position ?? 0;
+                       const signal = position === 1 ? 'BUY' : (position === -1 ? 'SELL' : 'HOLD');
+                       const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
+                                         signal === 'SELL' ? "bg-red-500 text-white" : 
+                                         "bg-gray-500 text-white";
+                       return (
+                          <div className="inline-flex flex-col items-end leading-tight">
+                            <Badge className={badgeClass}>{signal}</Badge>
+                          </div>
+                       );
+                     })()}
                   </TableCell>
                   <TableCell className="text-right">
                     {(() => {
