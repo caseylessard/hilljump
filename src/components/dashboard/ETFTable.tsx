@@ -190,7 +190,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   // Component for ranking change indicator
   const RankingChangeIndicator = ({ ticker }: { ticker: string }) => {
     const change = rankingChanges[ticker];
-    if (!change || change.isNew) return null;
+    // Only show if there's meaningful data and the change is reasonable (< 50 positions)
+    if (!change || change.isNew || !change.previousRank || Math.abs(change.change) > 50) return null;
     
     if (change.change === 0) {
       return <Minus className="h-3 w-3 text-muted-foreground" />;
@@ -334,8 +335,8 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 Ticker <span className="text-muted-foreground text-xs">{indicator("ticker")}</span>
               </button>
             </TableHead>
-            <TableHead className="text-right">
-              <button onClick={() => requestSort("signal")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+            <TableHead className="text-center">
+              <button onClick={() => requestSort("signal")} className={`${headerBtnClass} mx-auto`} aria-disabled={!allowSorting}>
                 Trend <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
               </button>
             </TableHead>
@@ -418,22 +419,29 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                      <span className="text-xs text-muted-foreground">{getFundManager(etf)}</span>
                    </div>
                  </TableCell>
-                  <TableCell className="text-right">
-                     {(() => {
-                       // Use Ladder-Delta Trend signal from scoring logic
-                       // Default to HOLD (0) if position is undefined/null
-                       const position = etf.position ?? 0;
-                       const signal = position === 1 ? 'BUY' : (position === -1 ? 'SELL' : 'HOLD');
-                       const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
-                                         signal === 'SELL' ? "bg-red-500 text-white" : 
-                                         "bg-gray-500 text-white";
-                       return (
-                          <div className="inline-flex flex-col items-end leading-tight">
-                            <Badge className={badgeClass}>{signal}</Badge>
-                          </div>
-                       );
-                     })()}
-                  </TableCell>
+                   <TableCell className="text-center">
+                      {(() => {
+                        // Default to grey button with no text if position is undefined/null
+                        const position = etf.position;
+                        if (position === undefined || position === null) {
+                          return (
+                            <div className="flex justify-center">
+                              <Badge className="bg-gray-400 text-white w-12 h-6"></Badge>
+                            </div>
+                          );
+                        }
+                        
+                        const signal = position === 1 ? 'BUY' : (position === -1 ? 'SELL' : 'HOLD');
+                        const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
+                                          signal === 'SELL' ? "bg-red-500 text-white" : 
+                                          "bg-gray-500 text-white";
+                        return (
+                           <div className="flex justify-center">
+                             <Badge className={badgeClass}>{signal}</Badge>
+                           </div>
+                        );
+                      })()}
+                   </TableCell>
                   <TableCell className="text-right">
                     {(() => {
                       // Use full ticker for live data lookup
