@@ -13,7 +13,7 @@ import { useCachedDRIP } from "@/hooks/useCachedETFData";
 import { useRankingHistory, type RankingChange } from "@/hooks/useRankingHistory";
 
 import { DistributionHistory } from "@/components/dashboard/DistributionHistory";
-import { ArrowUpRight, ArrowDownRight, X, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, X, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import type { LivePrice } from "@/lib/live";
@@ -55,6 +55,51 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     });
     return map;
   }, [originalRanking]);
+
+  // Navigation helpers
+  const currentIndex = useMemo(() => {
+    if (!selected) return -1;
+    return items.findIndex(item => item.ticker === selected.ticker);
+  }, [selected, items]);
+
+  const navigateToETF = (direction: 'prev' | 'next') => {
+    if (currentIndex === -1) return;
+    
+    let newIndex;
+    if (direction === 'prev') {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+    } else {
+      newIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+    }
+    
+    const newETF = items[newIndex];
+    const newRank = originalRankMap.get(newETF.ticker) || newIndex + 1;
+    setSelected(newETF);
+    setSelectedRank(newRank);
+    setRange("1Y");
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!open || !selected) return;
+      
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        navigateToETF('prev');
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        navigateToETF('next');
+      } else if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+
+    if (open) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [open, selected, currentIndex, items, originalRankMap]);
   
   // Fetch RSI signals when tickers change
   useEffect(() => {
@@ -521,7 +566,23 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className={`p-0 overflow-hidden ${isMobile ? 'max-w-[95vw] max-h-[90vh] m-4' : 'max-w-4xl'}`}>
           {selected && (
-            <div className="w-full overflow-hidden">
+            <div className="w-full overflow-hidden relative">
+              {/* Navigation Buttons */}
+              <button
+                onClick={() => navigateToETF('prev')}
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background border rounded-full p-2 hover:bg-accent transition-colors"
+                aria-label="Previous ETF"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => navigateToETF('next')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background border rounded-full p-2 hover:bg-accent transition-colors"
+                aria-label="Next ETF"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              
               <div className="flex items-center justify-between p-4 border-b">
                 <div className="flex items-center gap-3">
                   {(() => {
