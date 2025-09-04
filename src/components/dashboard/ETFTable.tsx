@@ -196,9 +196,11 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       return <Minus className="h-3 w-3 text-muted-foreground" />;
     }
     
-    const isImprovement = change.change > 0;
-    const Icon = isImprovement ? TrendingUp : TrendingDown;
-    const colorClass = isImprovement ? "text-emerald-600" : "text-red-600";
+    // Positive change = moved up in ranking (lower rank number = better)
+    // e.g., moved from rank 12 to rank 1 = change of +11 = improvement
+    const movedUp = change.change > 0;
+    const Icon = movedUp ? TrendingUp : TrendingDown;
+    const colorClass = movedUp ? "text-emerald-600" : "text-red-600";
     
     return (
       <div className={`flex items-center gap-1 ${colorClass}`}>
