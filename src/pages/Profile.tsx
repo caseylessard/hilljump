@@ -22,6 +22,7 @@ import ComprehensiveEodhdTest from "@/components/admin/ComprehensiveEodhdTest";
 import { DividendSystemTest } from "@/components/admin/DividendSystemTest";
 import { ETFEditor } from "@/components/admin/ETFEditor";
 import { DistributionEditor } from "@/components/admin/DistributionEditor";
+import DailyAlertsTestSuite from "@/components/admin/DailyAlertsTestSuite";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -529,6 +530,13 @@ const Profile = () => {
             {/* Admin Section - ETF Management */}
             {isAdmin && !adminLoading && (
               <>
+                <Card className="p-4">
+                  <h2 className="text-lg font-semibold mb-4">Admin - Daily Alerts System</h2>
+                  <div className="space-y-4">
+                    <DailyAlertsTestSuite />
+                  </div>
+                </Card>
+
                 <Card className="p-4">
                   <h2 className="text-lg font-semibold mb-4">Admin - ETF Management</h2>
                   <div className="space-y-4">
