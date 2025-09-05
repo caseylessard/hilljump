@@ -1,5 +1,11 @@
 project_id = "lyjfwnlindbsbbwjzefh"
 
+[functions.daily-crypto-scanner]
+verify_jwt = false
+
+[functions.filter-crypto-universe]
+verify_jwt = false
+
 [functions.filter-equity-universe]
 verify_jwt = false
 

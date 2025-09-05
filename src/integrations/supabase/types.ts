@@ -80,6 +80,48 @@ export type Database = {
         }
         Relationships: []
       }
+      crypto_universe: {
+        Row: {
+          atr_pct: number | null
+          change_24h_pct: number | null
+          created_at: string
+          filter_date: string
+          filtered_at: string
+          id: string
+          momentum_score: number | null
+          price: number | null
+          rank_order: number
+          symbol: string
+          volume_usd: number | null
+        }
+        Insert: {
+          atr_pct?: number | null
+          change_24h_pct?: number | null
+          created_at?: string
+          filter_date?: string
+          filtered_at?: string
+          id?: string
+          momentum_score?: number | null
+          price?: number | null
+          rank_order: number
+          symbol: string
+          volume_usd?: number | null
+        }
+        Update: {
+          atr_pct?: number | null
+          change_24h_pct?: number | null
+          created_at?: string
+          filter_date?: string
+          filtered_at?: string
+          id?: string
+          momentum_score?: number | null
+          price?: number | null
+          rank_order?: number
+          symbol?: string
+          volume_usd?: number | null
+        }
+        Relationships: []
+      }
       daily_update_logs: {
         Row: {
           created_at: string | null
