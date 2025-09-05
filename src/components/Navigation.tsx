@@ -13,6 +13,7 @@ const Navigation = () => {
     { href: "/", label: "Income" },
     { href: "/portfolio", label: "Portfolio" }, 
     { href: "/bots", label: "Bots" },
+    { href: "/breakout", label: "Breakout" },
     { href: "/options", label: "Options" },
     { href: "/crypto", label: "Crypto" }
   ];

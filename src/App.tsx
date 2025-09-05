@@ -13,6 +13,7 @@ import Options from "./pages/Options";
 import Crypto from "./pages/Crypto";
 import Portfolio from "./pages/Portfolio";
 import Bots from "./pages/Bots";
+import Breakout from "./pages/Breakout";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/" element={<Ranking />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/bots" element={<Bots />} />
+          <Route path="/breakout" element={<Breakout />} />
           <Route path="/options" element={<Options />} />
           <Route path="/crypto" element={<Crypto />} />
           <Route path="/profile" element={<Profile />} />
