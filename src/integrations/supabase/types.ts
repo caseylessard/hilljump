@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      crypto_alerts: {
+        Row: {
+          atr_pct: number | null
+          change_24h_pct: number | null
+          entry_price: number | null
+          id: string
+          likelihood_of_win: number | null
+          news_recent_count: number | null
+          pick_date: string
+          picked_at: string
+          price: number | null
+          rank_order: number
+          rel_vol: number | null
+          source: string | null
+          stop_price: number | null
+          symbol: string
+          target_growth_pct: number | null
+          tp1_price: number | null
+          tp2_price: number | null
+          yday_high: number | null
+          yday_low: number | null
+        }
+        Insert: {
+          atr_pct?: number | null
+          change_24h_pct?: number | null
+          entry_price?: number | null
+          id?: string
+          likelihood_of_win?: number | null
+          news_recent_count?: number | null
+          pick_date?: string
+          picked_at?: string
+          price?: number | null
+          rank_order: number
+          rel_vol?: number | null
+          source?: string | null
+          stop_price?: number | null
+          symbol: string
+          target_growth_pct?: number | null
+          tp1_price?: number | null
+          tp2_price?: number | null
+          yday_high?: number | null
+          yday_low?: number | null
+        }
+        Update: {
+          atr_pct?: number | null
+          change_24h_pct?: number | null
+          entry_price?: number | null
+          id?: string
+          likelihood_of_win?: number | null
+          news_recent_count?: number | null
+          pick_date?: string
+          picked_at?: string
+          price?: number | null
+          rank_order?: number
+          rel_vol?: number | null
+          source?: string | null
+          stop_price?: number | null
+          symbol?: string
+          target_growth_pct?: number | null
+          tp1_price?: number | null
+          tp2_price?: number | null
+          yday_high?: number | null
+          yday_low?: number | null
+        }
+        Relationships: []
+      }
       daily_update_logs: {
         Row: {
           created_at: string | null
@@ -193,6 +259,78 @@ export type Database = {
           period_52w?: Json | null
           ticker?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      equity_alerts: {
+        Row: {
+          atr_pct: number | null
+          entry_price: number | null
+          exchange: string | null
+          float_shares: number | null
+          id: string
+          likelihood_of_win: number | null
+          news_recent_count: number | null
+          pick_date: string
+          picked_at: string
+          premarket_change_pct: number | null
+          price: number | null
+          rank_order: number
+          rel_vol: number | null
+          source: string | null
+          stop_price: number | null
+          target_growth_pct: number | null
+          ticker: string
+          tp1_price: number | null
+          tp2_price: number | null
+          yday_high: number | null
+          yday_low: number | null
+        }
+        Insert: {
+          atr_pct?: number | null
+          entry_price?: number | null
+          exchange?: string | null
+          float_shares?: number | null
+          id?: string
+          likelihood_of_win?: number | null
+          news_recent_count?: number | null
+          pick_date?: string
+          picked_at?: string
+          premarket_change_pct?: number | null
+          price?: number | null
+          rank_order: number
+          rel_vol?: number | null
+          source?: string | null
+          stop_price?: number | null
+          target_growth_pct?: number | null
+          ticker: string
+          tp1_price?: number | null
+          tp2_price?: number | null
+          yday_high?: number | null
+          yday_low?: number | null
+        }
+        Update: {
+          atr_pct?: number | null
+          entry_price?: number | null
+          exchange?: string | null
+          float_shares?: number | null
+          id?: string
+          likelihood_of_win?: number | null
+          news_recent_count?: number | null
+          pick_date?: string
+          picked_at?: string
+          premarket_change_pct?: number | null
+          price?: number | null
+          rank_order?: number
+          rel_vol?: number | null
+          source?: string | null
+          stop_price?: number | null
+          target_growth_pct?: number | null
+          ticker?: string
+          tp1_price?: number | null
+          tp2_price?: number | null
+          yday_high?: number | null
+          yday_low?: number | null
         }
         Relationships: []
       }
