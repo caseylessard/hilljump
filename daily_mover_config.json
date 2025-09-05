@@ -1,0 +1,48 @@
+{
+  "run_time": "08:00",
+  "equities": {
+    "top_n": 5,
+    "min_price": 1.0,
+    "max_price": 25.0,
+    "require_float": true,
+    "min_float_shares": 1000000,
+    "max_float_shares": 10000000,
+    "min_avg_dollar_vol": 1000000,
+    "min_gap_pct": 2.0,
+    "news_hours": 36,
+    "atr_len": 14,
+    "atr_lookback_days": 60,
+    "weights": {
+      "gap": 0.5,
+      "rel_vol": 0.22,
+      "float": 0.18,
+      "news": 0.1
+    },
+    "target": {
+      "min": 5.0,
+      "max": 25.0,
+      "atr_w": 0.55,
+      "gap_w": 0.45
+    }
+  },
+  "crypto": {
+    "enabled": true,
+    "top_n": 5,
+    "min_price": 0.05,
+    "max_price": 5000,
+    "min_change_24h_pct": 1.5,
+    "atr_len": 14,
+    "atr_lookback_days": 120,
+    "weights": {
+      "change": 0.6,
+      "rel_vol": 0.3,
+      "news": 0.1
+    },
+    "target": {
+      "min": 3.0,
+      "max": 18.0,
+      "atr_w": 0.65,
+      "change_w": 0.35
+    }
+  }
+}
