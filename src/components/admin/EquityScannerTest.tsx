@@ -17,7 +17,7 @@ export default function EquityScannerTest() {
     try {
       const { data, error } = await supabase.functions.invoke('daily-equity-scanner', {
         body: {
-          universe: ["PLTY", "MSTY", "TSLY", "NVDY", "RYLD", "QYLD", "JEPI", "JEPQ"],
+          use_filtered_universe: true, // Use DB filtered universe
           config: {
             min_price: 1.0,
             max_price: 50.0,
@@ -68,6 +68,10 @@ export default function EquityScannerTest() {
           >
             {isRunning ? "🔍 Scanning..." : "🚀 Run Equity Scanner"}
           </Button>
+          
+          <div className="mt-3 text-xs text-muted-foreground">
+            Uses filtered universe from database (small-caps under $3, low float)
+          </div>
         </CardContent>
       </Card>
 

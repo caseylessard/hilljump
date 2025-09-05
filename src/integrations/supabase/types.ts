@@ -334,6 +334,48 @@ export type Database = {
         }
         Relationships: []
       }
+      equity_universe: {
+        Row: {
+          avg_dollar_volume: number | null
+          created_at: string
+          exchange: string | null
+          filter_date: string
+          filtered_at: string
+          float_shares: number | null
+          id: string
+          market_cap: number | null
+          price: number | null
+          rank_order: number
+          ticker: string
+        }
+        Insert: {
+          avg_dollar_volume?: number | null
+          created_at?: string
+          exchange?: string | null
+          filter_date?: string
+          filtered_at?: string
+          float_shares?: number | null
+          id?: string
+          market_cap?: number | null
+          price?: number | null
+          rank_order: number
+          ticker: string
+        }
+        Update: {
+          avg_dollar_volume?: number | null
+          created_at?: string
+          exchange?: string | null
+          filter_date?: string
+          filtered_at?: string
+          float_shares?: number | null
+          id?: string
+          market_cap?: number | null
+          price?: number | null
+          rank_order?: number
+          ticker?: string
+        }
+        Relationships: []
+      }
       etf_rankings: {
         Row: {
           composite_score: number

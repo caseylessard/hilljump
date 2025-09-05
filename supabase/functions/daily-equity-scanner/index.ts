@@ -69,7 +69,28 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const config = { ...DEFAULT_CONFIG, ...body.config };
-    const universe = body.universe || DEFAULT_UNIVERSE;
+    
+    // Use filtered universe from DB if available, otherwise use provided/default
+    let universe = body.universe || DEFAULT_UNIVERSE;
+    
+    if (body.use_filtered_universe !== false) {
+      try {
+        const { data: filteredUniverse, error } = await supabase
+          .from('equity_universe')
+          .select('ticker')
+          .order('rank_order', { ascending: true })
+          .limit(50);
+          
+        if (!error && filteredUniverse && filteredUniverse.length > 0) {
+          universe = filteredUniverse.map(t => t.ticker);
+          console.log(`📊 Using filtered universe of ${universe.length} tickers`);
+        } else {
+          console.log(`⚠️ No filtered universe found, using ${universe.length} default tickers`);
+        }
+      } catch (error) {
+        console.warn('Could not fetch filtered universe:', error);
+      }
+    }
     
     console.log(`🔍 Scanning ${universe.length} tickers for daily movers...`);
 
