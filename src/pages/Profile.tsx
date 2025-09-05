@@ -161,13 +161,35 @@ const Profile = () => {
 
   const addOrUpdate = async () => {
     if (!userId) return;
-    const t = ticker.trim().toUpperCase();
-    if (!t || shares <= 0) { toast({ title: "Enter ticker and shares" }); return; }
-    const { error } = await supabase.from("portfolio_positions").upsert({ user_id: userId, ticker: t, shares }, { onConflict: "user_id,ticker" });
-    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
-    setTicker(""); setShares(0);
+    
+    // Sanitize ticker input
+    const sanitizedTicker = ticker.trim().toUpperCase().replace(/[^A-Z0-9.-]/g, '').substring(0, 10);
+    if (!sanitizedTicker || sanitizedTicker.length < 1) {
+      toast({ title: "Invalid ticker", description: "Please enter a valid ticker symbol" });
+      return;
+    }
+
+    if (shares <= 0 || shares > 1000000 || !isFinite(shares)) {
+      toast({ title: "Invalid shares", description: "Please enter a valid number of shares (0.01 - 1,000,000)" });
+      return;
+    }
+
+    const { error } = await supabase.from("portfolio_positions").upsert({ 
+      user_id: userId, 
+      ticker: sanitizedTicker, 
+      shares 
+    }, { onConflict: "user_id,ticker" });
+    
+    if (error) { 
+      toast({ title: "Save failed", description: error.message, variant: "destructive" }); 
+      return; 
+    }
+    
+    setTicker(""); 
+    setShares(0);
     const { data } = await supabase.from("portfolio_positions").select("*").eq("user_id", userId).order("created_at");
     setPositions((data as Position[]) || []);
+    toast({ title: "Position updated successfully" });
   };
 
   const remove = async (id: string) => {
@@ -185,10 +207,20 @@ const Profile = () => {
       return;
     }
     const uid = session.user.id;
-    const desiredUsername = (username || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
+    // Sanitize all user inputs
+    const desiredUsername = (username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 30);
+    const sanitizedFirstName = (firstName || '').replace(/[^a-zA-Z\s'-]/g, '').trim().slice(0, 50);
+    const sanitizedLastName = (lastName || '').replace(/[^a-zA-Z\s'-]/g, '').trim().slice(0, 50);
+    
     const { error } = await supabase
       .from('profiles')
-      .upsert({ id: uid, username: desiredUsername || null, first_name: firstName || null, last_name: lastName || null, country });
+      .upsert({ 
+        id: uid, 
+        username: desiredUsername || null, 
+        first_name: sanitizedFirstName || null, 
+        last_name: sanitizedLastName || null, 
+        country 
+      });
     if (error) {
       const msg = error.message || '';
       if (msg.toLowerCase().includes('idx_profiles_username_unique') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
