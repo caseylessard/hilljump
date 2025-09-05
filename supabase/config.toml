@@ -1,5 +1,8 @@
 project_id = "lyjfwnlindbsbbwjzefh"
 
+[functions.daily-equity-scanner]
+verify_jwt = false
+
 [functions.etf-stream]
 verify_jwt = false
 
