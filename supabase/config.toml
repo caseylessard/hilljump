@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.yfinance-rsi]
 verify_jwt = false
+
+[functions.alerts_ingest]
+verify_jwt = false
