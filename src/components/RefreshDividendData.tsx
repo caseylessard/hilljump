@@ -24,7 +24,7 @@ export const RefreshDividendData = () => {
       console.log('🔄 Starting dividend data refresh...');
       
       // 1. Trigger dividend updater
-      const { data: updateResult, error: updateError } = await supabase.functions.invoke('dividend-updater', {
+      const { data: updateResult, error: updateError } = await supabase.functions.invoke('simple-dividend-updater', {
         body: { manual: true, source: 'manual_refresh' }
       });
 
