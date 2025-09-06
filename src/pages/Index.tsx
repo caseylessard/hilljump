@@ -19,6 +19,9 @@ import { useCachedETFs, useCachedPrices, useCachedYields, useCachedStoredScores,
 import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
 import { LoadingProgress } from "@/components/LoadingProgress";
+import DailyAlerts from "@/components/alerts/DailyAlerts";
+import { RefreshDividendData } from "@/components/RefreshDividendData";
+import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
 import { DataUpdater } from "@/components/admin/DataUpdater";
 import { useAdmin } from "@/hooks/useAdmin";
 
@@ -229,6 +232,15 @@ const Index = () => {
 
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
+          
+          {/* Quick dividend data tools */}
+          {isAdmin && (
+            <div className="grid gap-4 md:grid-cols-2 mb-6">
+              <RefreshDividendData />
+              <ManualDividendEntry />
+            </div>
+          )}
+          
           <ETFTable items={topETFs} live={livePrices} distributions={distributions} />
         </section>
       </main>
