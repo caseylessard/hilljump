@@ -25,6 +25,7 @@ import { DistributionEditor } from "@/components/admin/DistributionEditor";
 import DailyAlertsTestSuite from "@/components/admin/DailyAlertsTestSuite";
 import { RefreshDividendData } from "@/components/RefreshDividendData";
 import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
+import { DividendDuplicateCleanup } from "@/components/admin/DividendDuplicateCleanup";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -565,9 +566,10 @@ const Profile = () => {
             {isAdmin && !adminLoading && (
               <Card className="p-4">
                 <h2 className="text-lg font-semibold mb-4">Admin - Dividend Data Management</h2>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <RefreshDividendData />
                   <ManualDividendEntry />
+                  <DividendDuplicateCleanup />
                 </div>
               </Card>
             )}
