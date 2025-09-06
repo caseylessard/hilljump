@@ -253,7 +253,7 @@ export const DividendDataMonitor = () => {
             <Alert className="mt-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Some ETFs have stale dividend data (>35 days). Consider using manual entry or 
+                Some ETFs have stale dividend data (&gt;35 days). Consider using manual entry or 
                 checking alternative data sources.
               </AlertDescription>
             </Alert>

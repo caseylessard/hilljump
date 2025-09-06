@@ -158,6 +158,39 @@ export type Database = {
         }
         Relationships: []
       }
+      dividend_source_logs: {
+        Row: {
+          created_at: string | null
+          dividends_found: number | null
+          error_message: string | null
+          id: string
+          response_time_ms: number | null
+          source: string
+          success: boolean
+          ticker: string
+        }
+        Insert: {
+          created_at?: string | null
+          dividends_found?: number | null
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number | null
+          source: string
+          success: boolean
+          ticker: string
+        }
+        Update: {
+          created_at?: string | null
+          dividends_found?: number | null
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number | null
+          source?: string
+          success?: boolean
+          ticker?: string
+        }
+        Relationships: []
+      }
       dividend_update_logs: {
         Row: {
           created_at: string
@@ -879,6 +912,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_dividend_freshness: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          days_since_update: number
+          is_stale: boolean
+          last_dividend_date: string
+          ticker: string
+          total_dividends: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
