@@ -384,6 +384,20 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
               <button onClick={() => requestSort("signal")} className={`${headerBtnClass} mx-auto`} aria-disabled={!allowSorting}>
                 Trend <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
               </button>
+              <div className="flex justify-center gap-1 mt-1">
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-xs text-muted-foreground">B</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                  <span className="text-xs text-muted-foreground">H</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-xs text-muted-foreground">S</span>
+                </div>
+              </div>
             </TableHead>
             <TableHead className="text-right">
               <button onClick={() => requestSort("price")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
@@ -464,29 +478,29 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                      <span className="text-xs text-muted-foreground">{getFundManager(etf)}</span>
                    </div>
                  </TableCell>
-                   <TableCell className="text-center">
-                      {(() => {
-                        // Default to grey button with no text if position is undefined/null
-                        const position = etf.position;
-                        if (position === undefined || position === null) {
-                          return (
+                    <TableCell className="text-center">
+                       {(() => {
+                         // Default to grey circle if position is undefined/null
+                         const position = etf.position;
+                         if (position === undefined || position === null) {
+                           return (
+                             <div className="flex justify-center">
+                               <div className="w-3 h-3 rounded-full bg-muted-foreground" />
+                             </div>
+                           );
+                         }
+                         
+                         // BUY = green, SELL = red, HOLD = yellow
+                         const circleClass = position === 1 ? "bg-emerald-500" : 
+                                           position === -1 ? "bg-red-500" : 
+                                           "bg-yellow-500";
+                         return (
                             <div className="flex justify-center">
-                              <Badge className="bg-gray-400 text-white w-12 h-6"></Badge>
+                              <div className={`w-3 h-3 rounded-full ${circleClass}`} />
                             </div>
-                          );
-                        }
-                        
-                        const signal = position === 1 ? 'BUY' : (position === -1 ? 'SELL' : 'HOLD');
-                        const badgeClass = signal === 'BUY' ? "bg-emerald-500 text-white" : 
-                                          signal === 'SELL' ? "bg-red-500 text-white" : 
-                                          "bg-gray-500 text-white";
-                        return (
-                           <div className="flex justify-center">
-                             <Badge className={badgeClass}>{signal}</Badge>
-                           </div>
-                        );
-                      })()}
-                   </TableCell>
+                         );
+                       })()}
+                    </TableCell>
                   <TableCell className="text-right">
                     {(() => {
                       // Use full ticker for live data lookup
