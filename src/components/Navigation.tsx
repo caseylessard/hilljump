@@ -4,19 +4,27 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { useState } from "react";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const Navigation = () => {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
+  const { isAdmin } = useAdmin();
 
   const navItems = [
-    { href: "/", label: "Income" },
+    { href: "/", label: "Home" },
+    { href: "/ranking", label: "Income" },
     { href: "/portfolio", label: "Portfolio" }, 
     { href: "/bots", label: "Bots" },
     { href: "/breakout", label: "Breakout" },
     { href: "/options", label: "Options" },
     { href: "/crypto", label: "Crypto" }
   ];
+
+  // Add admin link for admin users
+  if (isAdmin) {
+    navItems.push({ href: "/admin", label: "Admin" });
+  }
 
   if (isMobile) {
     return (

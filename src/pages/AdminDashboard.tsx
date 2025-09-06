@@ -1,72 +1,210 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DividendDataImport } from '@/components/admin/DividendDataImport';
-import { ManualDividendEntry } from '@/components/admin/ManualDividendEntry';
-import { DividendDataMonitor } from '@/components/admin/DividendDataMonitor';
-import { Settings, Database, Monitor, Plus } from 'lucide-react';
+import { useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Navigation from "@/components/Navigation";
+import { useAdmin } from "@/hooks/useAdmin";
+import { Navigate } from "react-router-dom";
 
-export const AdminDashboard = () => {
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Settings className="h-8 w-8" />
-        <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage dividend data and system health</p>
+// Import admin components
+import { QuickPriceTest } from "@/components/QuickPriceTest";
+import HistoricalPriceTest from "@/components/HistoricalPriceTest";
+import PriceSystemTest from "@/components/PriceSystemTest";
+import MstyEodhdTest from "@/components/admin/MstyEodhdTest";
+import ComprehensiveEodhdTest from "@/components/admin/ComprehensiveEodhdTest";
+import { DividendSystemTest } from "@/components/admin/DividendSystemTest";
+import { ETFEditor } from "@/components/admin/ETFEditor";
+import { DistributionEditor } from "@/components/admin/DistributionEditor";
+import DailyAlertsTestSuite from "@/components/admin/DailyAlertsTestSuite";
+import { RefreshDividendData } from "@/components/RefreshDividendData";
+import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
+import { DividendDuplicateCleanup } from "@/components/admin/DividendDuplicateCleanup";
+import { ETFDataImport } from "@/components/admin/ETFDataImport";
+import { DividendDataImport } from "@/components/admin/DividendDataImport";
+import { DataUpdater } from "@/components/admin/DataUpdater";
+import { DividendDataMonitor } from "@/components/admin/DividendDataMonitor";
+import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
+import { HistoricalPriceImport } from "@/components/admin/HistoricalPriceImport";
+import QuickETFTest from "@/components/QuickETFTest";
+import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
+
+const AdminDashboard = () => {
+  const { isAdmin, loading } = useAdmin();
+
+  useEffect(() => {
+    document.title = "HillJump — Admin Dashboard";
+    const meta =
+      (document.querySelector('meta[name="description"]') as HTMLMetaElement) ||
+      (() => { 
+        const m = document.createElement('meta'); 
+        m.setAttribute('name', 'description'); 
+        document.head.appendChild(m); 
+        return m as HTMLMetaElement; 
+      })();
+    meta.setAttribute('content', 'Admin dashboard for managing ETF data, dividends, pricing, and system monitoring.');
+  }, []);
+
+  if (loading) {
+    return (
+      <div>
+        <Navigation />
+        <div className="container py-8">
+          <div className="text-center">Loading...</div>
         </div>
       </div>
+    );
+  }
 
-      <Tabs defaultValue="monitor" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="monitor" className="flex items-center gap-2">
-            <Monitor className="h-4 w-4" />
-            Monitor
-          </TabsTrigger>
-          <TabsTrigger value="manual" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Manual Entry
-          </TabsTrigger>
-          <TabsTrigger value="import" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            Bulk Import
-          </TabsTrigger>
-        </TabsList>
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
-        <TabsContent value="monitor">
-          <DividendDataMonitor />
-        </TabsContent>
-
-        <TabsContent value="manual">
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Fix for Missing Distributions</CardTitle>
-                <CardDescription>
-                  When automated systems lag behind, manually add missing dividend distributions here.
-                  This is especially useful for high-frequency distributors like YieldMax ETFs.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <ManualDividendEntry />
+  return (
+    <div>
+      <Navigation />
+      
+      <main className="container py-8">
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <p className="text-muted-foreground">System management and data administration</p>
           </div>
-        </TabsContent>
 
-        <TabsContent value="import">
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Bulk Data Import</CardTitle>
-                <CardDescription>
-                  Import large amounts of dividend data from CSV files. 
-                  Use this for historical data imports or when switching data providers.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <DividendDataImport />
-          </div>
-        </TabsContent>
-      </Tabs>
+          <Tabs defaultValue="data" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="data">Data Management</TabsTrigger>
+              <TabsTrigger value="dividends">Dividends</TabsTrigger>
+              <TabsTrigger value="pricing">Pricing</TabsTrigger>
+              <TabsTrigger value="alerts">Alerts & Tests</TabsTrigger>
+              <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="data" className="space-y-6">
+              <div className="grid gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>ETF Data Management</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <ETFDataImport />
+                    <ETFEditor />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Updates</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DataUpdater />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="dividends" className="space-y-6">
+              <div className="grid gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Dividend Data Operations</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <RefreshDividendData />
+                    <DividendDataImport />
+                    <ManualDividendEntry />
+                    <DividendDuplicateCleanup />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Dividend System</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <DividendSystemTest />
+                    <DistributionEditor />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Dividend Monitoring</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <DividendDataMonitor />
+                    <DividendDataViewer />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="pricing" className="space-y-6">
+              <div className="grid gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Price Testing & Updates</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <QuickPriceTest />
+                    <PriceSystemTest />
+                    <TestCanadianPrices />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Data Source Tests</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <MstyEodhdTest />
+                    <ComprehensiveEodhdTest />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Historical Data</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <HistoricalPriceTest />
+                    <HistoricalPriceImport />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="alerts" className="space-y-6">
+              <div className="grid gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Market Alerts & Testing</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <DailyAlertsTestSuite />
+                    <QuickETFTest />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="monitoring" className="space-y-6">
+              <div className="grid gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Monitoring</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      System monitoring tools and logs will be available here.
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
     </div>
   );
 };
+
+export default AdminDashboard;

@@ -578,37 +578,11 @@ const Profile = () => {
             {isAdmin && !adminLoading && (
               <>
                 <Card className="p-4">
-                  <h2 className="text-lg font-semibold mb-4">Admin - Daily Alerts System</h2>
+                  <h2 className="text-lg font-semibold mb-4">Admin Functions</h2>
                   <div className="space-y-4">
-                    <DailyAlertsTestSuite />
-                  </div>
-                </Card>
-
-                <Card className="p-4">
-                  <h2 className="text-lg font-semibold mb-4">Admin - ETF Management</h2>
-                  <div className="space-y-4">
-                    <ETFEditor />
-                    <DistributionEditor />
-                    
-                    {/* Fetch Latest Dividends Function */}
-                    <Card className="p-4">
-                      <h3 className="font-semibold mb-2">Fetch Latest Dividends</h3>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Fetch latest dividend data from Polygon API (prevents duplicates)
-                      </p>
-                      <Button 
-                        onClick={async () => {
-                          const { data, error } = await supabase.functions.invoke('fetch-latest-dividends');
-                          if (error) {
-                            toast({ title: "Fetch failed", description: error.message, variant: "destructive" });
-                          } else {
-                            toast({ title: "Success", description: data.message });
-                          }
-                        }}
-                      >
-                        Fetch Latest Dividends
-                      </Button>
-                    </Card>
+                    <p className="text-sm text-muted-foreground">
+                      Admin functions have been moved to the dedicated <a href="/admin" className="text-primary hover:underline">Admin Dashboard</a>
+                    </p>
                   </div>
                 </Card>
 

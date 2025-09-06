@@ -38,8 +38,8 @@ const QuickETFTest: React.FC = () => {
         description: "Starting dividend data update...",
       });
 
-      const { data, error } = await supabase.functions.invoke('fetch-latest-dividends', {
-        body: {}
+      const { data, error } = await supabase.functions.invoke('simple-dividend-updater', {
+        body: { manual: true }
       });
       
       if (error) {
@@ -88,7 +88,7 @@ const QuickETFTest: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Fetches the latest dividend announcements and ex-dividend dates for all ETFs from Yahoo Finance (prevents duplicates with upsert).
+          Fetches the latest dividend announcements and ex-dividend dates for all ETFs from Yahoo Finance and Alpha Vantage (prevents duplicates with upsert).
         </p>
         
         {lastUpdate && (
