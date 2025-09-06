@@ -281,7 +281,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     if (tickerData) {
       const percentKey = `drip${period}Percent`;
       const percent = tickerData[percentKey];
-      if (percent !== undefined && percent !== 0) {
+      if (percent !== undefined) {
         return percent;
       }
     }
