@@ -20,8 +20,6 @@ import Navigation from "@/components/Navigation";
 import { CacheMonitor } from "@/components/CacheMonitor";
 import { LoadingProgress } from "@/components/LoadingProgress";
 import DailyAlerts from "@/components/alerts/DailyAlerts";
-import { RefreshDividendData } from "@/components/RefreshDividendData";
-import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
 import { DataUpdater } from "@/components/admin/DataUpdater";
 import { useAdmin } from "@/hooks/useAdmin";
 
@@ -232,16 +230,6 @@ const Index = () => {
 
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
-          
-          {/* ALWAYS SHOW DIVIDEND TOOLS FOR TESTING */}
-          <div className="grid gap-4 md:grid-cols-2 mb-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
-            <div className="md:col-span-2 text-sm text-muted-foreground mb-2">
-              🔧 <strong>Dividend Update Tools</strong> (Admin: {String(isAdmin)})
-            </div>
-            <RefreshDividendData />
-            <ManualDividendEntry />
-          </div>
-          
           <ETFTable items={topETFs} live={livePrices} distributions={distributions} />
         </section>
       </main>
