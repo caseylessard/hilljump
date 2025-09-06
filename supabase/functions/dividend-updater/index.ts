@@ -34,8 +34,28 @@ serve(async (req: Request) => {
     if (e1) throw e1;
     const tickers: { id: string; ticker: string }[] = etfs || [];
 
-    // helper: fetch dividends for one ticker using Yahoo Finance
-    async function fetchDividends(ticker: string) {
+    // helper: fetch dividends using multiple sources with fallbacks
+    async function fetchDividends(ticker: string): Promise<any[]> {
+      // Try Yahoo Finance first
+      const yahooDividends = await fetchYahooDividends(ticker);
+      if (yahooDividends.length > 0) {
+        console.log(`✓ Yahoo Finance: Found ${yahooDividends.length} dividends for ${ticker}`);
+        return yahooDividends;
+      }
+
+      // Fallback to Alpha Vantage
+      console.log(`⚠️ Yahoo Finance failed for ${ticker}, trying Alpha Vantage...`);
+      const alphaDividends = await fetchAlphaVantageDividends(ticker);
+      if (alphaDividends.length > 0) {
+        console.log(`✓ Alpha Vantage: Found ${alphaDividends.length} dividends for ${ticker}`);
+        return alphaDividends;
+      }
+
+      console.log(`❌ No dividend data found for ${ticker} from any source`);
+      return [];
+    }
+
+    async function fetchYahooDividends(ticker: string) {
       try {
         // Yahoo Finance events API for dividends
         const endDate = Math.floor(Date.now() / 1000);
@@ -71,7 +91,8 @@ serve(async (req: Request) => {
                 ex_dividend_date: date,
                 pay_date: null, // Yahoo doesn't provide pay date in this API
                 cash_amount: amount,
-                currency: 'USD' // Assume USD for now
+                currency: 'USD',
+                source: 'yahoo'
               });
             }
           }
@@ -80,6 +101,61 @@ serve(async (req: Request) => {
         return dividends;
       } catch (error) {
         console.error(`Error fetching Yahoo Finance dividends for ${ticker}:`, error);
+        return [];
+      }
+    }
+
+    async function fetchAlphaVantageDividends(ticker: string) {
+      try {
+        const ALPHA_VANTAGE_API_KEY = Deno.env.get("ALPHA_VANTAGE_API_KEY");
+        if (!ALPHA_VANTAGE_API_KEY) {
+          console.warn("Alpha Vantage API key not configured");
+          return [];
+        }
+
+        const url = `https://www.alphavantage.co/query?function=DIVIDENDS&symbol=${ticker}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+        
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+        
+        if (!res.ok) {
+          console.warn(`Alpha Vantage dividends failed for ${ticker}: ${res.status}`);
+          return [];
+        }
+        
+        const data = await res.json();
+        
+        if (data['Error Message'] || data['Note']) {
+          console.warn(`Alpha Vantage API limit or error for ${ticker}:`, data['Error Message'] || data['Note']);
+          return [];
+        }
+
+        const dividends = [];
+        const dividendData = data.data || [];
+        
+        // Filter for last year and format
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+        for (const dividend of dividendData) {
+          const exDate = new Date(dividend.ex_dividend_date);
+          if (exDate >= oneYearAgo && dividend.amount && parseFloat(dividend.amount) > 0) {
+            dividends.push({
+              ex_dividend_date: dividend.ex_dividend_date,
+              pay_date: dividend.payment_date || null,
+              cash_amount: parseFloat(dividend.amount),
+              currency: 'USD',
+              source: 'alpha_vantage'
+            });
+          }
+        }
+        
+        return dividends;
+      } catch (error) {
+        console.error(`Error fetching Alpha Vantage dividends for ${ticker}:`, error);
         return [];
       }
     }
