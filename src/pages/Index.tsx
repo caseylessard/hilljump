@@ -233,21 +233,14 @@ const Index = () => {
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           <h2 id="ranking-title" className="text-2xl font-semibold">Ranking</h2>
           
-          {/* Quick dividend data tools */}
-          {isAdmin ? (
-            <div className="grid gap-4 md:grid-cols-2 mb-6">
-              <RefreshDividendData />
-              <ManualDividendEntry />
+          {/* ALWAYS SHOW DIVIDEND TOOLS FOR TESTING */}
+          <div className="grid gap-4 md:grid-cols-2 mb-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+            <div className="md:col-span-2 text-sm text-muted-foreground mb-2">
+              🔧 <strong>Dividend Update Tools</strong> (Admin: {String(isAdmin)})
             </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 mb-6 p-4 bg-muted rounded-lg">
-              <div className="text-sm text-muted-foreground mb-2">
-                🔧 Dividend Update Tools (Admin Status: {String(isAdmin)})
-              </div>
-              <RefreshDividendData />
-              <ManualDividendEntry />
-            </div>
-          )}
+            <RefreshDividendData />
+            <ManualDividendEntry />
+          </div>
           
           <ETFTable items={topETFs} live={livePrices} distributions={distributions} />
         </section>
