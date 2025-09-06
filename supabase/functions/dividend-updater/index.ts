@@ -194,7 +194,18 @@ serve(async (req: Request) => {
       await Promise.all(
         batch.map(async ({ id, ticker }) => {
           try {
+            const startTime = Date.now();
             const divs = await fetchDividends(ticker);
+            const responseTime = Date.now() - startTime;
+            
+            // Log data source performance
+            await supabase.from('dividend_source_logs').insert({
+              ticker: ticker,
+              source: divs.length > 0 ? (divs[0].source || 'yahoo') : 'unknown',
+              success: divs.length > 0,
+              dividends_found: divs.length,
+              response_time_ms: responseTime
+            }).catch(err => console.error('Failed to log source performance:', err));
             // Upsert recent dividends (last ~400 days)
             const recent = divs.filter((d: any) => {
               const ex = new Date(d.ex_dividend_date || d.pay_date || d.declaration_date || 0);

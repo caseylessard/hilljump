@@ -9,10 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 
 interface DataFreshness {
   ticker: string;
-  lastDividendDate: string;
-  daysSinceUpdate: number;
-  isStale: boolean;
-  totalDividends: number;
+  last_dividend_date: string; // Changed to match database
+  days_since_update: number;  // Changed to match database
+  is_stale: boolean;          // Changed to match database
+  total_dividends: number;    // Changed to match database
 }
 
 interface SystemHealth {
@@ -50,16 +50,16 @@ export const DividendDataMonitor = () => {
           const freshnessMap = new Map();
           dividendData.forEach(dividend => {
             if (!freshnessMap.has(dividend.ticker)) {
-              const daysSince = Math.floor(
-                (Date.now() - new Date(dividend.ex_date).getTime()) / (1000 * 60 * 60 * 24)
-              );
-              freshnessMap.set(dividend.ticker, {
-                ticker: dividend.ticker,
-                lastDividendDate: dividend.ex_date,
-                daysSinceUpdate: daysSince,
-                isStale: daysSince > 35, // Monthly dividends should be < 35 days
-                totalDividends: 1
-              });
+          const daysSince = Math.floor(
+            (Date.now() - new Date(dividend.ex_date).getTime()) / (1000 * 60 * 60 * 24)
+          );
+          freshnessMap.set(dividend.ticker, {
+            ticker: dividend.ticker,
+            last_dividend_date: dividend.ex_date, // Changed to match interface
+            days_since_update: daysSince,         // Changed to match interface
+            is_stale: daysSince > 35,            // Changed to match interface
+            total_dividends: 1                    // Changed to match interface
+          });
             }
           });
           setFreshnessData(Array.from(freshnessMap.values()));
@@ -231,14 +231,14 @@ export const DividendDataMonitor = () => {
                   <div>
                     <div className="font-medium">{item.ticker}</div>
                     <div className="text-sm text-muted-foreground">
-                      Last dividend: {new Date(item.lastDividendDate).toLocaleDateString()}
+                      Last dividend: {new Date(item.last_dividend_date).toLocaleDateString()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={getStatusColor(item.isStale)}>
-                      {item.daysSinceUpdate} days ago
+                    <Badge variant={getStatusColor(item.is_stale)}>
+                      {item.days_since_update} days ago
                     </Badge>
-                    {item.isStale && (
+                    {item.is_stale && (
                       <AlertTriangle className="h-4 w-4 text-yellow-500" />
                     )}
                   </div>
@@ -249,7 +249,7 @@ export const DividendDataMonitor = () => {
             <div className="text-muted-foreground">No monitoring data available</div>
           )}
 
-          {freshnessData.some(item => item.isStale) && (
+          {freshnessData.some(item => item.is_stale) && (
             <Alert className="mt-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
