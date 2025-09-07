@@ -45,7 +45,7 @@ const Navigation = () => {
               <SheetContent side="right" className="w-64">
                 <nav className="flex flex-col gap-4 mt-8" aria-label="Primary">
                   {navItems.map((item) => (
-                    <Button key={item.href} variant="ghost" asChild className="justify-start">
+                    <Button key={item.href} variant="ghost" asChild className="justify-start font-jersey">
                       <a href={item.href} onClick={() => setIsOpen(false)}>
                         {item.label}
                       </a>
@@ -69,7 +69,7 @@ const Navigation = () => {
         </a>
         <nav className="flex items-center gap-2" aria-label="Primary">
           {navItems.map((item) => (
-            <Button key={item.href} variant="ghost" asChild>
+            <Button key={item.href} variant="ghost" asChild className="font-jersey">
               <a href={item.href}>{item.label}</a>
             </Button>
           ))}
