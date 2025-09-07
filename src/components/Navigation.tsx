@@ -18,8 +18,7 @@ const Navigation = () => {
     { href: "/bots", label: "Bots" },
     { href: "/breakout", label: "Breakout" },
     { href: "/options", label: "Options" },
-    { href: "/crypto", label: "Crypto" },
-    { href: "/system-test", label: "System.CSS" }
+    { href: "/crypto", label: "Crypto" }
   ];
 
   // Add admin link for admin users
