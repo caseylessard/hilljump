@@ -30,7 +30,7 @@ const Navigation = () => {
     return (
       <header className="border-b">
         <div className="container flex items-center justify-between py-4">
-        <a href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight" aria-label="HillJump home">
+        <a href="/" className="flex items-center gap-2 font-jersey font-bold text-lg tracking-tight" aria-label="HillJump home">
           <img src="/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png" alt="HillJump Logo" className="w-8 h-8" />
           HillJump
         </a>
@@ -63,7 +63,7 @@ const Navigation = () => {
   return (
     <header className="border-b">
       <div className="container flex items-center justify-between py-4">
-        <a href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight" aria-label="HillJump home">
+        <a href="/" className="flex items-center gap-2 font-jersey font-bold text-lg tracking-tight" aria-label="HillJump home">
           <img src="/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png" alt="HillJump Logo" className="w-8 h-8" />
           HillJump
         </a>
