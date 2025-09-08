@@ -20,6 +20,7 @@ import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
 import { DividendDuplicateCleanup } from "@/components/admin/DividendDuplicateCleanup";
 import { ETFDataImport } from "@/components/admin/ETFDataImport";
 import { DividendDataImport } from "@/components/admin/DividendDataImport";
+import { BulkDividendFetcher } from "@/components/admin/BulkDividendFetcher";
 import { DataUpdater } from "@/components/admin/DataUpdater";
 import { DividendDataMonitor } from "@/components/admin/DividendDataMonitor";
 import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
@@ -109,6 +110,7 @@ const AdminDashboard = () => {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <RefreshDividendData />
+                    <BulkDividendFetcher />
                     <DividendDataImport />
                     <ManualDividendEntry />
                     <DividendDuplicateCleanup />
