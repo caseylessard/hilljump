@@ -2,134 +2,319 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* 80s "Wall Street" design system — HSL only.
+   Themes:
+   - Light = off-white paper with black/gold inks (80s financial print)
+   - Dark  = CRT terminal: neon green on near-black with amber/magenta accents
 */
 
 @layer base {
+  /* --- Core palette knobs you'll use most --- */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Paper / ink (light theme) */
+    --background: 52 33% 96%;       /* off-white paper */
+    --foreground: 210 24% 12%;      /* ink black */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 52 33% 96%;
+    --card-foreground: 210 24% 12%;
+    --popover: 52 33% 96%;
+    --popover-foreground: 210 24% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* Inks & accents */
+    --primary: 210 24% 12%;         /* headline black */
+    --primary-foreground: 52 33% 96%;
+    --secondary: 48 14% 88%;        /* manila */
+    --secondary-foreground: 210 24% 12%;
+    --muted: 48 16% 90%;
+    --muted-foreground: 210 10% 38%;
+    --accent: 45 90% 55%;           /* gilded gold */
+    --accent-foreground: 210 24% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Status */
+    --success: 135 70% 42%;         /* money green */
+    --success-foreground: 135 20% 10%;
+    --destructive: 0 72% 50%;       /* red */
+    --destructive-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Chrome */
+    --border: 48 10% 76%;           /* newspaper rule */
+    --input: 48 10% 76%;
+    --ring: 45 90% 55%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* "Hardware" */
+    --radius: 0rem;                 /* hard corners = pixel era */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Sidebar (light) */
+    --sidebar-background: 52 33% 96%;
+    --sidebar-foreground: 210 24% 12%;
+    --sidebar-primary: 210 24% 12%;
+    --sidebar-primary-foreground: 52 33% 96%;
+    --sidebar-accent: 48 14% 88%;
+    --sidebar-accent-foreground: 210 24% 12%;
+    --sidebar-border: 48 10% 76%;
+    --sidebar-ring: 45 90% 55%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Extra tokens */
+    --primary-variant: 210 18% 20%;
+    --primary-glow: 45 90% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    --shadow-elegant: 0 0 0 0 hsl(0 0% 0% / 0); /* no blurry shadows in 8-bit land */
+    --shadow-glow: 0 0 0 0 hsl(0 0% 0% / 0);
+    --ambient: var(--accent);
 
-    --success: 142 71% 45%;
-    --success-foreground: 144.9 80.4% 10%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* CRT theme support colors (used in dark mode) */
+    --crt-black: 210 30% 4%;
+    --crt-green: 121 100% 50%;      /* neon green scanline */
+    --crt-green-dim: 121 60% 72%;
+    --crt-amber: 34 100% 50%;       /* amber terminals */
+    --crt-magenta: 305 90% 60%;
+    --crt-grid: 150 12% 18%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Main terminal look */
+    --background: var(--crt-black);
+    --foreground: 121 70% 75%;      /* soft neon */
+    --card: 210 28% 7%;
+    --card-foreground: 121 70% 75%;
+    --popover: 210 28% 7%;
+    --popover-foreground: 121 70% 75%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    /* Accents pop like a trading screen */
+    --primary: var(--crt-green);
+    --primary-foreground: 210 40% 6%;
+    --secondary: 150 12% 14%;       /* terminal panel */
+    --secondary-foreground: 121 70% 75%;
+    --muted: 150 12% 14%;
+    --muted-foreground: 121 35% 60%;
+    --accent: var(--crt-amber);
+    --accent-foreground: 210 40% 6%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --success: 135 80% 45%;
+    --success-foreground: 135 15% 12%;
+    --destructive: 0 80% 48%;
+    --destructive-foreground: 0 0% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --border: 150 8% 22%;
+    --input: 150 8% 22%;
+    --ring: var(--crt-magenta);
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* Sidebar */
+    --sidebar-background: 210 28% 7%;
+    --sidebar-foreground: 121 70% 75%;
+    --sidebar-primary: var(--crt-green);
+    --sidebar-primary-foreground: 210 40% 6%;
+    --sidebar-accent: 150 12% 14%;
+    --sidebar-accent-foreground: 121 70% 75%;
+    --sidebar-border: 150 12% 14%;
+    --sidebar-ring: var(--crt-magenta);
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* 80s "glow" tokens become crisp scanline effects */
+    --primary-variant: var(--crt-green);
+    --primary-glow: var(--crt-amber);
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    --shadow-elegant: 0 0 0 0 hsl(0 0% 0% / 0);
+    --shadow-glow: 0 0 0 0 hsl(0 0% 0% / 0);
+    --ambient: var(--crt-green);
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
 
-  body {
-    @apply bg-background text-foreground;
-  }
+  /* Optional: apply pixel font globally after loading VT323/Press Start 2P.
+     - Add this in your <head>:
+       <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+     - Then uncomment the next line to go full CRT.
+  */
+  /* body { font-family: 'VT323', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; } */
 }
 
-/* Additional design tokens and utilities */
+/* ---------- 80s Utilities & Components ---------- */
 @layer base {
   :root {
-    --primary-variant: 222.2 60% 20%;
-    --primary-glow: 199 89% 48%;
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-glow)) 100%);
-    --shadow-elegant: 0 10px 30px -10px hsl(var(--primary) / 0.25);
-    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.35);
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --ambient: var(--primary-glow);
+    /* Gridlines for CRT mask */
+    --crt-mask: repeating-linear-gradient(
+      to bottom,
+      hsl(0 0% 100% / 0.02) 0px,
+      hsl(0 0% 100% / 0.02) 1px,
+      transparent 2px,
+      transparent 3px
+    );
   }
   .dark {
-    --primary-variant: 210 40% 98%;
-    --primary-glow: 217.2 91.2% 59.8%;
-    --gradient-primary: linear-gradient(135deg, hsl(var(--sidebar-primary)) 0%, hsl(var(--sidebar-ring)) 100%);
-    --shadow-elegant: 0 10px 30px -10px hsl(var(--sidebar-ring) / 0.3);
-    --shadow-glow: 0 0 40px hsl(var(--sidebar-ring) / 0.35);
-    --ambient: var(--sidebar-ring);
+    --crt-mask: repeating-linear-gradient(
+      to bottom,
+      hsl(0 0% 100% / 0.035) 0px,
+      hsl(0 0% 100% / 0.035) 1px,
+      transparent 2px,
+      transparent 3px
+    );
   }
 }
 
 @layer components {
+  /* Pixelated typography opt-in */
+  .pixel-font {
+    font-family: 'VT323', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  /* CRT container: scanlines + subtle barrel distortion + glow cursor blink */
+  .crt {
+    position: relative;
+    background-image: var(--crt-mask);
+    background-size: 100% 3px;
+    image-rendering: pixelated;
+    text-shadow: 0 0 1px hsl(var(--primary) / 0.6), 0 0 8px hsl(var(--primary) / 0.25);
+    overflow: hidden;
+  }
+  .crt:before {
+    content: "";
+    pointer-events: none;
+    position: absolute; inset: 0;
+    background: radial-gradient(120% 80% at 50% 20%, transparent 0%, transparent 55%, hsl(0 0% 0% / 0.35) 100%);
+    mix-blend-mode: multiply;
+  }
+  .crt:after {
+    /* very gentle flicker */
+    content: "";
+    pointer-events: none;
+    position: absolute; inset: -2px;
+    border: 1px solid hsl(var(--border));
+    box-shadow:
+      inset 0 0 0 1px hsl(0 0% 0% / 0.6),
+      0 0 24px hsl(var(--primary) / 0.08);
+  }
+
+  /* One-pixel border + step shadow for cards, tables, panes */
+  .card-80s {
+    @apply bg-card text-card-foreground;
+    border: 1px solid hsl(var(--border));
+    box-shadow:
+      2px 2px 0 0 hsl(0 0% 0% / 0.7);
+    border-radius: var(--radius);
+  }
+
+  /* Buttons: buy/sell terminal keys */
+  .btn-80s {
+    border: 1px solid hsl(var(--border));
+    border-radius: 0;
+    padding: 0.6rem 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 0 hsl(0 0% 0% / 0.7);
+    transition: transform 40ms linear, box-shadow 40ms linear;
+  }
+  .btn-80s:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  .btn-80s--buy   { background: hsl(var(--success)); color: hsl(var(--success-foreground)); }
+  .btn-80s--sell  { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); }
+  .btn-80s--ghost { background: transparent; color: hsl(var(--foreground)); }
+
+  /* Ticker tape marquee (for prices/news scrollers) */
+  .ticker {
+    white-space: nowrap;
+    overflow: hidden;
+    border-top: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--border));
+    background:
+      repeating-linear-gradient(90deg,
+        hsl(var(--secondary)) 0 12px,
+        hsl(var(--secondary)) 12px,
+        hsl(var(--secondary) / 0.9) 12px 24px);
+  }
+  .ticker__track {
+    display: inline-block;
+    padding-left: 100%;
+    animation: ticker-scroll 30s linear infinite;
+  }
+  @keyframes ticker-scroll {
+    to { transform: translateX(-100%); }
+  }
+
+  /* Pixel borders you can slap on panels */
+  .pixel-border {
+    position: relative;
+    border: 1px solid hsl(var(--border));
+  }
+  .pixel-border::before,
+  .pixel-border::after {
+    content: "";
+    position: absolute;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .pixel-border::before { outline: 2px solid hsl(0 0% 0% / 0.6); top: 2px; left: 2px; }
+  .pixel-border::after  { outline: 1px solid hsl(0 0% 100% / 0.06); top: -1px; left: -1px; }
+
+  /* Grid/dither backgrounds (subtle) */
+  .bg-dither {
+    background-image:
+      linear-gradient(0deg, hsl(var(--background)), hsl(var(--background))),
+      radial-gradient(1px 1px at 0 0, hsl(0 0% 0% / 0.05) 1px, transparent 0);
+    background-size: auto, 8px 8px;
+  }
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 24px 24px, 24px 24px;
+  }
+
+  /* Accent text helpers for "up/down" quotes */
+  .quote-up   { color: hsl(var(--success)); }
+  .quote-down { color: hsl(var(--destructive)); }
+
+  /* Ambient spotlight stays available; tuned down for CRT */
+  .ambient-spotlight {
+    background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 0%),
+      hsl(var(--ambient) / 0.12), transparent 40%);
+  }
+
+  /* Keep gradient + class names from original for compatibility */
   .bg-gradient-primary { background-image: var(--gradient-primary); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
-  .ambient-spotlight { background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 0%), hsl(var(--ambient) / 0.15), transparent 40%); }
+}
+
+/* ---------- Helper: "terminal" form controls ---------- */
+@layer components {
+  .input-80s {
+    @apply bg-background text-foreground;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0;
+    padding: 0.5rem 0.6rem;
+    outline: none;
+  }
+  .input-80s:focus {
+    outline: 1px dashed hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+/* ---------- Example dark-mode defaults for instant effect ---------- */
+/* If your app supports toggling, leave this out. If you want always-CRT: */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+  html { color-scheme: dark; }
+}
+
+/* ---------- Optional: "Greed is Good" flash (apply to headers) ---------- */
+@layer components {
+  .greed-flash {
+    animation: greed 2.2s steps(12, end) infinite;
+  }
+  @keyframes greed {
+    0%   { color: hsl(var(--foreground)); }
+    5%   { color: hsl(var(--accent)); }
+    10%  { color: hsl(var(--foreground)); }
+    55%  { color: hsl(var(--foreground)); }
+    60%  { color: hsl(var(--success)); }
+    62%  { color: hsl(var(--foreground)); }
+    100% { color: hsl(var(--foreground)); }
+  }
 }
