@@ -73,7 +73,7 @@
 
   .dark {
     /* Main terminal look */
-    --background: var(--crt-black);
+    --background: 210 30% 4%;       /* crt-black */
     --foreground: 121 70% 75%;      /* soft neon */
     --card: 210 28% 7%;
     --card-foreground: 121 70% 75%;
@@ -81,13 +81,13 @@
     --popover-foreground: 121 70% 75%;
 
     /* Accents pop like a trading screen */
-    --primary: var(--crt-green);
+    --primary: 121 100% 50%;        /* crt-green */
     --primary-foreground: 210 40% 6%;
     --secondary: 150 12% 14%;       /* terminal panel */
     --secondary-foreground: 121 70% 75%;
     --muted: 150 12% 14%;
     --muted-foreground: 121 35% 60%;
-    --accent: var(--crt-amber);
+    --accent: 34 100% 50%;          /* crt-amber */
     --accent-foreground: 210 40% 6%;
 
     --success: 135 80% 45%;
@@ -97,25 +97,25 @@
 
     --border: 150 8% 22%;
     --input: 150 8% 22%;
-    --ring: var(--crt-magenta);
+    --ring: 305 90% 60%;            /* crt-magenta */
 
     /* Sidebar */
     --sidebar-background: 210 28% 7%;
     --sidebar-foreground: 121 70% 75%;
-    --sidebar-primary: var(--crt-green);
+    --sidebar-primary: 121 100% 50%; /* crt-green */
     --sidebar-primary-foreground: 210 40% 6%;
     --sidebar-accent: 150 12% 14%;
     --sidebar-accent-foreground: 121 70% 75%;
     --sidebar-border: 150 12% 14%;
-    --sidebar-ring: var(--crt-magenta);
+    --sidebar-ring: 305 90% 60%;    /* crt-magenta */
 
     /* 80s "glow" tokens become crisp scanline effects */
-    --primary-variant: var(--crt-green);
-    --primary-glow: var(--crt-amber);
+    --primary-variant: 121 100% 50%; /* crt-green */
+    --primary-glow: 34 100% 50%;    /* crt-amber */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
     --shadow-elegant: 0 0 0 0 hsl(0 0% 0% / 0);
     --shadow-glow: 0 0 0 0 hsl(0 0% 0% / 0);
-    --ambient: var(--crt-green);
+    --ambient: 121 100% 50%;        /* crt-green */
   }
 }
 
