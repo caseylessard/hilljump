@@ -16,10 +16,23 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  let logId: string | undefined;
+  const supabase = createClient(SUPABASE_URL!, SERVICE_ROLE!, { auth: { persistSession: false } });
+
   try {
     if (!SUPABASE_URL || !SERVICE_ROLE) throw new Error("Missing Supabase service credentials");
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+    // Parse request body for specific tickers
+    let requestedTickers: string[] = [];
+    let isManual = false;
+    
+    try {
+      const body = await req.json();
+      requestedTickers = body.tickers || [];
+      isManual = body.manual || false;
+    } catch {
+      // No body or invalid JSON, process all tickers
+    }
 
     // Create log entry for this update run
     const { data: logEntry } = await supabase
@@ -27,12 +40,21 @@ serve(async (req: Request) => {
       .insert({ status: 'running' })
       .select('id')
       .single();
-    const logId = logEntry?.id;
+    logId = logEntry?.id;
 
     // 1) Load tickers from DB
     const { data: etfs, error: e1 } = await supabase.from("etfs").select("id, ticker");
     if (e1) throw e1;
-    const tickers: { id: string; ticker: string }[] = etfs || [];
+    
+    let tickers: { id: string; ticker: string }[] = etfs || [];
+    
+    // Filter to requested tickers if specified
+    if (requestedTickers.length > 0) {
+      tickers = tickers.filter(etf => requestedTickers.includes(etf.ticker));
+      console.log(`Processing ${tickers.length} specific tickers: ${tickers.map(t => t.ticker).join(', ')}`);
+    } else {
+      console.log(`Processing all ${tickers.length} tickers`);
+    }
 
     // helper: fetch dividends using multiple sources with fallbacks
     async function fetchDividends(ticker: string): Promise<any[]> {
@@ -199,13 +221,14 @@ serve(async (req: Request) => {
             const responseTime = Date.now() - startTime;
             
             // Log data source performance
-            await supabase.from('dividend_source_logs').insert({
+            const { error: logError } = await supabase.from('dividend_source_logs').insert({
               ticker: ticker,
               source: divs.length > 0 ? (divs[0].source || 'yahoo') : 'unknown',
               success: divs.length > 0,
               dividends_found: divs.length,
               response_time_ms: responseTime
-            }).catch(err => console.error('Failed to log source performance:', err));
+            });
+            if (logError) console.error('Failed to log source performance:', logError);
             // Upsert recent dividends (last ~400 days)
             const recent = divs.filter((d: any) => {
               const ex = new Date(d.ex_dividend_date || d.pay_date || d.declaration_date || 0);
@@ -263,7 +286,15 @@ serve(async (req: Request) => {
         .eq('id', logId);
     }
 
-    return new Response(JSON.stringify({ ok: true, updated, insertedEvents, totalETFs: tickers.length }), {
+    return new Response(JSON.stringify({ 
+      ok: true, 
+      updated, 
+      insertedEvents, 
+      totalETFs: tickers.length,
+      processedTickers: tickers.map(t => t.ticker),
+      successful: updated,
+      failed: tickers.length - updated
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
