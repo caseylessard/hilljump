@@ -255,15 +255,59 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       </div>
     );
   };
-  // Sorting state and helpers
+  // Sorting state and helpers with localStorage persistence
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "score" | "signal";
-  const [sortKey, setSortKey] = useState<SortKey>("score");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  
+  // Initialize from localStorage or use default
+  const getInitialSort = (): { key: SortKey; dir: "asc" | "desc" } => {
+    try {
+      const stored = localStorage.getItem("etf-table-sort");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Validate the stored values
+        if (parsed.key && parsed.dir && 
+            ["rank", "ticker", "price", "lastDist", "nextDist", "drip4w", "drip13w", "drip26w", "drip52w", "score", "signal"].includes(parsed.key) &&
+            ["asc", "desc"].includes(parsed.dir)) {
+          return { key: parsed.key as SortKey, dir: parsed.dir as "asc" | "desc" };
+        }
+      }
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+    return { key: "score", dir: "desc" }; // Default fallback
+  };
+
+  const initialSort = getInitialSort();
+  const [sortKey, setSortKey] = useState<SortKey>(initialSort.key);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(initialSort.dir);
   const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
+  
   const requestSort = (key: SortKey) => {
     if (!allowSorting) return; // free users: no sorting changes
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir(key === "ticker" ? "asc" : "desc"); }
+    
+    let newSortKey = key;
+    let newSortDir: "asc" | "desc";
+    
+    if (sortKey === key) {
+      newSortDir = sortDir === "asc" ? "desc" : "asc";
+    } else { 
+      newSortKey = key; 
+      newSortDir = key === "ticker" ? "asc" : "desc"; 
+    }
+    
+    // Update state
+    setSortKey(newSortKey);
+    setSortDir(newSortDir);
+    
+    // Persist to localStorage
+    try {
+      localStorage.setItem("etf-table-sort", JSON.stringify({ 
+        key: newSortKey, 
+        dir: newSortDir 
+      }));
+    } catch (e) {
+      // Ignore localStorage errors (e.g., in private browsing)
+    }
   };
   const headerBtnClass = allowSorting ? "flex items-center gap-1" : "flex items-center gap-1 opacity-50 pointer-events-none";
 
