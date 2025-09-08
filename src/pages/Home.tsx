@@ -61,10 +61,10 @@ const Home = () => {
   ];
 
   return (
-    <div>
+    <div className="crt">
       <Navigation />
       
-      <main>
+      <main className="bg-dither">
         {/* Hero Section */}
         <section className="relative overflow-hidden py-20">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5" />
@@ -75,7 +75,7 @@ const Home = () => {
                   <Badge variant="secondary" className="mb-4">
                     Welcome to HillJump
                   </Badge>
-                  <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+                  <h1 className="text-4xl md:text-6xl font-bold tracking-tight pixel-font greed-flash">
                     Smart ETF Analysis for 
                     <span className="text-primary"> Income Investors</span>
                   </h1>
@@ -95,13 +95,13 @@ const Home = () => {
                 </div>
               </div>
               
-              <Card className="overflow-hidden">
+              <div className="card-80s overflow-hidden">
                 <img 
                   src={hero} 
                   alt="HillJump ETF analysis dashboard" 
                   className="w-full h-80 object-cover"
                 />
-              </Card>
+              </div>
             </div>
           </div>
         </section>
@@ -121,13 +121,13 @@ const Home = () => {
             
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {features.map((feature, index) => (
-                <Card key={index} className="p-6 text-center hover:shadow-lg transition-shadow">
+                <div key={index} className="card-80s p-6 text-center hover:shadow-lg transition-shadow">
                   <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
                     <feature.icon className="w-6 h-6 text-primary" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                   <p className="text-muted-foreground">{feature.description}</p>
-                </Card>
+                </div>
               ))}
             </div>
           </div>
@@ -137,7 +137,7 @@ const Home = () => {
         <section className="py-20">
           <div className="container">
             <div className="grid md:grid-cols-3 gap-8">
-              <Card className="p-6">
+              <div className="card-80s p-6">
                 <h3 className="text-xl font-semibold mb-3">Income Rankings</h3>
                 <p className="text-muted-foreground mb-4">
                   Discover top-performing income ETFs ranked by total return with risk adjustments.
@@ -145,9 +145,9 @@ const Home = () => {
                 <Button asChild className="w-full">
                   <a href="/ranking">View Rankings</a>
                 </Button>
-              </Card>
+              </div>
               
-              <Card className="p-6">
+              <div className="card-80s p-6">
                 <h3 className="text-xl font-semibold mb-3">Portfolio Tracker</h3>
                 <p className="text-muted-foreground mb-4">
                   Track your positions, monitor performance, and optimize your income strategy.
@@ -155,9 +155,9 @@ const Home = () => {
                 <Button asChild variant="outline" className="w-full">
                   <a href="/portfolio">Manage Portfolio</a>
                 </Button>
-              </Card>
+              </div>
               
-              <Card className="p-6">
+              <div className="card-80s p-6">
                 <h3 className="text-xl font-semibold mb-3">Market Alerts</h3>
                 <p className="text-muted-foreground mb-4">
                   Stay informed with daily market alerts and trading opportunities.
@@ -165,7 +165,7 @@ const Home = () => {
                 <Button asChild variant="outline" className="w-full">
                   <a href="/bots">View Alerts</a>
                 </Button>
-              </Card>
+              </div>
             </div>
           </div>
         </section>
