@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Navigation from "@/components/Navigation";
-import hero from "@/assets/hero-investing.jpg";
+import hero from "/lovable-uploads/4dff6720-7418-49b2-a73f-7417a6feb921.png";
 import { TrendingUp, Shield, Zap, BarChart3 } from "lucide-react";
 
 // Import data preloading hooks
@@ -98,7 +98,7 @@ const Home = () => {
               <Card className="overflow-hidden">
                 <img 
                   src={hero} 
-                  alt="HillJump ETF analysis dashboard" 
+                  alt="Pixelated Wall Street bull representing market strength and financial growth" 
                   className="w-full h-80 object-cover"
                 />
               </Card>
