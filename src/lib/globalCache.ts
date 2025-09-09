@@ -63,17 +63,27 @@ export const getCachedGlobalETFs = async (): Promise<any[]> => {
 export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<string, any>> => {
   const cacheKey = `global-prices-${tickers.sort().join(',')}`;
   const cached = getFromGlobalCache<Record<string, any>>(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.log('📋 Using cached prices:', Object.keys(cached).length);
+    return cached;
+  }
 
-  console.log('🔄 Fetching fresh price data...');
+  console.log('🔄 Fetching fresh price data for', tickers.length, 'tickers...');
   
   // Get database prices
-  const { data: dbPrices } = await supabase
+  const { data: dbPrices, error: dbError } = await supabase
     .from('etfs')
     .select('ticker, current_price, price_updated_at')
     .in('ticker', tickers)
     .not('current_price', 'is', null);
 
+  if (dbError) {
+    console.error('❌ Database price fetch error:', dbError);
+    return {};
+  }
+
+  console.log('📊 Database returned', dbPrices?.length || 0, 'price records');
+  
   const prices: Record<string, any> = {};
   dbPrices?.forEach(etf => {
     if (etf.current_price && etf.current_price > 0) {
@@ -84,6 +94,8 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
       };
     }
   });
+  
+  console.log('💰 Processed prices for', Object.keys(prices).length, 'ETFs');
 
   // Fetch live prices and update database
   try {
@@ -106,6 +118,7 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
     console.warn('⚠️ Live price fetch failed:', error);
   }
 
+  console.log('💾 Caching prices:', Object.keys(prices).length, 'ETFs');
   setGlobalCache(cacheKey, prices);
   return prices;
 };
