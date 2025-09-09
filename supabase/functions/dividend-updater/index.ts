@@ -58,7 +58,15 @@ serve(async (req: Request) => {
 
     // helper: fetch dividends using multiple sources with fallbacks
     async function fetchDividends(ticker: string): Promise<any[]> {
-      // Try Yahoo Finance first
+      // Try EODHD first (premium data source)
+      const eodhd = await fetchEODHDDividends(ticker);
+      if (eodhd.length > 0) {
+        console.log(`✓ EODHD: Found ${eodhd.length} dividends for ${ticker}`);
+        return eodhd;
+      }
+
+      // Try Yahoo Finance second
+      console.log(`⚠️ EODHD failed for ${ticker}, trying Yahoo Finance...`);
       const yahooDividends = await fetchYahooDividends(ticker);
       if (yahooDividends.length > 0) {
         console.log(`✓ Yahoo Finance: Found ${yahooDividends.length} dividends for ${ticker}`);
@@ -123,6 +131,55 @@ serve(async (req: Request) => {
         return dividends;
       } catch (error) {
         console.error(`Error fetching Yahoo Finance dividends for ${ticker}:`, error);
+        return [];
+      }
+    }
+
+    async function fetchEODHDDividends(ticker: string) {
+      try {
+        const EODHD_API_KEY = Deno.env.get("EODHD_API_KEY");
+        if (!EODHD_API_KEY) {
+          console.warn("EODHD API key not configured");
+          return [];
+        }
+
+        // EODHD dividends API - get last year of dividends
+        const url = `https://eodhd.com/api/div/${ticker}?api_token=${EODHD_API_KEY}&fmt=json&from=${new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`;
+        
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+        
+        if (!res.ok) {
+          console.warn(`EODHD dividends failed for ${ticker}: ${res.status}`);
+          return [];
+        }
+        
+        const data = await res.json();
+        
+        if (!Array.isArray(data) || data.length === 0) {
+          console.warn(`EODHD: No dividend data for ${ticker}`);
+          return [];
+        }
+
+        const dividends = [];
+        for (const dividend of data) {
+          if (dividend.value && parseFloat(dividend.value) > 0) {
+            dividends.push({
+              ex_dividend_date: dividend.date,
+              pay_date: dividend.paymentDate || null,
+              cash_amount: parseFloat(dividend.value),
+              currency: dividend.currency || 'USD',
+              source: 'eodhd'
+            });
+          }
+        }
+        
+        return dividends;
+      } catch (error) {
+        console.error(`Error fetching EODHD dividends for ${ticker}:`, error);
         return [];
       }
     }
