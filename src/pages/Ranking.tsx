@@ -21,6 +21,7 @@ import { LoadingProgress } from '@/components/LoadingProgress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import ShowDripWork from '@/components/ShowDripWork';
+import { warmGlobalCache } from '@/lib/globalCache';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -69,11 +70,12 @@ const Ranking = () => {
   
   const { toast } = useToast();
   const { profile } = useUserProfile();
-  const { data: etfs = [], isLoading, error } = useQuery({ 
-    queryKey: ["etfs"], 
-    queryFn: getETFs, 
-    staleTime: 60_000 
-  });
+  const { data: etfs = [], isLoading, error } = useCachedETFs();
+  
+  // Warm global cache on first load
+  useEffect(() => {
+    warmGlobalCache();
+  }, []);
 
   // Get tax country from profile, fallback to US
   const taxCountry = profile?.country === 'CA' ? 'CA' : 'US';

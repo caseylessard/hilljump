@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCachedData, getCachedETFPrices, getCachedETFScoring, getCachedDividendData } from '@/lib/cache';
+import { 
+  getCachedGlobalETFs, 
+  getCachedGlobalPrices, 
+  getCachedGlobalDistributions,
+  getCachedGlobalDRIP,
+  getFromGlobalCache
+} from '@/lib/globalCache';
 import { fetchLatestDistributions } from '@/lib/dividends';
 import { getETFs } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,9 +20,9 @@ export const useCachedETFs = () => {
   return useQuery({
     queryKey: ["cached-etfs"],
     queryFn: async () => {
-      return getCachedData('ranking', getETFs, 'all-etfs');
+      return getCachedGlobalETFs();
     },
-    staleTime: 0, // TEMPORARILY DISABLED FOR TESTING - was: isAdmin ? 0 : 60_000
+    staleTime: isAdmin ? 0 : 60 * 60 * 1000, // 1 hour cache
     refetchOnMount: isAdmin,
     refetchOnWindowFocus: isAdmin,
   });
@@ -25,87 +32,15 @@ export const useCachedPrices = (tickers: string[]) => {
   const { isAdmin } = useAdmin();
   
   return useQuery({
-    queryKey: ["cached-prices", tickers.sort().join(','), isAdmin ? 'admin' : 'user'],
+    queryKey: ["cached-prices", tickers.sort().join(',')],
     queryFn: async () => {
       if (tickers.length === 0) return {};
-      
-      console.log('🏃‍♂️ Fetching prices for', tickers.length, 'tickers...');
-      
-      // Step 1: Get database prices immediately (show cached prices on load)
-      const { data: dbPrices, error: dbError } = await supabase
-        .from('etfs')
-        .select('ticker, current_price, price_updated_at')
-        .in('ticker', tickers)
-        .not('current_price', 'is', null);
-      
-      if (dbError) {
-        console.error('❌ Failed to fetch database prices:', dbError);
-      }
-      
-      // Convert database prices to expected format
-      const results: Record<string, any> = {};
-      dbPrices?.forEach(etf => {
-        if (etf.current_price && etf.current_price > 0) {
-          results[etf.ticker] = {
-            price: etf.current_price,
-            source: 'database',
-            priceUpdatedAt: etf.price_updated_at
-          };
-        }
-      });
-      
-      console.log(`📊 Loaded ${Object.keys(results).length} prices from database`);
-      
-      // Step 2: Fetch live prices in background and update database
-      if (!isAdmin) {
-        // For regular users, start background fetch but return database prices immediately
-        setTimeout(async () => {
-          try {
-            console.log('🔄 Background: Fetching live prices...');
-            const { data: liveData, error: liveError } = await supabase.functions.invoke('quotes', {
-              body: { tickers }
-            });
-            
-            if (!liveError && liveData?.prices) {
-              console.log(`✅ Background: Got ${Object.keys(liveData.prices).length} live prices`);
-            }
-          } catch (error) {
-            console.warn('⚠️ Background price fetch failed:', error);
-          }
-        }, 100); // Small delay to return database prices first
-      } else {
-        // For admins, fetch live prices immediately
-        try {
-          console.log('🔄 Admin: Fetching live prices immediately...');
-          const { data: liveData, error: liveError } = await supabase.functions.invoke('quotes', {
-            body: { tickers }
-          });
-          
-          if (!liveError && liveData?.prices) {
-            // Merge live prices into results, overriding database prices
-            Object.entries(liveData.prices).forEach(([ticker, price]) => {
-              if (typeof price === 'number' && price > 0) {
-                results[ticker] = {
-                  price,
-                  source: 'live',
-                  priceUpdatedAt: new Date().toISOString()
-                };
-              }
-            });
-            console.log(`✅ Admin: Updated with ${Object.keys(liveData.prices).length} live prices`);
-          }
-        } catch (error) {
-          console.warn('⚠️ Live price fetch failed for admin:', error);
-        }
-      }
-      
-      return results;
+      return getCachedGlobalPrices(tickers);
     },
     enabled: tickers.length > 0,
-    staleTime: isAdmin ? 0 : 5 * 60 * 1000, // 5 minutes for users, immediate for admins
+    staleTime: isAdmin ? 0 : 60 * 60 * 1000, // 1 hour cache
     refetchOnWindowFocus: isAdmin,
     refetchOnMount: true,
-    refetchInterval: isAdmin ? false : 10 * 60 * 1000, // 10 minutes for background refresh
   });
 };
 
@@ -114,15 +49,10 @@ export const useCachedDistributions = (tickers: string[]) => {
     queryKey: ["cached-distributions", tickers.sort().join(',')],
     queryFn: async () => {
       if (tickers.length === 0) return {};
-      const cacheKey = tickers.sort().join(',');
-      return getCachedData(
-        'lastDist',
-        () => fetchLatestDistributions(tickers),
-        cacheKey
-      );
+      return getCachedGlobalDistributions(tickers);
     },
     enabled: tickers.length > 0,
-    staleTime: 24 * 60 * 60 * 1000, // 1 day
+    staleTime: 60 * 60 * 1000, // 1 hour cache
   });
 };
 
@@ -235,40 +165,10 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
     queryKey: ["cached-drip", tickers.sort().join(','), JSON.stringify(taxPreferences)],
     queryFn: async () => {
       if (tickers.length === 0) return {};
-      
-      console.log('🧮 Loading DRIP data for', tickers.length, 'tickers with tax preferences:', taxPreferences);
-      
-      // Always calculate live DRIP data to ensure tax changes are reflected immediately
-      try {
-        const { data, error } = await supabase.functions.invoke('calculate-drip', {
-          body: { 
-            tickers,
-            taxPrefs: {
-              country: taxPreferences?.country || 'US',
-              withholdingTax: taxPreferences?.enabled || false,
-              taxRate: (taxPreferences?.rate || 0.15) * 100 // Convert decimal to percentage
-            }
-          }
-        });
-        
-        if (error) {
-          console.warn('❌ Failed to calculate DRIP data:', error);
-          return {};
-        }
-        
-        const results = data?.dripData || {};
-        console.log(`✅ Calculated live DRIP data for ${Object.keys(results).length} tickers`);
-        return results;
-        
-      } catch (error) {
-        console.error('❌ DRIP calculation failed:', error);
-        return {};
-      }
+      return getCachedGlobalDRIP(tickers, taxPreferences);
     },
     enabled: tickers.length > 0,
-    staleTime: 0, // Always fetch fresh data when tax preferences change
-    gcTime: 0, // Don't cache results in memory
-    refetchOnWindowFocus: false,
+    staleTime: 60 * 60 * 1000, // 1 hour cache (unless tax preferences change)
     refetchOnMount: true,
   });
 };

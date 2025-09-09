@@ -13,7 +13,7 @@ import { initializeCache } from "@/lib/cacheUtils";
 const Home = () => {
   // Preload all data for other pages
   const { data: etfs = [] } = useCachedETFs();
-  const tickers = etfs.map(e => e.ticker);
+  const tickers = (etfs as any[]).map(e => e.ticker);
   
   // Trigger data preloading
   useCachedPrices(tickers);

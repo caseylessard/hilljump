@@ -491,5 +491,8 @@ export async function buildAIPortfolio(
     });
   }
   
+  // Sort by allocation percentage (highest first)
+  chosen.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+  
   return chosen;
 }

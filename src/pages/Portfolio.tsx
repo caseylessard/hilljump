@@ -24,7 +24,7 @@ const Portfolio = () => {
 
   // Fetch data
   const { data: etfs = [], isLoading: etfsLoading } = useCachedETFs();
-  const { data: prices = {} } = useCachedPrices(etfs.map(e => e.ticker));
+  const { data: prices = {} } = useCachedPrices((etfs as any[]).map(e => e.ticker));
 
   // SEO setup
   useEffect(() => {
@@ -41,12 +41,12 @@ const Portfolio = () => {
 
   // AI Portfolio Builder Logic using new trend-based system
   const portfolioResults = useMemo(() => {
-    if (etfs.length === 0) return [];
+    if ((etfs as any[]).length === 0) return [];
 
     // Since buildAIPortfolio is now async, we need to handle it differently
     const buildPortfolio = async () => {
       try {
-        return await buildAIPortfolio(etfs, prices, {
+        return await buildAIPortfolio(etfs as any[], prices as any, {
           topK: preferences.topK,
           minTradingDays: preferences.minTradingDays,
           scoreSource: preferences.scoreSource,
