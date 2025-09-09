@@ -223,31 +223,44 @@ export const ETFEditor = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {editMode === "search" && <Search className="h-5 w-5" />}
-          {editMode === "add" && <Plus className="h-5 w-5" />}
-          {editMode === "edit" && "✏️"}
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {editMode === "search" && <Search className="h-5 w-5" />}
+            {editMode === "add" && <Plus className="h-5 w-5" />}
+            {editMode === "edit" && "✏️"}
+            
+            {editMode === "search" && "Search & Edit ETFs"}
+            {editMode === "add" && "Add New ETF"}
+            {editMode === "edit" && `Edit ${formData.ticker}`}
+          </div>
           
-          {editMode === "search" && "ETF Management"}
-          {editMode === "add" && "Add New ETF"}
-          {editMode === "edit" && `Edit ${formData.ticker}`}
+          {editMode === "search" && (
+            <Button onClick={startAddMode} variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Add New
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {editMode === "search" && (
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter ticker to search (e.g., AAPL)"
-              value={searchTicker}
-              onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
-              className="flex-1"
-            />
-            <Button onClick={searchETF} disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            </Button>
-            <Button onClick={startAddMode} variant="outline">
-              <Plus className="h-4 w-4" />
-            </Button>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Search for an existing ETF to edit its metadata, or create a new one.
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter ticker to search (e.g., AAPL, MSTY, TSLY)"
+                value={searchTicker}
+                onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
+                className="flex-1"
+                onKeyDown={(e) => e.key === 'Enter' && searchETF()}
+              />
+              <Button onClick={searchETF} disabled={loading}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Search
+              </Button>
+            </div>
           </div>
         )}
 
