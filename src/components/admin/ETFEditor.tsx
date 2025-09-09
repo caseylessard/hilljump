@@ -33,6 +33,16 @@ export const ETFEditor = () => {
     country: "US",
     currency: "USD",
     summary: "",
+    underlying: "",
+    fund: "",
+    strategy: "",
+    industry: "",
+    provider_group: "",
+    distribution_frequency: "",
+    data_source: "",
+    twelve_symbol: "",
+    eodhd_symbol: "",
+    polygon_supported: false,
     active: true
   });
 
@@ -70,6 +80,16 @@ export const ETFEditor = () => {
           country: data.country || "US",
           currency: data.currency || "USD",
           summary: data.summary || "",
+          underlying: data.underlying || "",
+          fund: data.fund || "",
+          strategy: data.strategy || "",
+          industry: data.industry || "",
+          provider_group: data.provider_group || "",
+          distribution_frequency: data.distribution_frequency || "",
+          data_source: data.data_source || "",
+          twelve_symbol: data.twelve_symbol || "",
+          eodhd_symbol: data.eodhd_symbol || "",
+          polygon_supported: data.polygon_supported || false,
           active: data.active ?? true
         });
         setEditMode("edit");
@@ -104,6 +124,16 @@ export const ETFEditor = () => {
         country: formData.country,
         currency: formData.currency,
         summary: formData.summary || null,
+        underlying: formData.underlying || null,
+        fund: formData.fund || null,
+        strategy: formData.strategy || null,
+        industry: formData.industry || null,
+        provider_group: formData.provider_group || null,
+        distribution_frequency: formData.distribution_frequency || null,
+        data_source: formData.data_source || null,
+        twelve_symbol: formData.twelve_symbol || null,
+        eodhd_symbol: formData.eodhd_symbol || null,
+        polygon_supported: formData.polygon_supported,
         active: formData.active
       };
 
@@ -136,6 +166,16 @@ export const ETFEditor = () => {
         country: "US",
         currency: "USD",
         summary: "",
+        underlying: "",
+        fund: "",
+        strategy: "",
+        industry: "",
+        provider_group: "",
+        distribution_frequency: "",
+        data_source: "",
+        twelve_symbol: "",
+        eodhd_symbol: "",
+        polygon_supported: false,
         active: true
       });
       setEditMode("search");
@@ -165,6 +205,16 @@ export const ETFEditor = () => {
       country: "US",
       currency: "USD",
       summary: "",
+      underlying: "",
+      fund: "",
+      strategy: "",
+      industry: "",
+      provider_group: "",
+      distribution_frequency: "",
+      data_source: "",
+      twelve_symbol: "",
+      eodhd_symbol: "",
+      polygon_supported: false,
       active: true
     });
     setEditMode("add");
@@ -238,6 +288,60 @@ export const ETFEditor = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium mb-1">Underlying Stock</label>
+                <Input
+                  value={formData.underlying}
+                  onChange={(e) => setFormData({ ...formData, underlying: e.target.value })}
+                  placeholder="AAPL"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Fund</label>
+                <Input
+                  value={formData.fund}
+                  onChange={(e) => setFormData({ ...formData, fund: e.target.value })}
+                  placeholder="YieldMax AAPL Option Income Strategy ETF"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Strategy</label>
+                <Input
+                  value={formData.strategy}
+                  onChange={(e) => setFormData({ ...formData, strategy: e.target.value })}
+                  placeholder="Covered Call"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Industry</label>
+                <Input
+                  value={formData.industry}
+                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  placeholder="Technology"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Provider Group</label>
+                <Input
+                  value={formData.provider_group}
+                  onChange={(e) => setFormData({ ...formData, provider_group: e.target.value })}
+                  placeholder="YieldMax"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Distribution Frequency</label>
+                <Select value={formData.distribution_frequency} onValueChange={(v) => setFormData({ ...formData, distribution_frequency: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
+                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                    <SelectItem value="Semi-Annual">Semi-Annual</SelectItem>
+                    <SelectItem value="Annual">Annual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-1">Yield TTM (%)</label>
                 <Input
                   type="number"
@@ -277,6 +381,22 @@ export const ETFEditor = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium mb-1">Manager</label>
+                <Input
+                  value={formData.manager}
+                  onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+                  placeholder="BlackRock"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Strategy Label</label>
+                <Input
+                  value={formData.strategy_label}
+                  onChange={(e) => setFormData({ ...formData, strategy_label: e.target.value })}
+                  placeholder="Covered Call Strategy"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-1">Country</label>
                 <Select value={formData.country} onValueChange={(v) => setFormData({ ...formData, country: v })}>
                   <SelectTrigger>
@@ -299,6 +419,42 @@ export const ETFEditor = () => {
                     <SelectItem value="CAD">CAD</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Data Source</label>
+                <Input
+                  value={formData.data_source}
+                  onChange={(e) => setFormData({ ...formData, data_source: e.target.value })}
+                  placeholder="polygon"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">TwelveData Symbol</label>
+                <Input
+                  value={formData.twelve_symbol}
+                  onChange={(e) => setFormData({ ...formData, twelve_symbol: e.target.value })}
+                  placeholder="AAPL"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">EODHD Symbol</label>
+                <Input
+                  value={formData.eodhd_symbol}
+                  onChange={(e) => setFormData({ ...formData, eodhd_symbol: e.target.value })}
+                  placeholder="AAPL.US"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="polygon_supported"
+                  checked={formData.polygon_supported}
+                  onChange={(e) => setFormData({ ...formData, polygon_supported: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="polygon_supported" className="text-sm font-medium">
+                  Polygon Supported
+                </label>
               </div>
             </div>
 
