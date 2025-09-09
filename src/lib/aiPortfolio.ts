@@ -2,6 +2,7 @@
 import type { ETF } from "@/data/etfs";
 import type { LivePrice } from "@/lib/live";
 import { supabase } from "@/integrations/supabase/client";
+import { getCachedGlobalHistoricalPrices } from '@/lib/globalCache';
 
 export interface AIPortfolioETF extends ETF {
   lastPrice: number;
@@ -392,21 +393,26 @@ export async function buildAIPortfolio(
 ): Promise<AIPortfolioETF[]> {
   const results: AIPortfolioETF[] = [];
   
+  // Get all historical prices from cache (1-hour cached)
+  const allTickers = etfs.map(e => e.ticker);
+  const cachedHistoricalPrices = await getCachedGlobalHistoricalPrices(allTickers);
+  console.log(`📊 Using cached historical data for ${Object.keys(cachedHistoricalPrices).length} ETFs`);
+  
   // Process ETFs with both real and mock data
   for (const etf of etfs) {
     const livePrice = prices[etf.ticker];
     if (!livePrice?.price) continue;
     
     try {
-      // Try to fetch real historical data first
-      let historicalPrices = await fetchHistoricalPrices(etf.ticker, 520);
+      // Use cached historical data if available
+      let historicalPrices = cachedHistoricalPrices[etf.ticker] || [];
       
       // If no real data or insufficient data, fall back to mock data
       if (historicalPrices.length < options.minTradingDays) {
         console.warn(`Using mock data for ${etf.ticker} (real data: ${historicalPrices.length} days)`);
         historicalPrices = generateMockPrices(livePrice.price, 520, etf.ticker);
       } else {
-        console.log(`✅ Using real historical data for ${etf.ticker} (${historicalPrices.length} days)`);
+        console.log(`✅ Using cached historical data for ${etf.ticker} (${historicalPrices.length} days)`);
       }
       
       if (historicalPrices.length < options.minTradingDays) continue;
