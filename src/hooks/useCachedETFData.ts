@@ -31,20 +31,17 @@ export const useCachedETFs = () => {
 export const useCachedPrices = (tickers: string[]) => {
   const { isAdmin } = useAdmin();
   
-  console.log('🔄 useCachedPrices hook called with', tickers.length, 'tickers, isAdmin:', isAdmin);
-  
   return useQuery<Record<string, any>>({
-    queryKey: ["cached-prices", tickers.sort().join(','), Date.now()], // Force cache bust
+    queryKey: ["cached-prices", tickers.sort().join(',')],
     queryFn: async (): Promise<Record<string, any>> => {
-      console.log('🔄 useCachedPrices queryFn executing for', tickers.length, 'tickers');
       if (tickers.length === 0) return {};
       return getCachedGlobalPrices(tickers);
     },
     enabled: tickers.length > 0,
-    staleTime: 0, // Force always refetch
-    gcTime: 0, // Don't cache (updated property name)
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    staleTime: isAdmin ? 0 : 5 * 60 * 1000, // 5 min cache for users, fresh for admins
+    gcTime: 10 * 60 * 1000, // Keep in memory for 10 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false
   });
 };
 

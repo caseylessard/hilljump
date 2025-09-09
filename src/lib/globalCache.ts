@@ -60,19 +60,30 @@ export const getCachedGlobalETFs = async (): Promise<any[]> => {
   return etfs;
 };
 
+// Add a promise cache to prevent multiple simultaneous calls
+const pricePromiseCache = new Map<string, Promise<Record<string, any>>>();
+
 export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<string, any>> => {
-  console.log('🔄 getCachedGlobalPrices called with', tickers.length, 'tickers');
-  
   const cacheKey = `global-prices-${tickers.sort().join(',')}`;
+  
+  // Check memory cache first
   const cached = getFromGlobalCache<Record<string, any>>(cacheKey);
   if (cached) {
     console.log('📋 Using cached prices:', Object.keys(cached).length);
     return cached;
   }
 
-  console.log('🔄 Fetching fresh price data for', tickers.length, 'tickers...');
-  
-  try {
+  // Check if we're already fetching this data
+  if (pricePromiseCache.has(cacheKey)) {
+    console.log('⏳ Deduplicating price fetch request');
+    return pricePromiseCache.get(cacheKey)!;
+  }
+
+  // Create and cache the promise
+  const fetchPromise = (async () => {
+    console.log('🔄 Fetching fresh price data for', tickers.length, 'tickers...');
+    
+    try {
     // Get database prices
     const { data: dbPrices, error: dbError } = await supabase
       .from('etfs')
@@ -121,13 +132,21 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
       console.warn('⚠️ Live price fetch failed:', error);
     }
 
-    console.log('💾 Caching prices:', Object.keys(prices).length, 'ETFs');
-    setGlobalCache(cacheKey, prices);
-    return prices;
-  } catch (error) {
-    console.error('❌ getCachedGlobalPrices failed:', error);
-    return {};
-  }
+      console.log('💾 Caching prices:', Object.keys(prices).length, 'ETFs');
+      setGlobalCache(cacheKey, prices);
+      return prices;
+    } catch (error) {
+      console.error('❌ getCachedGlobalPrices failed:', error);
+      return {};
+    } finally {
+      // Clear the promise cache when done
+      pricePromiseCache.delete(cacheKey);
+    }
+  })();
+
+  // Cache the promise to prevent duplicate calls
+  pricePromiseCache.set(cacheKey, fetchPromise);
+  return fetchPromise;
 };
 
 export const getCachedGlobalDistributions = async (tickers: string[]): Promise<Record<string, any>> => {
