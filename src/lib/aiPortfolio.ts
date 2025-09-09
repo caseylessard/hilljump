@@ -1,6 +1,7 @@
 // AI Portfolio Builder - TypeScript implementation of the Python logic
 import type { ETF } from "@/data/etfs";
 import type { LivePrice } from "@/lib/live";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface AIPortfolioETF extends ETF {
   lastPrice: number;
@@ -317,29 +318,104 @@ function buildWeights(etfs: AIPortfolioETF[], method: WeightingMethod, maxWeight
   return capAndNormalize(baseWeights, maxWeight);
 }
 
-export function buildAIPortfolio(
+// Fetch real historical prices from database
+async function fetchHistoricalPrices(ticker: string, days: number = 520): Promise<number[]> {
+  try {
+    // Calculate start date (days ago)
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    
+    const { data: priceData, error } = await supabase
+      .from('historical_prices')
+      .select('date, close_price')
+      .eq('ticker', ticker.toUpperCase())
+      .gte('date', startDateStr)
+      .order('date', { ascending: true });
+    
+    if (error) {
+      console.warn(`Failed to fetch historical prices for ${ticker}:`, error);
+      return [];
+    }
+    
+    if (!priceData || priceData.length < 50) {
+      console.warn(`Insufficient historical data for ${ticker}: ${priceData?.length || 0} records`);
+      return [];
+    }
+    
+    // Extract just the prices in chronological order (oldest first)
+    const prices = priceData
+      .filter(row => row.close_price && isFinite(row.close_price))
+      .map(row => Number(row.close_price));
+    
+    console.log(`✅ Fetched ${prices.length} historical prices for ${ticker}`);
+    return prices;
+    
+  } catch (error) {
+    console.warn(`Error fetching historical prices for ${ticker}:`, error);
+    return [];
+  }
+}
+
+// Seeded random number generator for consistent results (fallback only)
+function seededRandom(seed: number): () => number {
+  let x = Math.sin(seed++) * 10000;
+  return () => {
+    x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  };
+}
+
+// Mock price generator with deterministic results based on ticker (fallback only)
+function generateMockPrices(currentPrice: number, days: number, ticker: string): number[] {
+  // Create a seed from ticker for consistent results
+  const seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const random = seededRandom(seed);
+  
+  const prices = [currentPrice];
+  let price = currentPrice;
+  
+  for (let i = 1; i < days; i++) {
+    // Simple random walk with slight upward bias
+    const dailyReturn = (random() - 0.48) * 0.02; // Slightly positive bias
+    price *= (1 + dailyReturn);
+    prices.unshift(price); // Add to beginning (oldest first)
+  }
+  
+  return prices;
+}
+
+export async function buildAIPortfolio(
   etfs: ETF[],
   prices: Record<string, LivePrice>,
   options: PortfolioOptions
-): AIPortfolioETF[] {
+): Promise<AIPortfolioETF[]> {
   const results: AIPortfolioETF[] = [];
   
+  // Process ETFs with both real and mock data
   for (const etf of etfs) {
     const livePrice = prices[etf.ticker];
     if (!livePrice?.price) continue;
     
-    // For now, we'll use mock historical data since we don't have price history
-    // In a real implementation, you'd fetch historical prices from your database
-    const mockPrices = generateMockPrices(livePrice.price, 520, etf.ticker); // ~2 years
-    
-    if (mockPrices.length < options.minTradingDays) continue;
-    
-    const ret1Y = oneYearTotalReturn(mockPrices);
-    const [volAnn, maxDrawdown, sharpe] = riskMetrics(mockPrices);
-    
-    // Trend & badge calculation
     try {
-      const [r4, r13, r26, r52] = computeDripWindows(mockPrices);
+      // Try to fetch real historical data first
+      let historicalPrices = await fetchHistoricalPrices(etf.ticker, 520);
+      
+      // If no real data or insufficient data, fall back to mock data
+      if (historicalPrices.length < options.minTradingDays) {
+        console.warn(`Using mock data for ${etf.ticker} (real data: ${historicalPrices.length} days)`);
+        historicalPrices = generateMockPrices(livePrice.price, 520, etf.ticker);
+      } else {
+        console.log(`✅ Using real historical data for ${etf.ticker} (${historicalPrices.length} days)`);
+      }
+      
+      if (historicalPrices.length < options.minTradingDays) continue;
+    
+      const ret1Y = oneYearTotalReturn(historicalPrices);
+      const [volAnn, maxDrawdown, sharpe] = riskMetrics(historicalPrices);
+      
+      // Trend & badge calculation using real data
+      const [r4, r13, r26, r52] = computeDripWindows(historicalPrices);
       const [trendRaw, [p4, p13, p26, p52], [d1, d2, d3]] = ladderTrendRaw(r4, r13, r26, r52);
       const [badge, badgeLabel, badgeColor] = ladderBadge(d1, d2, d3);
       
@@ -416,32 +492,4 @@ export function buildAIPortfolio(
   }
   
   return chosen;
-}
-
-// Seeded random number generator for consistent results
-function seededRandom(seed: number): () => number {
-  let x = Math.sin(seed++) * 10000;
-  return () => {
-    x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-  };
-}
-
-// Mock price generator with deterministic results based on ticker
-function generateMockPrices(currentPrice: number, days: number, ticker: string): number[] {
-  // Create a seed from ticker for consistent results
-  const seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const random = seededRandom(seed);
-  
-  const prices = [currentPrice];
-  let price = currentPrice;
-  
-  for (let i = 1; i < days; i++) {
-    // Simple random walk with slight upward bias
-    const dailyReturn = (random() - 0.48) * 0.02; // Slightly positive bias
-    price *= (1 + dailyReturn);
-    prices.unshift(price); // Add to beginning (oldest first)
-  }
-  
-  return prices;
 }

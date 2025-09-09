@@ -43,35 +43,75 @@ const Portfolio = () => {
   const portfolioResults = useMemo(() => {
     if (etfs.length === 0) return [];
 
-    try {
-      return buildAIPortfolio(etfs, prices, {
-        topK: preferences.topK,
-        minTradingDays: preferences.minTradingDays,
-        scoreSource: preferences.scoreSource,
-        weighting: preferences.weighting,
-        maxWeight: preferences.maxWeight,
-        capital: portfolioSize,
-        roundShares: true
-      });
-    } catch (error) {
-      console.error('Error building AI portfolio:', error);
-      return [];
-    }
+    // Since buildAIPortfolio is now async, we need to handle it differently
+    const buildPortfolio = async () => {
+      try {
+        return await buildAIPortfolio(etfs, prices, {
+          topK: preferences.topK,
+          minTradingDays: preferences.minTradingDays,
+          scoreSource: preferences.scoreSource,
+          weighting: preferences.weighting,
+          maxWeight: preferences.maxWeight,
+          capital: portfolioSize,
+          roundShares: true
+        });
+      } catch (error) {
+        console.error('Error building AI portfolio:', error);
+        return [];
+      }
+    };
+
+    // Return a promise that resolves to the portfolio
+    return buildPortfolio();
   }, [etfs, prices, preferences, portfolioSize]);
 
+  // State to hold the resolved portfolio results
+  const [resolvedPortfolio, setResolvedPortfolio] = useState<AIPortfolioETF[]>([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
+
+  // Effect to resolve the portfolio promise
+  useEffect(() => {
+    let isCancelled = false;
+    
+    const resolvePortfolio = async () => {
+      setPortfolioLoading(true);
+      try {
+        const result = await portfolioResults;
+        if (!isCancelled) {
+          setResolvedPortfolio(result);
+        }
+      } catch (error) {
+        console.error('Error resolving portfolio:', error);
+        if (!isCancelled) {
+          setResolvedPortfolio([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setPortfolioLoading(false);
+        }
+      }
+    };
+
+    resolvePortfolio();
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [portfolioResults]);
+
   // Portfolio allocations are now calculated within the AI portfolio builder
-  const totalAllocation = portfolioResults.reduce((sum, item) => sum + (item.weight * 100), 0);
-  const totalSpent = portfolioResults.reduce((sum, item) => sum + (item.allocRounded || 0), 0);
+  const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
+  const totalSpent = resolvedPortfolio.reduce((sum, item) => sum + (item.allocRounded || 0), 0);
   const cashLeft = portfolioSize - totalSpent;
 
   // Export portfolio to CSV
   const exportToCSV = () => {
-    if (portfolioResults.length === 0) return;
+    if (resolvedPortfolio.length === 0) return;
 
     const today = new Date().toISOString().split('T')[0];
     const csvData = [
       ['Ticker', 'Name', 'Exchange', 'Category', 'Weight %', 'Allocation $', 'Shares', 'Price', 'Trend Score', 'Return Score', 'Badge', 'Badge Label'],
-      ...portfolioResults.map(etf => [
+      ...resolvedPortfolio.map(etf => [
         etf.ticker,
         etf.name,
         etf.exchange,
@@ -226,18 +266,18 @@ const Portfolio = () => {
             <CardHeader>
               <CardTitle>AI Portfolio Recommendations</CardTitle>
               <p className="text-sm text-muted-foreground">
-                {portfolioResults.length} positions • ${portfolioSize.toLocaleString()} • ${totalSpent.toLocaleString()} allocated • ${cashLeft.toLocaleString()} cash
+                {resolvedPortfolio.length} positions • ${portfolioSize.toLocaleString()} • ${totalSpent.toLocaleString()} allocated • ${cashLeft.toLocaleString()} cash
               </p>
             </CardHeader>
             <CardContent>
-              {etfsLoading ? (
+              {etfsLoading || portfolioLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p>Building AI portfolio...</p>
                 </div>
-              ) : portfolioResults.length > 0 ? (
+              ) : resolvedPortfolio.length > 0 ? (
                 <div className="space-y-4">
-                  {portfolioResults.map((etf, index) => (
+                  {resolvedPortfolio.map((etf, index) => (
                     <div key={etf.ticker} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
