@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search, Plus } from "lucide-react";
+import { Loader2, Search, Plus, ChevronLeft, ChevronRight, Save, SkipForward } from "lucide-react";
 
 export const ETFEditor = () => {
   const { toast } = useToast();
@@ -14,6 +14,9 @@ export const ETFEditor = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState<"search" | "add" | "edit">("search");
+  const [allETFs, setAllETFs] = useState<any[]>([]);
+  const [currentETFIndex, setCurrentETFIndex] = useState(0);
+  const [loadingETFs, setLoadingETFs] = useState(false);
   
   // ETF form data
   const [formData, setFormData] = useState({
@@ -45,6 +48,90 @@ export const ETFEditor = () => {
     polygon_supported: false,
     active: true
   });
+
+  const loadAllETFs = async () => {
+    setLoadingETFs(true);
+    try {
+      const { data, error } = await supabase
+        .from("etfs")
+        .select("*")
+        .order("ticker", { ascending: true });
+
+      if (error) throw error;
+
+      setAllETFs(data || []);
+      toast({ title: "ETFs loaded", description: `Loaded ${data?.length || 0} ETFs for editing` });
+    } catch (error: any) {
+      toast({ title: "Load failed", description: error.message, variant: "destructive" });
+    } finally {
+      setLoadingETFs(false);
+    }
+  };
+
+  const loadETFByIndex = (index: number) => {
+    if (index < 0 || index >= allETFs.length) return;
+    
+    const etf = allETFs[index];
+    setFormData({
+      ticker: etf.ticker,
+      name: etf.name || "",
+      exchange: etf.exchange || "",
+      category: etf.category || "",
+      yield_ttm: etf.yield_ttm?.toString() || "",
+      total_return_1y: etf.total_return_1y?.toString() || "",
+      avg_volume: etf.avg_volume?.toString() || "",
+      expense_ratio: etf.expense_ratio?.toString() || "",
+      volatility_1y: etf.volatility_1y?.toString() || "",
+      max_drawdown_1y: etf.max_drawdown_1y?.toString() || "",
+      aum: etf.aum?.toString() || "",
+      manager: etf.manager || "",
+      strategy_label: etf.strategy_label || "",
+      country: etf.country || "US",
+      currency: etf.currency || "USD",
+      summary: etf.summary || "",
+      underlying: etf.underlying || "",
+      fund: etf.fund || "",
+      strategy: etf.strategy || "",
+      industry: etf.industry || "",
+      provider_group: etf.provider_group || "",
+      distribution_frequency: etf.distribution_frequency || "",
+      data_source: etf.data_source || "",
+      twelve_symbol: etf.twelve_symbol || "",
+      eodhd_symbol: etf.eodhd_symbol || "",
+      polygon_supported: etf.polygon_supported || false,
+      active: etf.active ?? true
+    });
+    setCurrentETFIndex(index);
+  };
+
+  const startBulkEdit = async () => {
+    await loadAllETFs();
+    if (allETFs.length > 0) {
+      loadETFByIndex(0);
+      setEditMode("edit");
+    }
+  };
+
+  const navigateETF = (direction: "prev" | "next") => {
+    const newIndex = direction === "next" ? currentETFIndex + 1 : currentETFIndex - 1;
+    if (newIndex >= 0 && newIndex < allETFs.length) {
+      loadETFByIndex(newIndex);
+    }
+  };
+
+  // Load ETFs on bulk edit mode
+  useEffect(() => {
+    if (editMode === "edit" && allETFs.length > 0) {
+      loadETFByIndex(currentETFIndex);
+    }
+  }, [allETFs, editMode]);
+
+  const saveAndNext = async () => {
+    const saved = await saveETF(true);
+    if (saved && currentETFIndex < allETFs.length - 1) {
+      navigateETF("next");
+    }
+  };
 
   const searchETF = async () => {
     if (!searchTicker.trim()) {
@@ -104,7 +191,12 @@ export const ETFEditor = () => {
     }
   };
 
-  const saveETF = async () => {
+  const saveETF = async (skipReset = false) => {
+    if (!formData.ticker || !formData.name) {
+      toast({ title: "Missing data", description: "Ticker and name are required", variant: "destructive" });
+      return false;
+    }
+
     setSaving(true);
     try {
       const etfData = {
@@ -139,7 +231,7 @@ export const ETFEditor = () => {
 
       const { error } = await supabase
         .from("etfs")
-        .upsert(etfData);
+        .upsert(etfData, { onConflict: 'ticker' });
 
       if (error) throw error;
 
@@ -148,40 +240,44 @@ export const ETFEditor = () => {
         description: `${formData.ticker} saved successfully` 
       });
       
-      // Reset form
-      setFormData({
-        ticker: "",
-        name: "",
-        exchange: "",
-        category: "",
-        yield_ttm: "",
-        total_return_1y: "",
-        avg_volume: "",
-        expense_ratio: "",
-        volatility_1y: "",
-        max_drawdown_1y: "",
-        aum: "",
-        manager: "",
-        strategy_label: "",
-        country: "US",
-        currency: "USD",
-        summary: "",
-        underlying: "",
-        fund: "",
-        strategy: "",
-        industry: "",
-        provider_group: "",
-        distribution_frequency: "",
-        data_source: "",
-        twelve_symbol: "",
-        eodhd_symbol: "",
-        polygon_supported: false,
-        active: true
-      });
-      setEditMode("search");
-      setSearchTicker("");
+      if (!skipReset) {
+        // Reset form only if not in bulk edit mode
+        setFormData({
+          ticker: "",
+          name: "",
+          exchange: "",
+          category: "",
+          yield_ttm: "",
+          total_return_1y: "",
+          avg_volume: "",
+          expense_ratio: "",
+          volatility_1y: "",
+          max_drawdown_1y: "",
+          aum: "",
+          manager: "",
+          strategy_label: "",
+          country: "US",
+          currency: "USD",
+          summary: "",
+          underlying: "",
+          fund: "",
+          strategy: "",
+          industry: "",
+          provider_group: "",
+          distribution_frequency: "",
+          data_source: "",
+          twelve_symbol: "",
+          eodhd_symbol: "",
+          polygon_supported: false,
+          active: true
+        });
+        setEditMode("search");
+        setSearchTicker("");
+      }
+      return true;
     } catch (error: any) {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return false;
     } finally {
       setSaving(false);
     }
@@ -246,7 +342,7 @@ export const ETFEditor = () => {
         {editMode === "search" && (
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              Search for an existing ETF to edit its metadata, or create a new one.
+              Search for an existing ETF to edit its metadata, create a new one, or start bulk editing all ETFs.
             </div>
             <div className="flex gap-2">
               <Input
@@ -260,6 +356,15 @@ export const ETFEditor = () => {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 Search
               </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={startBulkEdit} disabled={loadingETFs} variant="secondary">
+                {loadingETFs ? <Loader2 className="h-4 w-4 animate-spin" /> : "📝"}
+                Start Bulk Editing
+              </Button>
+              <span className="text-sm text-muted-foreground self-center">
+                Load all ETFs alphabetically for quick editing
+              </span>
             </div>
           </div>
         )}
@@ -347,6 +452,7 @@ export const ETFEditor = () => {
                     <SelectValue placeholder="Select frequency" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
                     <SelectItem value="Monthly">Monthly</SelectItem>
                     <SelectItem value="Quarterly">Quarterly</SelectItem>
                     <SelectItem value="Semi-Annual">Semi-Annual</SelectItem>
@@ -481,11 +587,58 @@ export const ETFEditor = () => {
               />
             </div>
 
+            {allETFs.length > 0 && editMode === "edit" && (
+              <div className="flex items-center justify-between mb-4 p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigateETF("prev")}
+                    disabled={currentETFIndex === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {currentETFIndex + 1} of {allETFs.length}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigateETF("next")}
+                    disabled={currentETFIndex === allETFs.length - 1}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="text-sm font-medium">
+                  Editing: {formData.ticker}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2">
-              <Button onClick={saveETF} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save ETF"}
-              </Button>
-              <Button variant="outline" onClick={() => { setEditMode("search"); setSearchTicker(""); }}>
+              {allETFs.length > 0 && editMode === "edit" ? (
+                <>
+                  <Button onClick={saveAndNext} disabled={saving || currentETFIndex === allETFs.length - 1}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save & Next
+                  </Button>
+                  <Button onClick={() => saveETF()} disabled={saving}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  </Button>
+                  <Button variant="outline" onClick={() => navigateETF("next")} disabled={currentETFIndex === allETFs.length - 1}>
+                    <SkipForward className="h-4 w-4" />
+                    Skip
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={() => saveETF()} disabled={saving}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save ETF"}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => { setEditMode("search"); setSearchTicker(""); setAllETFs([]); }}>
                 Cancel
               </Button>
             </div>
