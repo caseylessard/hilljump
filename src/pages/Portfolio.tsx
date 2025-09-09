@@ -19,7 +19,7 @@ const Portfolio = () => {
     minTradingDays: 200               // Minimum trading history required
   });
 
-  const [portfolioSize, setPortfolioSize] = useState(25000); // $25k default
+  const [portfolioSize, setPortfolioSize] = useState(10000); // $10k default
   const [selectedETFs, setSelectedETFs] = useState<AIPortfolioETF[]>([]);
 
   // Fetch data
