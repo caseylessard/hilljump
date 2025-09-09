@@ -93,6 +93,7 @@ serve(async (req: Request) => {
         
         const url = `https://query1.finance.yahoo.com/v7/finance/download/${ticker}?period1=${startDate}&period2=${endDate}&interval=1d&events=div`;
         
+        console.log(`🔍 Yahoo: Fetching dividends for ${ticker}`);
         const res = await fetch(url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -109,30 +110,66 @@ serve(async (req: Request) => {
         
         if (lines.length <= 1) return [];
         
-        const dividends = [];
+        // Parse CSV and prepare for normalization
+        const rawData = [];
         for (let i = 1; i < lines.length; i++) {
           const columns = lines[i].split(',');
           if (columns.length >= 2) {
-            const date = columns[0]; // Date
-            const amount = parseFloat(columns[1]); // Dividend amount
+            const date = columns[0];
+            const amount = parseFloat(columns[1]);
             
             if (!isNaN(amount) && amount > 0) {
-              dividends.push({
-                ex_dividend_date: date,
-                pay_date: null, // Yahoo doesn't provide pay date in this API
-                cash_amount: amount,
-                currency: 'USD',
-                source: 'yahoo'
-              });
+              rawData.push({ date, amount });
             }
           }
         }
         
-        return dividends;
+        const normalized = normalizeDividendData(rawData, 'yahoo');
+        console.log(`✓ Yahoo: Found ${normalized.length} valid dividends for ${ticker}`);
+        return normalized;
       } catch (error) {
         console.error(`Error fetching Yahoo Finance dividends for ${ticker}:`, error);
         return [];
       }
+    }
+
+    // Standardize dividend data from different sources
+    function normalizeDividendData(rawData: any, source: string): any[] {
+      const dividends = [];
+      
+      if (source === 'yahoo' && Array.isArray(rawData)) {
+        for (const item of rawData) {
+          dividends.push({
+            ex_dividend_date: item.date,
+            pay_date: null, // Yahoo doesn't provide pay dates
+            cash_amount: item.amount,
+            currency: 'USD', // Yahoo assumes USD
+            source: 'yahoo'
+          });
+        }
+      } else if (source === 'alpha_vantage' && Array.isArray(rawData)) {
+        for (const item of rawData) {
+          dividends.push({
+            ex_dividend_date: item.ex_dividend_date,
+            pay_date: item.payment_date || null,
+            cash_amount: parseFloat(item.amount),
+            currency: 'USD', // Alpha Vantage assumes USD
+            source: 'alpha_vantage'
+          });
+        }
+      } else if (source === 'eodhd' && Array.isArray(rawData)) {
+        for (const item of rawData) {
+          dividends.push({
+            ex_dividend_date: item.date, // EODHD's 'date' field is ex-dividend date
+            pay_date: item.paymentDate || null,
+            cash_amount: parseFloat(item.value),
+            currency: item.currency || 'USD',
+            source: 'eodhd'
+          });
+        }
+      }
+      
+      return dividends;
     }
 
     async function fetchEODHDDividends(ticker: string) {
@@ -144,13 +181,11 @@ serve(async (req: Request) => {
         }
 
         // EODHD dividends API - get last year of dividends
-        const url = `https://eodhd.com/api/div/${ticker}?api_token=${EODHD_API_KEY}&fmt=json&from=${new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`;
+        const fromDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const url = `https://eodhd.com/api/div/${ticker}?api_token=${EODHD_API_KEY}&fmt=json&from=${fromDate}`;
         
-        const res = await fetch(url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        });
+        console.log(`🔍 EODHD: Fetching dividends for ${ticker}`);
+        const res = await fetch(url);
         
         if (!res.ok) {
           console.warn(`EODHD dividends failed for ${ticker}: ${res.status}`);
@@ -164,20 +199,12 @@ serve(async (req: Request) => {
           return [];
         }
 
-        const dividends = [];
-        for (const dividend of data) {
-          if (dividend.value && parseFloat(dividend.value) > 0) {
-            dividends.push({
-              ex_dividend_date: dividend.date,
-              pay_date: dividend.paymentDate || null,
-              cash_amount: parseFloat(dividend.value),
-              currency: dividend.currency || 'USD',
-              source: 'eodhd'
-            });
-          }
-        }
+        // Filter and normalize data
+        const validDividends = data.filter(d => d.value && parseFloat(d.value) > 0);
+        const normalized = normalizeDividendData(validDividends, 'eodhd');
         
-        return dividends;
+        console.log(`✓ EODHD: Found ${normalized.length} valid dividends for ${ticker}`);
+        return normalized;
       } catch (error) {
         console.error(`Error fetching EODHD dividends for ${ticker}:`, error);
         return [];
@@ -194,6 +221,7 @@ serve(async (req: Request) => {
 
         const url = `https://www.alphavantage.co/query?function=DIVIDENDS&symbol=${ticker}&apikey=${ALPHA_VANTAGE_API_KEY}`;
         
+        console.log(`🔍 Alpha Vantage: Fetching dividends for ${ticker}`);
         const res = await fetch(url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -212,27 +240,20 @@ serve(async (req: Request) => {
           return [];
         }
 
-        const dividends = [];
         const dividendData = data.data || [];
         
-        // Filter for last year and format
+        // Filter for last year
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-        for (const dividend of dividendData) {
+        const validDividends = dividendData.filter(dividend => {
           const exDate = new Date(dividend.ex_dividend_date);
-          if (exDate >= oneYearAgo && dividend.amount && parseFloat(dividend.amount) > 0) {
-            dividends.push({
-              ex_dividend_date: dividend.ex_dividend_date,
-              pay_date: dividend.payment_date || null,
-              cash_amount: parseFloat(dividend.amount),
-              currency: 'USD',
-              source: 'alpha_vantage'
-            });
-          }
-        }
+          return exDate >= oneYearAgo && dividend.amount && parseFloat(dividend.amount) > 0;
+        });
         
-        return dividends;
+        const normalized = normalizeDividendData(validDividends, 'alpha_vantage');
+        console.log(`✓ Alpha Vantage: Found ${normalized.length} valid dividends for ${ticker}`);
+        return normalized;
       } catch (error) {
         console.error(`Error fetching Alpha Vantage dividends for ${ticker}:`, error);
         return [];
