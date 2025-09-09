@@ -61,6 +61,8 @@ export const getCachedGlobalETFs = async (): Promise<any[]> => {
 };
 
 export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<string, any>> => {
+  console.log('🔄 getCachedGlobalPrices called with', tickers.length, 'tickers');
+  
   const cacheKey = `global-prices-${tickers.sort().join(',')}`;
   const cached = getFromGlobalCache<Record<string, any>>(cacheKey);
   if (cached) {
@@ -70,57 +72,62 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
 
   console.log('🔄 Fetching fresh price data for', tickers.length, 'tickers...');
   
-  // Get database prices
-  const { data: dbPrices, error: dbError } = await supabase
-    .from('etfs')
-    .select('ticker, current_price, price_updated_at')
-    .in('ticker', tickers)
-    .not('current_price', 'is', null);
+  try {
+    // Get database prices
+    const { data: dbPrices, error: dbError } = await supabase
+      .from('etfs')
+      .select('ticker, current_price, price_updated_at')
+      .in('ticker', tickers)
+      .not('current_price', 'is', null);
 
-  if (dbError) {
-    console.error('❌ Database price fetch error:', dbError);
+    if (dbError) {
+      console.error('❌ Database price fetch error:', dbError);
+      // Don't return empty, try live fetch as fallback
+    }
+
+    console.log('📊 Database returned', dbPrices?.length || 0, 'price records');
+    
+    const prices: Record<string, any> = {};
+    dbPrices?.forEach(etf => {
+      if (etf.current_price && etf.current_price > 0) {
+        prices[etf.ticker] = {
+          price: etf.current_price,
+          source: 'database',
+          priceUpdatedAt: etf.price_updated_at
+        };
+      }
+    });
+    
+    console.log('💰 Processed prices for', Object.keys(prices).length, 'ETFs');
+
+    // Fetch live prices and update database
+    try {
+      const { data: liveData } = await supabase.functions.invoke('quotes', {
+        body: { tickers }
+      });
+
+      if (liveData?.prices) {
+        Object.entries(liveData.prices).forEach(([ticker, price]) => {
+          if (typeof price === 'number' && price > 0) {
+            prices[ticker] = {
+              price,
+              source: 'live',
+              priceUpdatedAt: new Date().toISOString()
+            };
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Live price fetch failed:', error);
+    }
+
+    console.log('💾 Caching prices:', Object.keys(prices).length, 'ETFs');
+    setGlobalCache(cacheKey, prices);
+    return prices;
+  } catch (error) {
+    console.error('❌ getCachedGlobalPrices failed:', error);
     return {};
   }
-
-  console.log('📊 Database returned', dbPrices?.length || 0, 'price records');
-  
-  const prices: Record<string, any> = {};
-  dbPrices?.forEach(etf => {
-    if (etf.current_price && etf.current_price > 0) {
-      prices[etf.ticker] = {
-        price: etf.current_price,
-        source: 'database',
-        priceUpdatedAt: etf.price_updated_at
-      };
-    }
-  });
-  
-  console.log('💰 Processed prices for', Object.keys(prices).length, 'ETFs');
-
-  // Fetch live prices and update database
-  try {
-    const { data: liveData } = await supabase.functions.invoke('quotes', {
-      body: { tickers }
-    });
-
-    if (liveData?.prices) {
-      Object.entries(liveData.prices).forEach(([ticker, price]) => {
-        if (typeof price === 'number' && price > 0) {
-          prices[ticker] = {
-            price,
-            source: 'live',
-            priceUpdatedAt: new Date().toISOString()
-          };
-        }
-      });
-    }
-  } catch (error) {
-    console.warn('⚠️ Live price fetch failed:', error);
-  }
-
-  console.log('💾 Caching prices:', Object.keys(prices).length, 'ETFs');
-  setGlobalCache(cacheKey, prices);
-  return prices;
 };
 
 export const getCachedGlobalDistributions = async (tickers: string[]): Promise<Record<string, any>> => {
