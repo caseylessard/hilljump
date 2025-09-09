@@ -136,6 +136,10 @@ const Ranking = () => {
     let validETFs = ranked.filter(etf => {
       // Exclude ETFs with clearly invalid data
       if (etf.current_price === 50.0) return false; // Remove $50 dummy prices
+      
+      // Exclude ETFs without dividend distributions
+      if (!distributions[etf.ticker]) return false;
+      
       return true;
     });
     
