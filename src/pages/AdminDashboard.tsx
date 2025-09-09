@@ -27,6 +27,7 @@ import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
 import { HistoricalPriceImport } from "@/components/admin/HistoricalPriceImport";
 import QuickETFTest from "@/components/QuickETFTest";
 import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
+import ETFMetadataFetcher from "@/components/admin/ETFMetadataFetcher";
 
 const AdminDashboard = () => {
   const { isAdmin, loading } = useAdmin();
@@ -88,6 +89,7 @@ const AdminDashboard = () => {
                   <CardContent className="space-y-6">
                     <ETFDataImport />
                     <ETFEditor />
+                    <ETFMetadataFetcher />
                   </CardContent>
                 </Card>
                 

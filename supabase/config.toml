@@ -18,6 +18,9 @@ verify_jwt = false
 [functions.fetch-etf-data]
 verify_jwt = false
 
+[functions.fetch-etf-metadata]
+verify_jwt = false
+
 [functions.test-canadian-apis]
 verify_jwt = false
 
