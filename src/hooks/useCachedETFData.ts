@@ -31,9 +31,12 @@ export const useCachedETFs = () => {
 export const useCachedPrices = (tickers: string[]) => {
   const { isAdmin } = useAdmin();
   
+  console.log('🔄 useCachedPrices hook called with', tickers.length, 'tickers, isAdmin:', isAdmin);
+  
   return useQuery({
     queryKey: ["cached-prices", tickers.sort().join(',')],
     queryFn: async () => {
+      console.log('🔄 useCachedPrices queryFn executing for', tickers.length, 'tickers');
       if (tickers.length === 0) return {};
       return getCachedGlobalPrices(tickers);
     },
