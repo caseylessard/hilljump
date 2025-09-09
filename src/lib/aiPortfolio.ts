@@ -210,7 +210,7 @@ interface PortfolioOptions {
   roundShares?: boolean;
 }
 
-function capAndNormalize(weights: number[], maxWeight: number | null): number[] {
+function capAndNormalize(weights: number[], maxWeight: number | null, minWeight: number = 0.02): number[] {
   // Ensure non-negative weights
   const w = weights.map(w => Math.max(0, w));
   
@@ -220,11 +220,29 @@ function capAndNormalize(weights: number[], maxWeight: number | null): number[] 
   // Normalize to sum to 1
   let normalized = w.map(weight => weight / sum);
   
+  // Apply minimum weight constraint (2% minimum per position)
+  const numPositions = normalized.length;
+  const totalMinWeight = minWeight * numPositions;
+  
+  // If minimum weights exceed 100%, use equal weights
+  if (totalMinWeight > 1.0) {
+    return normalized.map(() => 1.0 / numPositions);
+  }
+  
+  // Ensure each position gets at least minimum weight
+  normalized = normalized.map(weight => Math.max(weight, minWeight));
+  
+  // Renormalize after applying minimums
+  const sumAfterMin = normalized.reduce((sum, weight) => sum + weight, 0);
+  if (sumAfterMin > 1.0) {
+    normalized = normalized.map(weight => weight / sumAfterMin);
+  }
+  
   if (maxWeight === null) return normalized;
   
-  const maxWeightCapped = Math.max(0.0, Math.min(1.0, maxWeight));
+  const maxWeightCapped = Math.max(minWeight, Math.min(1.0, maxWeight));
   
-  // Apply weight cap iteratively
+  // Apply weight cap iteratively while respecting minimums
   for (let iter = 0; iter < 10; iter++) {
     const over = normalized.map(weight => weight > maxWeightCapped);
     if (!over.some(Boolean)) break;
@@ -236,16 +254,18 @@ function capAndNormalize(weights: number[], maxWeight: number | null): number[] 
     // Cap overweight positions
     normalized = normalized.map((weight, i) => over[i] ? maxWeightCapped : weight);
     
-    // Redistribute excess to underweight positions
+    // Redistribute excess to underweight positions (above minimum)
     const underweightSum = normalized.reduce((sum, weight, i) => {
-      return !over[i] ? sum + weight : sum;
+      return !over[i] ? sum + Math.max(0, weight - minWeight) : sum;
     }, 0);
     
     if (underweightSum <= 0 || excess <= 0) break;
     
     normalized = normalized.map((weight, i) => {
       if (over[i]) return weight;
-      return weight + (weight / underweightSum) * excess;
+      const baseWeight = Math.max(weight, minWeight);
+      const excessCapacity = Math.max(0, weight - minWeight);
+      return baseWeight + (excessCapacity / underweightSum) * excess;
     });
   }
   
@@ -253,6 +273,15 @@ function capAndNormalize(weights: number[], maxWeight: number | null): number[] 
   const finalSum = normalized.reduce((sum, weight) => sum + weight, 0);
   if (finalSum > 0) {
     normalized = normalized.map(weight => weight / finalSum);
+  }
+  
+  // Ensure no weight falls below minimum (final safety check)
+  normalized = normalized.map(weight => Math.max(weight, minWeight));
+  
+  // Final renormalization
+  const finalSumAfterMin = normalized.reduce((sum, weight) => sum + weight, 0);
+  if (finalSumAfterMin > 0) {
+    normalized = normalized.map(weight => weight / finalSumAfterMin);
   }
   
   return normalized;
@@ -301,7 +330,7 @@ export function buildAIPortfolio(
     
     // For now, we'll use mock historical data since we don't have price history
     // In a real implementation, you'd fetch historical prices from your database
-    const mockPrices = generateMockPrices(livePrice.price, 520); // ~2 years
+    const mockPrices = generateMockPrices(livePrice.price, 520, etf.ticker); // ~2 years
     
     if (mockPrices.length < options.minTradingDays) continue;
     
@@ -361,8 +390,8 @@ export function buildAIPortfolio(
   const validResults = results.filter(etf => isFinite(etf[scoreKey]));
   validResults.sort((a, b) => b[scoreKey] - a[scoreKey]);
   
-  // Select top K
-  const topK = Math.max(1, Math.min(options.topK, validResults.length));
+  // Select top K (max 20 to prevent over-diversification)
+  const topK = Math.max(1, Math.min(options.topK, Math.min(20, validResults.length)));
   const chosen = validResults.slice(0, topK);
   
   // Build weights
@@ -389,14 +418,27 @@ export function buildAIPortfolio(
   return chosen;
 }
 
-// Mock price generator for demonstration - replace with real historical data
-function generateMockPrices(currentPrice: number, days: number): number[] {
+// Seeded random number generator for consistent results
+function seededRandom(seed: number): () => number {
+  let x = Math.sin(seed++) * 10000;
+  return () => {
+    x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  };
+}
+
+// Mock price generator with deterministic results based on ticker
+function generateMockPrices(currentPrice: number, days: number, ticker: string): number[] {
+  // Create a seed from ticker for consistent results
+  const seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const random = seededRandom(seed);
+  
   const prices = [currentPrice];
   let price = currentPrice;
   
   for (let i = 1; i < days; i++) {
     // Simple random walk with slight upward bias
-    const dailyReturn = (Math.random() - 0.48) * 0.02; // Slightly positive bias
+    const dailyReturn = (random() - 0.48) * 0.02; // Slightly positive bias
     price *= (1 + dailyReturn);
     prices.unshift(price); // Add to beginning (oldest first)
   }

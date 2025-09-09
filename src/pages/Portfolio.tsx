@@ -153,7 +153,7 @@ const Portfolio = () => {
                   value={[preferences.topK]}
                   onValueChange={([value]) => setPreferences(p => ({ ...p, topK: value }))}
                   min={3}
-                  max={15}
+                  max={20}
                   step={1}
                   className="mb-2"
                 />
