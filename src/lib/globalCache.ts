@@ -224,6 +224,7 @@ export const getCachedGlobalHistoricalPrices = async (tickers: string[]): Promis
       .from('historical_prices')
       .select('ticker, close_price, date')
       .in('ticker', tickers)
+      .not('close_price', 'is', null) // Ensure we only get valid prices
       .order('ticker')
       .order('date', { ascending: false });
 
@@ -232,6 +233,8 @@ export const getCachedGlobalHistoricalPrices = async (tickers: string[]): Promis
       return {};
     }
 
+    console.log(`🔍 Raw historical data query returned ${data?.length || 0} records`);
+    
     const historicalPrices: Record<string, number[]> = {};
     
     // Group by ticker and limit to 520 most recent entries per ticker
@@ -243,14 +246,31 @@ export const getCachedGlobalHistoricalPrices = async (tickers: string[]): Promis
       }
     });
 
+    console.log(`🔍 Grouped data for tickers: ${Object.keys(tickerData).join(', ')}`);
+
     // Convert to price arrays (reverse to get chronological order)
     Object.entries(tickerData).forEach(([ticker, rows]) => {
       if (rows.length > 0) {
-        historicalPrices[ticker] = rows.map(d => d.close_price).reverse();
+        const prices = rows
+          .map(d => d.close_price)
+          .filter(price => price && isFinite(price) && price > 0)
+          .reverse();
+        
+        if (prices.length > 0) {
+          historicalPrices[ticker] = prices;
+          console.log(`✅ Loaded ${prices.length} prices for ${ticker}`);
+        }
       }
     });
 
     console.log(`✅ Loaded historical data for ${Object.keys(historicalPrices).length} ETFs via bulk query`);
+    
+    // Log any missing tickers for debugging
+    const missingTickers = tickers.filter(t => !historicalPrices[t]);
+    if (missingTickers.length > 0) {
+      console.log(`⚠️ No historical data found for: ${missingTickers.slice(0, 10).join(', ')}${missingTickers.length > 10 ? ` and ${missingTickers.length - 10} more` : ''}`);
+    }
+    
     setGlobalCache(cacheKey, historicalPrices);
     return historicalPrices;
   } catch (error) {
