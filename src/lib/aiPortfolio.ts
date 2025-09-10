@@ -381,31 +381,34 @@ export async function buildAIPortfolio(
       // Use cached historical data if available
       let historicalPrices = cachedHistoricalPrices[etf.ticker] || [];
       
-      // More flexible data requirements - accept ETFs with less historical data
-      const minDaysForAnalysis = Math.max(30, Math.min(options.minTradingDays, 100)); // Cap at 100 days minimum
+      // Much more flexible data requirements - accept ETFs with minimal data
+      const minDaysForAnalysis = Math.max(10, Math.min(options.minTradingDays, 60)); // Much lower minimum
       
       if (historicalPrices.length < minDaysForAnalysis) {
-        // Try to use ETF database metrics as fallback for very new ETFs
-        if (etf.totalReturn1Y !== null && etf.totalReturn1Y !== undefined) {
-          console.log(`🔄 Using ETF database metrics for ${etf.ticker} (${historicalPrices.length} days available)`);
+        // Create basic portfolio entry using available data (yields, current price)
+        if (etf.yieldTTM && etf.yieldTTM > 0) {
+          console.log(`🔄 Using basic ETF data for ${etf.ticker} (${historicalPrices.length} days available, yield: ${etf.yieldTTM?.toFixed(2)}%)`);
+          
+          // Estimate returns based on yield (very basic approach)
+          const estimatedReturn = (etf.yieldTTM || 5) / 100; // Use yield as proxy for return
           
           results.push({
             ...etf,
             lastPrice: livePrice.price,
-            ret1Y: etf.totalReturn1Y,
-            r4: etf.totalReturn1Y * 0.077, // Approximate 4-week return (1/13 of annual)
-            r13: etf.totalReturn1Y * 0.25,  // Approximate quarterly return
-            r26: etf.totalReturn1Y * 0.5,   // Approximate semi-annual return
-            r52: etf.totalReturn1Y,         // Annual return
-            p4: etf.totalReturn1Y * 0.077 / 4,
-            p13: etf.totalReturn1Y * 0.25 / 13,
-            p26: etf.totalReturn1Y * 0.5 / 26,
-            p52: etf.totalReturn1Y / 52,
+            ret1Y: estimatedReturn,
+            r4: estimatedReturn * 0.077, // Approximate 4-week return 
+            r13: estimatedReturn * 0.25,  // Approximate quarterly return
+            r26: estimatedReturn * 0.5,   // Approximate semi-annual return
+            r52: estimatedReturn,         // Annual return
+            p4: estimatedReturn * 0.077 / 4,
+            p13: estimatedReturn * 0.25 / 13,
+            p26: estimatedReturn * 0.5 / 26,
+            p52: estimatedReturn / 52,
             d1: 0, d2: 0, d3: 0, // No trend data without history
-            trendRaw: 0,
+            trendRaw: estimatedReturn * 0.5, // Basic trend based on yield
             badge: "📊",
-            badgeLabel: "Limited historical data",
-            badgeColor: "yellow",
+            badgeLabel: "Yield-based estimate",
+            badgeColor: "blue",
             volAnn: etf.volatility1Y || 0.15, // Use ETF volatility or default
             maxDrawdown: etf.maxDrawdown1Y || -0.1, // Use ETF max drawdown or default
             sharpe: null,
@@ -416,7 +419,7 @@ export async function buildAIPortfolio(
           });
           continue;
         } else {
-          console.warn(`Skipping ${etf.ticker}: insufficient data and no fallback metrics (${historicalPrices.length} days)`);
+          console.warn(`Skipping ${etf.ticker}: insufficient data (${historicalPrices.length} days, no yield)`);
           continue;
         }
       }
