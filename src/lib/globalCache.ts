@@ -211,32 +211,52 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: an
 export const getCachedGlobalHistoricalPrices = async (tickers: string[]): Promise<Record<string, number[]>> => {
   const cacheKey = `global-historical-${tickers.sort().join(',')}`;
   const cached = getFromGlobalCache<Record<string, number[]>>(cacheKey);
-  if (cached) return cached;
-
-  console.log('🔄 Fetching fresh historical price data...');
-  
-  const historicalPrices: Record<string, number[]> = {};
-  
-  // Fetch 520 days of historical data for each ticker
-  for (const ticker of tickers) {
-    try {
-      const { data } = await supabase
-        .from('historical_prices')
-        .select('close_price')
-        .eq('ticker', ticker)
-        .order('date', { ascending: false })
-        .limit(520);
-      
-      if (data && data.length > 0) {
-        historicalPrices[ticker] = data.map(d => d.close_price).reverse();
-      }
-    } catch (error) {
-      console.warn(`Failed to fetch historical data for ${ticker}:`, error);
-    }
+  if (cached) {
+    console.log('📋 Using cached historical data for', Object.keys(cached).length, 'ETFs');
+    return cached;
   }
 
-  setGlobalCache(cacheKey, historicalPrices);
-  return historicalPrices;
+  console.log('🔄 Fetching fresh historical price data for', tickers.length, 'tickers...');
+  
+  try {
+    // Use bulk query instead of individual requests for better performance
+    const { data, error } = await supabase
+      .from('historical_prices')
+      .select('ticker, close_price, date')
+      .in('ticker', tickers)
+      .order('ticker')
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('❌ Historical prices bulk fetch error:', error);
+      return {};
+    }
+
+    const historicalPrices: Record<string, number[]> = {};
+    
+    // Group by ticker and limit to 520 most recent entries per ticker
+    const tickerData: Record<string, any[]> = {};
+    data?.forEach(row => {
+      if (!tickerData[row.ticker]) tickerData[row.ticker] = [];
+      if (tickerData[row.ticker].length < 520) {
+        tickerData[row.ticker].push(row);
+      }
+    });
+
+    // Convert to price arrays (reverse to get chronological order)
+    Object.entries(tickerData).forEach(([ticker, rows]) => {
+      if (rows.length > 0) {
+        historicalPrices[ticker] = rows.map(d => d.close_price).reverse();
+      }
+    });
+
+    console.log(`✅ Loaded historical data for ${Object.keys(historicalPrices).length} ETFs via bulk query`);
+    setGlobalCache(cacheKey, historicalPrices);
+    return historicalPrices;
+  } catch (error) {
+    console.error('❌ getCachedGlobalHistoricalPrices failed:', error);
+    return {};
+  }
 };
 
 // Warm all caches (called by Ranking page)
