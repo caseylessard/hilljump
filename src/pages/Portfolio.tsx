@@ -76,13 +76,40 @@ const Portfolio = () => {
     meta.setAttribute('content', 'Build an optimized ETF portfolio with AI-driven recommendations based on performance, diversification, and geographic preferences.');
   }, []);
 
-  // AI Portfolio Builder Logic using real ETF data
-  const portfolioResults = useMemo(() => {
-    if (etfs.length === 0) return [];
+  // State to hold the resolved portfolio results
+  const [resolvedPortfolio, setResolvedPortfolio] = useState<AIPortfolioETF[]>([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
 
+  // Effect to build portfolio - moved async logic here to prevent infinite loops
+  useEffect(() => {
+    let isCancelled = false;
+    
     const buildPortfolio = async () => {
+      if (etfs.length === 0 || Object.keys(prices).length === 0) return;
+      
+      setPortfolioLoading(true);
       try {
-        return await buildAIPortfolio(etfs, prices, {
+        // Filter out low-quality ETFs before building portfolio
+        const qualityETFs = etfs.filter(etf => {
+          // Exclude known poor performers and test tickers
+          const lowQualityTickers = ['FIAT', 'TEST', 'DEMO'];
+          if (lowQualityTickers.includes(etf.ticker)) return false;
+          
+          // Must have yield data
+          if (!etf.yieldTTM || etf.yieldTTM <= 0) return false;
+          
+          // Must have current price
+          if (!etf.current_price || etf.current_price <= 0) return false;
+          
+          // Must have reasonable yield (not extreme outliers)
+          if (etf.yieldTTM > 100) return false; // Over 100% yield is suspicious
+          
+          return true;
+        });
+        
+        console.log(`🔍 Filtered ${etfs.length} ETFs down to ${qualityETFs.length} quality ETFs`);
+        
+        const result = await buildAIPortfolio(qualityETFs, prices, {
           topK: preferences.topK,
           minTradingDays: preferences.minTradingDays,
           scoreSource: preferences.scoreSource,
@@ -91,32 +118,12 @@ const Portfolio = () => {
           capital: portfolioSize,
           roundShares: true
         });
-      } catch (error) {
-        console.error('Error building AI portfolio:', error);
-        return [];
-      }
-    };
-
-    return buildPortfolio();
-  }, [etfs, prices, preferences, portfolioSize]);
-
-  // State to hold the resolved portfolio results
-  const [resolvedPortfolio, setResolvedPortfolio] = useState<AIPortfolioETF[]>([]);
-  const [portfolioLoading, setPortfolioLoading] = useState(false);
-
-  // Effect to resolve the portfolio promise
-  useEffect(() => {
-    let isCancelled = false;
-    
-    const resolvePortfolio = async () => {
-      setPortfolioLoading(true);
-      try {
-        const result = await portfolioResults;
+        
         if (!isCancelled) {
           setResolvedPortfolio(result);
         }
       } catch (error) {
-        console.error('Error resolving portfolio:', error);
+        console.error('Error building AI portfolio:', error);
         if (!isCancelled) {
           setResolvedPortfolio([]);
         }
@@ -127,12 +134,12 @@ const Portfolio = () => {
       }
     };
 
-    resolvePortfolio();
+    buildPortfolio();
     
     return () => {
       isCancelled = true;
     };
-  }, [portfolioResults]);
+  }, [etfs, prices, preferences, portfolioSize]);
 
   // Portfolio allocations are now calculated within the AI portfolio builder
   const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
