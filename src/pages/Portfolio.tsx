@@ -330,6 +330,14 @@ const Portfolio = () => {
               <p className="text-sm text-muted-foreground">
                 {resolvedPortfolio.length} positions • ${portfolioSize.toLocaleString()} • ${totalSpent.toLocaleString()} allocated • ${cashLeft.toLocaleString()} cash
               </p>
+              {resolvedPortfolio.some(etf => etf.isEstimated) && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-2">
+                  <p className="text-sm text-orange-800">
+                    ⚠️ Some ETFs use estimated data due to insufficient historical prices. 
+                    These are heavily penalized in scoring but may still appear if few alternatives exist.
+                  </p>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {etfsLoading || portfolioLoading ? (
@@ -351,10 +359,16 @@ const Portfolio = () => {
                               className={`text-xs ${
                                 etf.badgeColor === 'green' ? 'bg-emerald-100 text-emerald-800' :
                                 etf.badgeColor === 'red' ? 'bg-red-100 text-red-800' :
+                                etf.badgeColor === 'orange' ? 'bg-orange-100 text-orange-800' :
                                 'bg-yellow-100 text-yellow-800'
                               }`}
                             >
                               {etf.badge}
+                            </Badge>
+                          )}
+                          {etf.isEstimated && (
+                            <Badge variant="destructive" className="text-xs">
+                              ⚠️ Estimated
                             </Badge>
                           )}
                         </div>

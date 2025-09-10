@@ -32,6 +32,7 @@ export interface AIPortfolioETF extends ETF {
   allocationDollar?: number;
   shares?: number;
   allocRounded?: number;
+  isEstimated?: boolean; // Flag for ETFs with insufficient historical data
 }
 
 // Windows in trading days ≈ weeks*5
@@ -396,30 +397,34 @@ export async function buildAIPortfolio(
           const cappedYield = Math.min(etf.yieldTTM || 5, 25); // Cap yield at 25% for safety
           const estimatedReturn = cappedYield / 100; // Use capped yield as proxy for return
           
+          // Heavily penalize ETFs without sufficient historical data
+          const dataPenalty = 0.2; // 80% penalty for insufficient data
+          
           results.push({
             ...etf,
             lastPrice: livePrice.price,
-            ret1Y: estimatedReturn,
-            r4: estimatedReturn * 0.077, // Approximate 4-week return 
-            r13: estimatedReturn * 0.25,  // Approximate quarterly return
-            r26: estimatedReturn * 0.5,   // Approximate semi-annual return
-            r52: estimatedReturn,         // Annual return
-            p4: estimatedReturn * 0.077 / 4,
-            p13: estimatedReturn * 0.25 / 13,
-            p26: estimatedReturn * 0.5 / 26,
-            p52: estimatedReturn / 52,
-            d1: 0, d2: 0, d3: 0, // No trend data without history
-            trendRaw: estimatedReturn * 0.5, // Basic trend based on yield
-            badge: "📊",
-            badgeLabel: "Yield-based estimate",
-            badgeColor: "blue",
-            volAnn: etf.volatility1Y || 0.15, // Use ETF volatility or default
-            maxDrawdown: etf.maxDrawdown1Y || -0.1, // Use ETF max drawdown or default
+            ret1Y: estimatedReturn * dataPenalty, // Penalized return
+            r4: estimatedReturn * 0.077 * dataPenalty,
+            r13: estimatedReturn * 0.25 * dataPenalty,
+            r26: estimatedReturn * 0.5 * dataPenalty,
+            r52: estimatedReturn * dataPenalty,
+            p4: estimatedReturn * 0.077 / 4 * dataPenalty,
+            p13: estimatedReturn * 0.25 / 13 * dataPenalty,
+            p26: estimatedReturn * 0.5 / 26 * dataPenalty,
+            p52: estimatedReturn / 52 * dataPenalty,
+            d1: -0.5, d2: -0.5, d3: -0.5, // Negative trend for insufficient data
+            trendRaw: estimatedReturn * 0.1 * dataPenalty, // Heavily penalized trend
+            badge: "⚠️",
+            badgeLabel: "Insufficient data",
+            badgeColor: "orange",
+            volAnn: etf.volatility1Y || 0.25, // Higher assumed volatility
+            maxDrawdown: etf.maxDrawdown1Y || -0.2, // Worse assumed drawdown
             sharpe: null,
             trendScore: 0,
             ret1yScore: 0,
             blendScore: 0,
-            weight: 0
+            weight: 0,
+            isEstimated: true // Flag to identify estimated data
           });
           continue;
         } else {
@@ -455,7 +460,8 @@ export async function buildAIPortfolio(
         trendScore: 0, // Will be calculated below
         ret1yScore: 0, // Will be calculated below
         blendScore: 0, // Will be calculated below
-        weight: 0
+        weight: 0,
+        isEstimated: false // This ETF has real historical data
       });
     } catch (error) {
       // Skip ETFs with calculation errors
