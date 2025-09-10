@@ -386,11 +386,15 @@ export async function buildAIPortfolio(
       
       if (historicalPrices.length < minDaysForAnalysis) {
         // Create basic portfolio entry using available data (yields, current price)
-        if (etf.yieldTTM && etf.yieldTTM > 0) {
+        // Validate yield data - reject obviously incorrect yields (>50% annual yield is likely bad data)
+        const validYield = etf.yieldTTM && etf.yieldTTM > 0 && etf.yieldTTM <= 50;
+        
+        if (validYield) {
           console.log(`🔄 Using basic ETF data for ${etf.ticker} (${historicalPrices.length} days available, yield: ${etf.yieldTTM?.toFixed(2)}%)`);
           
-          // Estimate returns based on yield (very basic approach)
-          const estimatedReturn = (etf.yieldTTM || 5) / 100; // Use yield as proxy for return
+          // Estimate returns based on yield (very basic approach) - cap at reasonable levels
+          const cappedYield = Math.min(etf.yieldTTM || 5, 25); // Cap yield at 25% for safety
+          const estimatedReturn = cappedYield / 100; // Use capped yield as proxy for return
           
           results.push({
             ...etf,
@@ -419,7 +423,7 @@ export async function buildAIPortfolio(
           });
           continue;
         } else {
-          console.warn(`Skipping ${etf.ticker}: insufficient data (${historicalPrices.length} days, no yield)`);
+          console.warn(`Skipping ${etf.ticker}: insufficient data (${historicalPrices.length} days, invalid yield: ${etf.yieldTTM}%)`);
           continue;
         }
       }

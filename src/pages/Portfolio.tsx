@@ -45,7 +45,25 @@ const Portfolio = () => {
   
   // Convert to ETF format compatible with AI portfolio - memoized to prevent infinite loops
   const etfs = useMemo(() => {
-    return Object.values(etfData).map((etf: any) => ({
+    return Object.values(etfData).filter((etf: any) => {
+      // Filter out ETFs with bad or test data
+      if (!etf.ticker || ['TEST', 'DEMO', 'SAMPLE'].some(test => etf.ticker.includes(test))) {
+        return false;
+      }
+      
+      // Filter out ETFs with unrealistic yields (likely bad data) - max 50% annual yield
+      if (etf.yield_ttm && etf.yield_ttm > 50) {
+        console.warn(`Filtering out ${etf.ticker} due to unrealistic yield: ${etf.yield_ttm}%`);
+        return false;
+      }
+      
+      // Filter out ETFs with missing essential data
+      if (!etf.current_price || etf.current_price <= 0) {
+        return false;
+      }
+      
+      return true;
+    }).map((etf: any) => ({
       ...etf,
       totalReturn1Y: etf.total_return_1y,
       yieldTTM: etf.yield_ttm,
