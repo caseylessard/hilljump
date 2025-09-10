@@ -326,7 +326,19 @@ const Portfolio = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">No ETFs found with sufficient data. Try reducing minimum trading days.</p>
+                  <p className="text-muted-foreground">
+                    No ETFs found with sufficient real historical data ({preferences.minTradingDays}+ trading days required).
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Try reducing minimum trading days or check back later as more historical data becomes available.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setPreferences(p => ({ ...p, minTradingDays: Math.max(50, p.minTradingDays - 50) }))}
+                    className="mt-4"
+                  >
+                    Reduce to {Math.max(50, preferences.minTradingDays - 50)} Days
+                  </Button>
                 </div>
               )}
             </CardContent>

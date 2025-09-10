@@ -358,33 +358,7 @@ async function fetchHistoricalPrices(ticker: string, days: number = 520): Promis
   }
 }
 
-// Seeded random number generator for consistent results (fallback only)
-function seededRandom(seed: number): () => number {
-  let x = Math.sin(seed++) * 10000;
-  return () => {
-    x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-  };
-}
-
-// Mock price generator with deterministic results based on ticker (fallback only)
-function generateMockPrices(currentPrice: number, days: number, ticker: string): number[] {
-  // Create a seed from ticker for consistent results
-  const seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const random = seededRandom(seed);
-  
-  const prices = [currentPrice];
-  let price = currentPrice;
-  
-  for (let i = 1; i < days; i++) {
-    // Simple random walk with slight upward bias
-    const dailyReturn = (random() - 0.48) * 0.02; // Slightly positive bias
-    price *= (1 + dailyReturn);
-    prices.unshift(price); // Add to beginning (oldest first)
-  }
-  
-  return prices;
-}
+// Remove mock price generator functions - use only real data
 
 export async function buildAIPortfolio(
   etfs: ETF[],
@@ -398,7 +372,7 @@ export async function buildAIPortfolio(
   const cachedHistoricalPrices = await getCachedGlobalHistoricalPrices(allTickers);
   console.log(`📊 Using cached historical data for ${Object.keys(cachedHistoricalPrices).length} ETFs`);
   
-  // Process ETFs with both real and mock data
+  // Process ETFs using only real data
   for (const etf of etfs) {
     const livePrice = prices[etf.ticker];
     if (!livePrice?.price) continue;
@@ -407,16 +381,14 @@ export async function buildAIPortfolio(
       // Use cached historical data if available
       let historicalPrices = cachedHistoricalPrices[etf.ticker] || [];
       
-      // If no real data or insufficient data, fall back to mock data
+      // Skip ETFs without sufficient real historical data
       if (historicalPrices.length < options.minTradingDays) {
-        console.warn(`Using mock data for ${etf.ticker} (real data: ${historicalPrices.length} days)`);
-        historicalPrices = generateMockPrices(livePrice.price, 520, etf.ticker);
-      } else {
-        console.log(`✅ Using cached historical data for ${etf.ticker} (${historicalPrices.length} days)`);
+        console.warn(`Skipping ${etf.ticker}: insufficient real data (${historicalPrices.length} days, need ${options.minTradingDays})`);
+        continue;
       }
       
-      if (historicalPrices.length < options.minTradingDays) continue;
-    
+      console.log(`✅ Using real historical data for ${etf.ticker} (${historicalPrices.length} days)`);
+      
       const ret1Y = oneYearTotalReturn(historicalPrices);
       const [volAnn, maxDrawdown, sharpe] = riskMetrics(historicalPrices);
       
