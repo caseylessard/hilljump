@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { ETFTable } from '@/components/dashboard/ETFTable';
+import { OptimizedETFTable } from '@/components/dashboard/OptimizedETFTable';
 import { ScoringControls } from '@/components/dashboard/ScoringControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -457,12 +458,13 @@ const Ranking = () => {
             </div>
           </div>
 
-          <ETFTable 
+          <OptimizedETFTable 
             items={filtered} 
             live={cachedPrices}
             distributions={distributions}
             cachedDripData={dripData || {}}
             originalRanking={ranked}
+            allowSorting={isSubscribed || isAdmin}
           />
         </section>
 
