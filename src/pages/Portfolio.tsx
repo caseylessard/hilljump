@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useCachedETFs, useCachedPrices } from "@/hooks/useCachedETFData";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from "@/integrations/supabase/client";
+import { useBulkETFData } from "@/hooks/useBulkETFData";
+import { useCachedPrices } from "@/hooks/useCachedETFData";
 import { buildAIPortfolio, type AIPortfolioETF, type WeightingMethod, type ScoreSource } from "@/lib/aiPortfolio";
 import Navigation from "@/components/Navigation";
 import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart } from "lucide-react";
@@ -22,9 +25,43 @@ const Portfolio = () => {
   const [portfolioSize, setPortfolioSize] = useState(10000); // $10k default
   const [selectedETFs, setSelectedETFs] = useState<AIPortfolioETF[]>([]);
 
-  // Fetch data
-  const { data: etfs = [], isLoading: etfsLoading } = useCachedETFs();
-  const { data: prices = {} } = useCachedPrices((etfs as any[]).map(e => e.ticker));
+  // First get all available ETF tickers
+  const { data: allTickersData = [] } = useQuery({
+    queryKey: ["all-etf-tickers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('etfs')
+        .select('ticker')
+        .eq('active', true);
+      
+      if (error) throw error;
+      return data?.map(row => row.ticker) || [];
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour cache
+  });
+
+  // Fetch bulk ETF data using same source as optimized table
+  const { data: etfData = {}, isLoading: etfsLoading } = useBulkETFData(allTickersData);
+  
+  // Convert to ETF format compatible with AI portfolio
+  const etfs = Object.values(etfData).map((etf: any) => ({
+    ...etf,
+    totalReturn1Y: etf.total_return_1y,
+    yieldTTM: etf.yield_ttm,
+    avgVolume: etf.avg_volume,
+    expenseRatio: etf.expense_ratio,
+    volatility1Y: etf.volatility_1y,
+    maxDrawdown1Y: etf.max_drawdown_1y,
+    current_price: etf.current_price,
+    strategyLabel: etf.strategy_label,
+    logoKey: etf.logo_key,
+    dataSource: etf.data_source,
+    polygonSupported: etf.polygon_supported,
+    twelveSymbol: etf.twelve_symbol,
+    eodhSymbol: etf.eodhd_symbol
+  }));
+  
+  const { data: prices = {} } = useCachedPrices(etfs.map(e => e.ticker));
 
   // SEO setup
   useEffect(() => {
@@ -39,14 +76,13 @@ const Portfolio = () => {
     meta.setAttribute('content', 'Build an optimized ETF portfolio with AI-driven recommendations based on performance, diversification, and geographic preferences.');
   }, []);
 
-  // AI Portfolio Builder Logic using new trend-based system
+  // AI Portfolio Builder Logic using real ETF data
   const portfolioResults = useMemo(() => {
-    if ((etfs as any[]).length === 0) return [];
+    if (etfs.length === 0) return [];
 
-    // Since buildAIPortfolio is now async, we need to handle it differently
     const buildPortfolio = async () => {
       try {
-        return await buildAIPortfolio(etfs as any[], prices as any, {
+        return await buildAIPortfolio(etfs, prices, {
           topK: preferences.topK,
           minTradingDays: preferences.minTradingDays,
           scoreSource: preferences.scoreSource,
@@ -61,7 +97,6 @@ const Portfolio = () => {
       }
     };
 
-    // Return a promise that resolves to the portfolio
     return buildPortfolio();
   }, [etfs, prices, preferences, portfolioSize]);
 
