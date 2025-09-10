@@ -367,12 +367,12 @@ export async function buildAIPortfolio(
 ): Promise<AIPortfolioETF[]> {
   const results: AIPortfolioETF[] = [];
   
-  // Get all historical prices from cache (1-hour cached)
+  // Get all historical prices from cache (1-hour cached) with larger batch
   const allTickers = etfs.map(e => e.ticker);
   const cachedHistoricalPrices = await getCachedGlobalHistoricalPrices(allTickers);
-  console.log(`📊 Using cached historical data for ${Object.keys(cachedHistoricalPrices).length} ETFs`);
+  console.log(`📊 Using cached historical data for ${Object.keys(cachedHistoricalPrices).length}/${allTickers.length} ETFs`);
   
-  // Process ETFs using only real data
+  // Process ETFs with flexible data requirements
   for (const etf of etfs) {
     const livePrice = prices[etf.ticker];
     if (!livePrice?.price) continue;
@@ -381,13 +381,47 @@ export async function buildAIPortfolio(
       // Use cached historical data if available
       let historicalPrices = cachedHistoricalPrices[etf.ticker] || [];
       
-      // Skip ETFs without sufficient real historical data
-      if (historicalPrices.length < options.minTradingDays) {
-        console.warn(`Skipping ${etf.ticker}: insufficient real data (${historicalPrices.length} days, need ${options.minTradingDays})`);
-        continue;
+      // More flexible data requirements - accept ETFs with less historical data
+      const minDaysForAnalysis = Math.max(30, Math.min(options.minTradingDays, 100)); // Cap at 100 days minimum
+      
+      if (historicalPrices.length < minDaysForAnalysis) {
+        // Try to use ETF database metrics as fallback for very new ETFs
+        if (etf.totalReturn1Y !== null && etf.totalReturn1Y !== undefined) {
+          console.log(`🔄 Using ETF database metrics for ${etf.ticker} (${historicalPrices.length} days available)`);
+          
+          results.push({
+            ...etf,
+            lastPrice: livePrice.price,
+            ret1Y: etf.totalReturn1Y,
+            r4: etf.totalReturn1Y * 0.077, // Approximate 4-week return (1/13 of annual)
+            r13: etf.totalReturn1Y * 0.25,  // Approximate quarterly return
+            r26: etf.totalReturn1Y * 0.5,   // Approximate semi-annual return
+            r52: etf.totalReturn1Y,         // Annual return
+            p4: etf.totalReturn1Y * 0.077 / 4,
+            p13: etf.totalReturn1Y * 0.25 / 13,
+            p26: etf.totalReturn1Y * 0.5 / 26,
+            p52: etf.totalReturn1Y / 52,
+            d1: 0, d2: 0, d3: 0, // No trend data without history
+            trendRaw: 0,
+            badge: "📊",
+            badgeLabel: "Limited historical data",
+            badgeColor: "yellow",
+            volAnn: etf.volatility1Y || 0.15, // Use ETF volatility or default
+            maxDrawdown: etf.maxDrawdown1Y || -0.1, // Use ETF max drawdown or default
+            sharpe: null,
+            trendScore: 0,
+            ret1yScore: 0,
+            blendScore: 0,
+            weight: 0
+          });
+          continue;
+        } else {
+          console.warn(`Skipping ${etf.ticker}: insufficient data and no fallback metrics (${historicalPrices.length} days)`);
+          continue;
+        }
       }
       
-      console.log(`✅ Using real historical data for ${etf.ticker} (${historicalPrices.length} days)`);
+      console.log(`✅ Using historical data for ${etf.ticker} (${historicalPrices.length} days)`);
       
       const ret1Y = oneYearTotalReturn(historicalPrices);
       const [volAnn, maxDrawdown, sharpe] = riskMetrics(historicalPrices);
@@ -400,7 +434,7 @@ export async function buildAIPortfolio(
       results.push({
         ...etf,
         lastPrice: livePrice.price,
-        ret1Y,
+        ret1Y: ret1Y || etf.totalReturn1Y, // Fallback to ETF data if calculation fails
         r4, r13, r26, r52,
         p4, p13, p26, p52,
         d1, d2, d3,
@@ -408,8 +442,8 @@ export async function buildAIPortfolio(
         badge,
         badgeLabel,
         badgeColor,
-        volAnn,
-        maxDrawdown,
+        volAnn: volAnn || etf.volatility1Y || 0.15,
+        maxDrawdown: maxDrawdown || etf.maxDrawdown1Y || -0.1,
         sharpe,
         trendScore: 0, // Will be calculated below
         ret1yScore: 0, // Will be calculated below

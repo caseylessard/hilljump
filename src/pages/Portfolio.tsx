@@ -19,7 +19,7 @@ const Portfolio = () => {
     scoreSource: "blend" as ScoreSource,   // trend, ret1y, or blend
     weighting: "return" as WeightingMethod, // equal, return, or risk_parity
     maxWeight: 0.25,                   // Maximum weight per ETF (25%)
-    minTradingDays: 200               // Minimum trading history required
+    minTradingDays: 60                // Minimum trading history required (reduced for better coverage)
   });
 
   const [portfolioSize, setPortfolioSize] = useState(10000); // $10k default
@@ -361,19 +361,19 @@ const Portfolio = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    No ETFs found with sufficient real historical data ({preferences.minTradingDays}+ trading days required).
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Try reducing minimum trading days or check back later as more historical data becomes available.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setPreferences(p => ({ ...p, minTradingDays: Math.max(50, p.minTradingDays - 50) }))}
-                    className="mt-4"
-                  >
-                    Reduce to {Math.max(50, preferences.minTradingDays - 50)} Days
-                  </Button>
+                <p className="text-muted-foreground">
+                  No ETFs found with sufficient data ({preferences.minTradingDays}+ trading days preferred).
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Try reducing minimum trading days to include more ETFs with available data.
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setPreferences(p => ({ ...p, minTradingDays: Math.max(30, p.minTradingDays - 30) }))}
+                  className="mt-4"
+                >
+                  Reduce to {Math.max(30, preferences.minTradingDays - 30)} Days
+                </Button>
                 </div>
               )}
             </CardContent>

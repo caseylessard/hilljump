@@ -280,8 +280,8 @@ export const warmGlobalCache = async () => {
     await Promise.allSettled([
       getCachedGlobalPrices(tickers.slice(100)), // Remaining ETFs
       getCachedGlobalDistributions(tickers),
-      getCachedGlobalHistoricalPrices(tickers.slice(0, 50)), // Top 50 for historical
-      getCachedGlobalDRIP(tickers.slice(0, 50)) // Top 50 for DRIP
+      getCachedGlobalHistoricalPrices(tickers.slice(0, 200)), // Top 200 for historical (increased from 50)
+      getCachedGlobalDRIP(tickers.slice(0, 100)) // Top 100 for DRIP (increased from 50)
     ]);
     
     console.log('✅ Global cache warmed successfully with progressive loading');
