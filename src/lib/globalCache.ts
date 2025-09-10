@@ -66,13 +66,6 @@ const pricePromiseCache = new Map<string, Promise<Record<string, any>>>();
 export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<string, any>> => {
   const cacheKey = `global-prices-${tickers.sort().join(',')}`;
   
-  // Check memory cache first
-  const cached = getFromGlobalCache<Record<string, any>>(cacheKey);
-  if (cached) {
-    console.log('📋 Using cached prices:', Object.keys(cached).length, 'ETFs');
-    return cached;
-  }
-
   // Check if we're already fetching this data
   if (pricePromiseCache.has(cacheKey)) {
     console.log('⏳ Deduplicating price fetch request');
@@ -81,11 +74,10 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
 
   // Create and cache the promise
   const fetchPromise = (async () => {
-    console.log('🔄 Fetching fresh price data for', tickers.length, 'tickers...');
+    console.log('🔄 Loading prices for', tickers.length, 'tickers from database...');
     
     try {
-      // First try database prices
-      console.log('📊 Querying database for prices...');
+      // Always start with database prices for instant loading
       const { data: dbPrices, error: dbError } = await supabase
         .from('etfs')
         .select('ticker, current_price, price_updated_at')
@@ -94,10 +86,9 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
 
       if (dbError) {
         console.error('❌ Database price fetch error:', dbError);
+        return {};
       }
 
-      console.log('📊 Database returned', dbPrices?.length || 0, 'price records out of', tickers.length, 'requested');
-      
       const prices: Record<string, any> = {};
       let dbPriceCount = 0;
       
@@ -112,23 +103,20 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
         }
       });
       
-      console.log('💰 Processed', dbPriceCount, 'valid database prices');
+      console.log(`✅ Loaded ${dbPriceCount} prices from database (${Math.round(dbPriceCount/tickers.length*100)}% coverage)`);
 
-      // If we have less than 50% of prices from DB, try live fetch
-      if (dbPriceCount < tickers.length * 0.5) {
-        console.log('🔴 Low database price coverage, fetching live prices...');
+      // Only fetch live prices if we have very low coverage (<25%)
+      if (dbPriceCount < tickers.length * 0.25) {
+        console.log('🔴 Very low database coverage, fetching live prices...');
         try {
           const { data: liveData, error: liveError } = await supabase.functions.invoke('quotes', {
-            body: { tickers }
+            body: { tickers: tickers.filter(t => !prices[t]) }
           });
 
-          if (liveError) {
-            console.error('❌ Live price fetch error:', liveError);
-          } else if (liveData?.prices) {
-            console.log('📈 Live price service returned', Object.keys(liveData.prices).length, 'prices');
+          if (!liveError && liveData?.prices) {
             let liveCount = 0;
             Object.entries(liveData.prices).forEach(([ticker, price]) => {
-              if (typeof price === 'number' && price > 0) {
+              if (typeof price === 'number' && price > 0 && !prices[ticker]) {
                 prices[ticker] = {
                   price,
                   source: 'live',
@@ -137,21 +125,13 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
                 liveCount++;
               }
             });
-            console.log('💰 Added', liveCount, 'live prices');
+            console.log('📈 Added', liveCount, 'live prices');
           }
         } catch (liveError) {
           console.error('❌ Live price fetch failed:', liveError);
         }
       }
 
-      const finalPriceCount = Object.keys(prices).length;
-      console.log(`💾 Caching ${finalPriceCount} prices for ${tickers.length} tickers (${Math.round(finalPriceCount/tickers.length*100)}% coverage)`);
-      
-      if (finalPriceCount === 0) {
-        console.warn('⚠️ NO PRICES FETCHED! This will cause rendering issues.');
-      }
-      
-      setGlobalCache(cacheKey, prices);
       return prices;
     } catch (error) {
       console.error('❌ getCachedGlobalPrices failed:', error);
