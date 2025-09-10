@@ -259,9 +259,9 @@ export const getCachedGlobalHistoricalPrices = async (tickers: string[]): Promis
   }
 };
 
-// Warm all caches (called by Ranking page)
+// Enhanced cache warming with progressive loading strategy
 export const warmGlobalCache = async () => {
-  console.log('🔥 Warming global cache...');
+  console.log('🔥 Warming global cache with progressive loading...');
   
   try {
     // Clear expired entries first
@@ -271,16 +271,47 @@ export const warmGlobalCache = async () => {
     const etfs = await getCachedGlobalETFs();
     const tickers = etfs.map((etf: any) => etf.ticker);
     
-    // Warm all other caches in parallel
+    // Progressive loading: warm most critical data first
+    console.log('🔥 Phase 1: Loading critical price data...');
+    await getCachedGlobalPrices(tickers.slice(0, 100)); // Top 100 ETFs first
+    
+    console.log('🔥 Phase 2: Loading remaining data in parallel...');
+    // Warm all other caches in parallel, with remaining tickers
     await Promise.allSettled([
-      getCachedGlobalPrices(tickers),
+      getCachedGlobalPrices(tickers.slice(100)), // Remaining ETFs
       getCachedGlobalDistributions(tickers),
-      getCachedGlobalHistoricalPrices(tickers),
-      getCachedGlobalDRIP(tickers)
+      getCachedGlobalHistoricalPrices(tickers.slice(0, 50)), // Top 50 for historical
+      getCachedGlobalDRIP(tickers.slice(0, 50)) // Top 50 for DRIP
     ]);
     
-    console.log('✅ Global cache warmed successfully');
+    console.log('✅ Global cache warmed successfully with progressive loading');
   } catch (error) {
     console.error('❌ Cache warming failed:', error);
+  }
+};
+
+// Selective cache warming for specific data types
+export const warmSpecificCache = async (type: 'prices' | 'distributions' | 'historical' | 'drip', tickers?: string[]) => {
+  try {
+    const targetTickers = tickers || (await getCachedGlobalETFs()).map((etf: any) => etf.ticker);
+    
+    switch (type) {
+      case 'prices':
+        await getCachedGlobalPrices(targetTickers);
+        break;
+      case 'distributions':
+        await getCachedGlobalDistributions(targetTickers);
+        break;
+      case 'historical':
+        await getCachedGlobalHistoricalPrices(targetTickers);
+        break;
+      case 'drip':
+        await getCachedGlobalDRIP(targetTickers);
+        break;
+    }
+    
+    console.log(`✅ Warmed ${type} cache for ${targetTickers.length} tickers`);
+  } catch (error) {
+    console.error(`❌ Failed to warm ${type} cache:`, error);
   }
 };

@@ -25,21 +25,18 @@ export const useRankingHistory = (tickers: string[]) => {
       previousWeekDate.setDate(previousWeekDate.getDate() - 7);
       const previousWeekStr = previousWeekDate.toISOString().split('T')[0];
 
-      // Fetch rankings for current and previous week
-      const { data: currentRankings, error: currentError } = await supabase
+      // Fetch rankings for both weeks in a single query for better performance
+      const { data: allRankings, error } = await supabase
         .from('etf_rankings')
-        .select('ticker, rank_position')
-        .eq('week_date', currentWeekStr)
+        .select('ticker, rank_position, week_date')
+        .in('week_date', [currentWeekStr, previousWeekStr])
         .in('ticker', tickers);
 
-      const { data: previousRankings, error: previousError } = await supabase
-        .from('etf_rankings')
-        .select('ticker, rank_position')
-        .eq('week_date', previousWeekStr)
-        .in('ticker', tickers);
+      if (error) throw error;
 
-      if (currentError) throw currentError;
-      if (previousError) throw previousError;
+      // Group rankings by week
+      const currentRankings = allRankings?.filter(r => r.week_date === currentWeekStr) || [];
+      const previousRankings = allRankings?.filter(r => r.week_date === previousWeekStr) || [];
 
       // Create lookup maps
       const currentMap = new Map(currentRankings?.map(r => [r.ticker, r.rank_position]) ?? []);

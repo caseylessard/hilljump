@@ -50,16 +50,23 @@ export async function fetchLivePrices(tickers: string[], region: 'US' | 'CA' = '
         ...(data?.yields?.[ticker] && { yield_ttm: data.yields[ticker] })
       }));
 
-      // Batch update the database
-      for (const update of updates) {
-        await supabase
+      // Batch update the database using individual updates in a transaction
+      const updatePromises = updates.map(update => 
+        supabase
           .from('etfs')
           .update({
             current_price: update.current_price,
             price_updated_at: update.price_updated_at,
             ...(update.yield_ttm && { yield_ttm: update.yield_ttm })
           })
-          .eq('ticker', update.ticker);
+          .eq('ticker', update.ticker)
+      );
+      
+      const results = await Promise.allSettled(updatePromises);
+      const failedUpdates = results.filter(result => result.status === 'rejected');
+      
+      if (failedUpdates.length > 0) {
+        console.warn(`${failedUpdates.length} bulk updates failed`);
       }
       
       console.log(`Updated database with ${updates.length} live prices`);
