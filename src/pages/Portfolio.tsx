@@ -43,23 +43,25 @@ const Portfolio = () => {
   // Fetch bulk ETF data using same source as optimized table
   const { data: etfData = {}, isLoading: etfsLoading } = useBulkETFData(allTickersData);
   
-  // Convert to ETF format compatible with AI portfolio
-  const etfs = Object.values(etfData).map((etf: any) => ({
-    ...etf,
-    totalReturn1Y: etf.total_return_1y,
-    yieldTTM: etf.yield_ttm,
-    avgVolume: etf.avg_volume,
-    expenseRatio: etf.expense_ratio,
-    volatility1Y: etf.volatility_1y,
-    maxDrawdown1Y: etf.max_drawdown_1y,
-    current_price: etf.current_price,
-    strategyLabel: etf.strategy_label,
-    logoKey: etf.logo_key,
-    dataSource: etf.data_source,
-    polygonSupported: etf.polygon_supported,
-    twelveSymbol: etf.twelve_symbol,
-    eodhSymbol: etf.eodhd_symbol
-  }));
+  // Convert to ETF format compatible with AI portfolio - memoized to prevent infinite loops
+  const etfs = useMemo(() => {
+    return Object.values(etfData).map((etf: any) => ({
+      ...etf,
+      totalReturn1Y: etf.total_return_1y,
+      yieldTTM: etf.yield_ttm,
+      avgVolume: etf.avg_volume,
+      expenseRatio: etf.expense_ratio,
+      volatility1Y: etf.volatility_1y,
+      maxDrawdown1Y: etf.max_drawdown_1y,
+      current_price: etf.current_price,
+      strategyLabel: etf.strategy_label,
+      logoKey: etf.logo_key,
+      dataSource: etf.data_source,
+      polygonSupported: etf.polygon_supported,
+      twelveSymbol: etf.twelve_symbol,
+      eodhSymbol: etf.eodhd_symbol
+    }));
+  }, [etfData]);
   
   const { data: prices = {} } = useCachedPrices(etfs.map(e => e.ticker));
 
@@ -80,7 +82,7 @@ const Portfolio = () => {
   const [resolvedPortfolio, setResolvedPortfolio] = useState<AIPortfolioETF[]>([]);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
 
-  // Effect to build portfolio - moved async logic here to prevent infinite loops
+  // Effect to build portfolio - with stable dependencies to prevent loops
   useEffect(() => {
     let isCancelled = false;
     
@@ -139,7 +141,7 @@ const Portfolio = () => {
     return () => {
       isCancelled = true;
     };
-  }, [etfs, prices, preferences, portfolioSize]);
+  }, [etfs, prices, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minTradingDays, portfolioSize]);
 
   // Portfolio allocations are now calculated within the AI portfolio builder
   const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
