@@ -66,6 +66,13 @@ const pricePromiseCache = new Map<string, Promise<Record<string, any>>>();
 export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<string, any>> => {
   const cacheKey = `global-prices-${tickers.sort().join(',')}`;
   
+  // Check memory cache first
+  const cached = getFromGlobalCache<Record<string, any>>(cacheKey);
+  if (cached) {
+    console.log('📋 Using cached prices:', Object.keys(cached).length, 'ETFs');
+    return cached;
+  }
+
   // Check if we're already fetching this data
   if (pricePromiseCache.has(cacheKey)) {
     console.log('⏳ Deduplicating price fetch request');
@@ -132,6 +139,10 @@ export const getCachedGlobalPrices = async (tickers: string[]): Promise<Record<s
         }
       }
 
+      const finalPriceCount = Object.keys(prices).length;
+      console.log(`💾 Caching ${finalPriceCount} prices for ${tickers.length} tickers (${Math.round(finalPriceCount/tickers.length*100)}% coverage)`);
+      
+      setGlobalCache(cacheKey, prices);
       return prices;
     } catch (error) {
       console.error('❌ getCachedGlobalPrices failed:', error);
