@@ -92,8 +92,8 @@ const Ranking = () => {
     setTaxRate(isCA ? 15 : 0);
   }, [profile?.country]);
 
-  // Get tickers for price and DRIP data
-  const tickers = etfs.map(e => e.ticker);
+  // Get tickers for price and DRIP data - memoized to prevent infinite loops
+  const tickers = useMemo(() => etfs.map(e => e.ticker), [etfs]);
   
   // Use proper hooks for cached data that loads prices first
   const { data: cachedPrices = {}, isLoading: pricesLoading } = useCachedPrices(tickers);
@@ -131,7 +131,7 @@ const Ranking = () => {
     
     // Score with available price and DRIP data
     return scoreETFs(etfs, weights, priceData, dripData || {});
-  }, [etfs, weights, cachedPrices, cachedRanking, dripData]);
+  }, [etfs, weights, cachedPrices, dripData]);
 
   
   const filtered: ScoredETF[] = useMemo(() => {
@@ -197,12 +197,11 @@ const Ranking = () => {
 
   // Load distributions separately (prices now handled by hook)
   useEffect(() => {
-    if (!etfs.length) return;
+    if (!tickers.length) return;
     let cancelled = false;
 
     const loadDistributions = async () => {
       try {
-        const tickers = etfs.map(e => e.ticker);
         console.log('📦 Loading distributions...');
         
         const distributionsData = await fetchLatestDistributions(tickers);
@@ -224,7 +223,7 @@ const Ranking = () => {
 
     loadDistributions();
     return () => { cancelled = true; };
-  }, [etfs]);
+  }, [tickers]);
 
   // Update loading progress when prices are loaded
   useEffect(() => {
