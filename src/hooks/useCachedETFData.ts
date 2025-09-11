@@ -171,8 +171,12 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
       return getCachedGlobalDRIP(tickers, taxPreferences);
     },
     enabled: tickers.length > 0,
-    staleTime: 24 * 60 * 60 * 1000, // 1 day cache
+    staleTime: 5 * 60 * 1000, // 5 minutes - show cached data quickly
+    gcTime: 24 * 60 * 60 * 1000, // Keep in memory for 1 day
+    placeholderData: (previousData) => previousData, // Show stale data while loading
     refetchOnMount: false, // Don't auto-refetch on mount
-    refetchOnWindowFocus: false // Don't auto-refetch on focus
+    refetchOnWindowFocus: false, // Don't auto-refetch on focus
+    refetchInterval: 30 * 60 * 1000, // Background refresh every 30 minutes
+    refetchIntervalInBackground: true // Keep refreshing in background
   });
 };
