@@ -54,38 +54,59 @@ export function scoreETFsWithPrefs(
   
   const returns1y = data.map(d => safe(d.totalReturn1Y, 0));
   
-  // DRIP perf (prefer cached, then live; else approximate from 1y)
+  // DRIP perf (prefer cached, then live; else approximate from 1y or yield)
   const drip4w = data.map((d, i) => {
     const cachedDrip = dripData?.[d.ticker];
-    if (cachedDrip && typeof cachedDrip.drip4wPercent === 'number') {
+    if (cachedDrip && typeof cachedDrip.drip4wPercent === 'number' && cachedDrip.drip4wPercent !== 0) {
       return cachedDrip.drip4wPercent;
     }
     const lp = live?.[d.ticker];
-    return safe(lp?.drip4wPercent, approxPeriodFromAnnual(returns1y[i], 28));
+    if (lp?.drip4wPercent) return safe(lp.drip4wPercent, 0);
+    
+    // Fallback: if no DRIP data and no 1Y returns, estimate from yield
+    const fallback = returns1y[i] !== 0 
+      ? approxPeriodFromAnnual(returns1y[i], 28)
+      : (safe(d.yieldTTM, 0) * (28/365)); // Yield-based estimate
+    return safe(fallback, 0);
   });
   const drip13w = data.map((d, i) => {
     const cachedDrip = dripData?.[d.ticker];
-    if (cachedDrip && typeof cachedDrip.drip13wPercent === 'number') {
+    if (cachedDrip && typeof cachedDrip.drip13wPercent === 'number' && cachedDrip.drip13wPercent !== 0) {
       return cachedDrip.drip13wPercent;
     }
     const lp = live?.[d.ticker];
-    return safe(lp?.drip13wPercent, approxPeriodFromAnnual(returns1y[i], 91));
+    if (lp?.drip13wPercent) return safe(lp.drip13wPercent, 0);
+    
+    const fallback = returns1y[i] !== 0 
+      ? approxPeriodFromAnnual(returns1y[i], 91)
+      : (safe(d.yieldTTM, 0) * (91/365));
+    return safe(fallback, 0);
   });
   const drip26w = data.map((d, i) => {
     const cachedDrip = dripData?.[d.ticker];
-    if (cachedDrip && typeof cachedDrip.drip26wPercent === 'number') {
+    if (cachedDrip && typeof cachedDrip.drip26wPercent === 'number' && cachedDrip.drip26wPercent !== 0) {
       return cachedDrip.drip26wPercent;
     }
     const lp = live?.[d.ticker];
-    return safe(lp?.drip26wPercent, approxPeriodFromAnnual(returns1y[i], 182));
+    if (lp?.drip26wPercent) return safe(lp.drip26wPercent, 0);
+    
+    const fallback = returns1y[i] !== 0 
+      ? approxPeriodFromAnnual(returns1y[i], 182)
+      : (safe(d.yieldTTM, 0) * (182/365));
+    return safe(fallback, 0);
   });
   const drip52w = data.map((d, i) => {
     const cachedDrip = dripData?.[d.ticker];
-    if (cachedDrip && typeof cachedDrip.drip52wPercent === 'number') {
+    if (cachedDrip && typeof cachedDrip.drip52wPercent === 'number' && cachedDrip.drip52wPercent !== 0) {
       return cachedDrip.drip52wPercent;
     }
     const lp = live?.[d.ticker];
-    return safe(lp?.drip52wPercent, approxPeriodFromAnnual(returns1y[i], 365));
+    if (lp?.drip52wPercent) return safe(lp.drip52wPercent, 0);
+    
+    const fallback = returns1y[i] !== 0 
+      ? approxPeriodFromAnnual(returns1y[i], 365)
+      : safe(d.yieldTTM, 0); // Full yield for 52w
+    return safe(fallback, 0);
   });
 
   const scored = data.map((d, i) => {

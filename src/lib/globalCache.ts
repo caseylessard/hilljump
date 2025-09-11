@@ -213,23 +213,44 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
       row.period_4w || row.period_13w || row.period_26w || row.period_52w
     );
     
+    console.log(`📊 DRIP Cache Check: ${data?.length || 0} records, ${hasValidData ? 'HAS' : 'MISSING'} valid data`);
+    
+    let finalData = data; // Use a mutable variable
+    
     if (!hasValidData && tickers.length > 0) {
       console.log('🚨 DRIP cache empty, triggering fallback calculation...');
       try {
         const taxCountry = (taxPreferences?.country === 'CA' && taxPreferences?.enabled) ? 'CA' : 'US';
-        await supabase.functions.invoke('calculate-drip-fallback', {
-          body: { tickers: tickers.slice(0, 10), taxCountry } // Limit to 10 for rate limiting
+        console.log(`📊 Triggering fallback for ${tickers.slice(0, 10).join(', ')}`);
+        
+        const response = await supabase.functions.invoke('calculate-drip-fallback', {
+          body: { tickers: tickers.slice(0, 10), taxCountry }
         });
-        console.log('✅ Fallback calculation triggered');
+        
+        console.log('✅ Fallback response:', response);
+        
+        if (response.data?.success) {
+          // Refetch the data after calculation
+          console.log('🔄 Refetching DRIP data after fallback calculation...');
+          const { data: freshData } = await supabase
+            .from(tableName)
+            .select('ticker, period_4w, period_13w, period_26w, period_52w, updated_at')
+            .in('ticker', tickers);
+          
+          if (freshData && freshData.some(row => row.period_4w || row.period_13w || row.period_26w || row.period_52w)) {
+            console.log('✅ Fresh DRIP data available after fallback');
+            finalData = freshData; // Use fresh data
+          }
+        }
       } catch (fallbackError) {
         console.warn('⚠️ Fallback calculation failed:', fallbackError);
       }
     }
     
-    console.log(`📊 DRIP Debug - Raw data sample:`, data?.slice(0, 2));
+    console.log(`📊 DRIP Debug - Raw data sample:`, finalData?.slice(0, 2));
     
     const result: Record<string, any> = {};
-    data?.forEach(row => {
+    finalData?.forEach(row => {
       // Debug the actual structure
       if (Math.random() < 0.1) {
         console.log('🔍 DRIP Row Debug:', {

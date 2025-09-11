@@ -217,6 +217,13 @@ export const SimpleETFTable = ({ items, live = {}, distributions = {} }: Props) 
                         {lp.drip4wPercent >= 0 ? "+" : ""}{lp.drip4wPercent.toFixed(1)}%
                       </span>
                     </div>
+                  ) : etf.yieldTTM ? (
+                    <div className="inline-flex flex-col items-end leading-tight text-muted-foreground">
+                      <span>est.</span>
+                      <span className="text-xs">
+                        +{((etf.yieldTTM * (28/365))).toFixed(1)}%
+                      </span>
+                    </div>
                   ) : '—'}
                 </TableCell>
                 <TableCell className="text-right">
@@ -225,6 +232,13 @@ export const SimpleETFTable = ({ items, live = {}, distributions = {} }: Props) 
                       <span>+${Math.abs(lp.drip13wDollar || 0).toFixed(3)}</span>
                       <span className={lp.drip13wPercent >= 0 ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
                         {lp.drip13wPercent >= 0 ? "+" : ""}{lp.drip13wPercent.toFixed(1)}%
+                      </span>
+                    </div>
+                  ) : etf.yieldTTM ? (
+                    <div className="inline-flex flex-col items-end leading-tight text-muted-foreground">
+                      <span>est.</span>
+                      <span className="text-xs">
+                        +{((etf.yieldTTM * (91/365))).toFixed(1)}%
                       </span>
                     </div>
                   ) : '—'}
@@ -237,6 +251,13 @@ export const SimpleETFTable = ({ items, live = {}, distributions = {} }: Props) 
                         {lp.drip26wPercent >= 0 ? "+" : ""}{lp.drip26wPercent.toFixed(1)}%
                       </span>
                     </div>
+                  ) : etf.yieldTTM ? (
+                    <div className="inline-flex flex-col items-end leading-tight text-muted-foreground">
+                      <span>est.</span>
+                      <span className="text-xs">
+                        +{((etf.yieldTTM * (182/365))).toFixed(1)}%
+                      </span>
+                    </div>
                   ) : '—'}
                 </TableCell>
                 <TableCell className="text-right">
@@ -245,6 +266,13 @@ export const SimpleETFTable = ({ items, live = {}, distributions = {} }: Props) 
                       <span>+${Math.abs(lp.drip52wDollar || 0).toFixed(3)}</span>
                       <span className={lp.drip52wPercent >= 0 ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
                         {lp.drip52wPercent >= 0 ? "+" : ""}{lp.drip52wPercent.toFixed(1)}%
+                      </span>
+                    </div>
+                  ) : etf.yieldTTM ? (
+                    <div className="inline-flex flex-col items-end leading-tight text-muted-foreground">
+                      <span>est.</span>
+                      <span className="text-xs">
+                        +{etf.yieldTTM.toFixed(1)}%
                       </span>
                     </div>
                   ) : '—'}
