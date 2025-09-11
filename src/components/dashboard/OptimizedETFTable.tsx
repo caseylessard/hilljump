@@ -27,6 +27,7 @@ type Props = {
   allowSorting?: boolean;
   cachedDripData?: Record<string, any>;
   originalRanking?: ScoredETF[];
+  persistentRanking?: Array<{ticker: string, rank: number, score: number, updatedAt: number}>;
 };
 
 // Memoized components for performance
@@ -149,7 +150,8 @@ export const OptimizedETFTable = ({
   distributions = {}, 
   allowSorting = true, 
   cachedDripData = {}, 
-  originalRanking = [] 
+  originalRanking = [],
+  persistentRanking = []
 }: Props) => {
   // Performance monitoring
   const { getPerformanceReport } = usePerformanceMonitor('OptimizedETFTable');
@@ -180,6 +182,12 @@ export const OptimizedETFTable = ({
       const scoreA = (a.compositeScore || 0);
       const scoreB = (b.compositeScore || 0);
       return scoreB - scoreA; // Highest score first
+    });
+    
+    // Use persistent ranking for consistent rank display
+    const persistentRankMap = new Map<string, number>();
+    persistentRanking.forEach(item => {
+      persistentRankMap.set(item.ticker, item.rank);
     });
     
     const scoreRankMap = new Map<string, number>();
@@ -224,6 +232,7 @@ export const OptimizedETFTable = ({
     
     return {
       originalRankMap,
+      persistentRankMap,
       scoreRankMap,
       getDripPercent,
       getDripSum,
@@ -524,7 +533,7 @@ export const OptimizedETFTable = ({
               >
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono">{lookupTables.scoreRankMap.get(etf.ticker) || idx + 1}</span>
+                    <span className="font-mono">{lookupTables.persistentRankMap.get(etf.ticker) || lookupTables.scoreRankMap.get(etf.ticker) || idx + 1}</span>
                     <RankingChangeIndicator ticker={etf.ticker} changes={rankingChanges} />
                   </div>
                 </TableCell>

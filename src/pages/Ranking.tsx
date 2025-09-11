@@ -38,7 +38,8 @@ const loadCachedState = () => {
         weights: parsed.weights || { return: 0.6, yield: 0.2, risk: 0.2 },
         filter: parsed.filter || "All ETFs",
         cachedRanking: parsed.cachedRanking || null,
-        lastRankingUpdate: parsed.lastRankingUpdate || null
+        lastRankingUpdate: parsed.lastRankingUpdate || null,
+        persistentRanking: parsed.persistentRanking || [] // New: persistent score-based ranking
       };
     }
   } catch (e) {
@@ -48,8 +49,17 @@ const loadCachedState = () => {
     weights: { return: 0.6, yield: 0.2, risk: 0.2 },
     filter: "All ETFs",
     cachedRanking: null,
-    lastRankingUpdate: null
+    lastRankingUpdate: null,
+    persistentRanking: []
   };
+};
+
+const saveCachedState = (state: any) => {
+  try {
+    localStorage.setItem('ranking-state', JSON.stringify(state));
+  } catch (e) {
+    console.warn('Failed to save ranking state:', e);
+  }
 };
 
 const cachedState = loadCachedState();
@@ -63,6 +73,7 @@ const Ranking = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [cachedRanking, setCachedRanking] = useState<ScoredETF[]>(cachedState.cachedRanking || []);
+  const [persistentRanking, setPersistentRanking] = useState(cachedState.persistentRanking || []);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loadingProgress, setLoadingProgress] = useState({
@@ -148,9 +159,33 @@ const Ranking = () => {
     // Sort by composite score (highest first)
     const sortedETFs = scoredETFs.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
     
+    // Check if we have valid scores (non-zero)
+    const hasValidScores = sortedETFs.some(etf => (etf.compositeScore || 0) > 0);
+    
+    if (hasValidScores) {
+      // Update persistent ranking only when we have valid scores
+      const newPersistentRanking = sortedETFs.map((etf, index) => ({
+        ticker: etf.ticker,
+        rank: index + 1,
+        score: etf.compositeScore || 0,
+        updatedAt: Date.now()
+      }));
+      
+      const newState = {
+        ...cachedState,
+        persistentRanking: newPersistentRanking,
+        lastRankingUpdate: Date.now()
+      };
+      saveCachedState(newState);
+      
+      console.log(`✅ Updated persistent ranking with ${newPersistentRanking.length} valid scores`);
+    } else {
+      console.log('📋 Using existing persistent ranking - no valid scores found');
+    }
+    
     console.log(`✅ Ranked ${sortedETFs.length} ETFs using stored scores with RSI positions`);
     return sortedETFs;
-  }, [etfs, storedScores, cachedPrices, dripData, rsiSignals]);
+  }, [etfs, storedScores, cachedPrices, dripData, rsiSignals, cachedState]);
 
   
   const filtered: ScoredETF[] = useMemo(() => {
@@ -491,6 +526,7 @@ const Ranking = () => {
             distributions={distributions}
             cachedDripData={dripData || {}}
             originalRanking={ranked}
+            persistentRanking={persistentRanking}
             allowSorting={isSubscribed || isAdmin}
           />
         </section>
