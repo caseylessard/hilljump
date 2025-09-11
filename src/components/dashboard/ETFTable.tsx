@@ -258,22 +258,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   // Sorting state and helpers with localStorage persistence
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "score" | "signal";
   
-  // Initialize from localStorage or use score as default
+  // Always default to score sorting - clear any old localStorage preferences
   const getInitialSort = (): { key: SortKey; dir: "asc" | "desc" } => {
-    try {
-      const stored = localStorage.getItem("etf-table-sort");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Validate the stored values
-        if (parsed.key && parsed.dir && 
-            ["rank", "ticker", "price", "lastDist", "nextDist", "drip4w", "drip13w", "drip26w", "drip52w", "score", "signal"].includes(parsed.key) &&
-            ["asc", "desc"].includes(parsed.dir)) {
-          return { key: parsed.key as SortKey, dir: parsed.dir as "asc" | "desc" };
-        }
-      }
-    } catch (e) {
-      // Ignore localStorage errors
-    }
+    localStorage.removeItem("etf-table-sort");
     // Default to score (DRIP sum) in descending order - highest scores first
     return { key: "score", dir: "desc" };
   };

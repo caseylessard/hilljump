@@ -280,19 +280,8 @@ export const OptimizedETFTable = ({
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "score" | "signal";
   
   const getInitialSort = (): { key: SortKey; dir: "asc" | "desc" } => {
-    try {
-      const stored = localStorage.getItem("etf-table-sort");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.key && parsed.dir && 
-            ["rank", "ticker", "price", "lastDist", "nextDist", "drip4w", "drip13w", "drip26w", "drip52w", "score", "signal"].includes(parsed.key) &&
-            ["asc", "desc"].includes(parsed.dir)) {
-          return { key: parsed.key as SortKey, dir: parsed.dir as "asc" | "desc" };
-        }
-      }
-    } catch (e) {
-      // Ignore localStorage errors
-    }
+    // Always default to score sorting - clear any old localStorage preferences
+    localStorage.removeItem("etf-table-sort");
     return { key: "score", dir: "desc" };
   };
   
