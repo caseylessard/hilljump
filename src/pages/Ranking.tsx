@@ -110,25 +110,20 @@ const Ranking = () => {
     // Use the cached prices from the hook
     const priceData = cachedPrices;
     
-    // CACHING TEMPORARILY DISABLED FOR TESTING NEW SCORING MODEL
-    // Always recalculate when DRIP data changes to ensure tax preference updates
     // Use cached ranking if it's recent, no new price data, and no DRIP data changes
     const now = Date.now();
     const cacheAge = cachedState.lastRankingUpdate ? now - cachedState.lastRankingUpdate : Infinity;
-    const isCacheRecent = cacheAge < 15 * 60 * 1000; // 15 minutes
+    const isCacheRecent = cacheAge < 60 * 60 * 1000; // 1 hour cache
     const hasNewPriceData = Object.keys(priceData).length > 0;
     const hasDripData = dripData && Object.keys(dripData).length > 0;
     
-    // Clear localStorage cache for testing
-    localStorage.removeItem('ranking-state');
-    console.log('🧹 Cleared localStorage cache for testing new scoring model');
+    // Check if we can use cached ranking
+    if (isCacheRecent && cachedRanking.length > 0) {
+      console.log('📋 Using cached ranking (age:', Math.round(cacheAge / 1000 / 60), 'minutes)');
+      return cachedRanking;
+    }
     
-    // CACHE CHECK DISABLED - Always recalculate to test new Ladder-Delta Trend model
-    // if (isCacheRecent && !hasNewPriceData && !hasDripData && cachedRanking.length > 0) {
-    //   return cachedRanking;
-    // }
-    
-    console.log('🧮 Recalculating rankings with NEW Ladder-Delta Trend model');
+    console.log('🧮 Recalculating rankings - cache expired or empty');
     
     // Score with available price and DRIP data
     return scoreETFs(etfs, weights, priceData, dripData || {});
