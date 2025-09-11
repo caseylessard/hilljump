@@ -208,6 +208,24 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
       return {};
     }
     
+    // Check if cache is empty or stale - trigger fallback calculation
+    const hasValidData = data?.some(row => 
+      row.period_4w || row.period_13w || row.period_26w || row.period_52w
+    );
+    
+    if (!hasValidData && tickers.length > 0) {
+      console.log('🚨 DRIP cache empty, triggering fallback calculation...');
+      try {
+        const taxCountry = (taxPreferences?.country === 'CA' && taxPreferences?.enabled) ? 'CA' : 'US';
+        await supabase.functions.invoke('calculate-drip-fallback', {
+          body: { tickers: tickers.slice(0, 10), taxCountry } // Limit to 10 for rate limiting
+        });
+        console.log('✅ Fallback calculation triggered');
+      } catch (fallbackError) {
+        console.warn('⚠️ Fallback calculation failed:', fallbackError);
+      }
+    }
+    
     console.log(`📊 DRIP Debug - Raw data sample:`, data?.slice(0, 2));
     
     const result: Record<string, any> = {};
