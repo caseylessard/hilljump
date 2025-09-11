@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { ScoredETF, scoreETFs } from '@/lib/scoring';
 import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedDRIP, useCachedStoredScores } from '@/hooks/useCachedETFData';
+import { useBulkRSISignals } from '@/hooks/useBulkETFData';
 import { Distribution, fetchLatestDistributions } from '@/lib/dividends';
 import { saveCurrentRankings } from '@/hooks/useRankingHistory';
 import { getETFs } from '@/lib/db';
@@ -104,6 +105,9 @@ const Ranking = () => {
     enabled: taxEnabled, 
     rate: taxRate / 100 
   });
+  
+  // Get RSI signals for trend indicators
+  const { data: rsiSignals = {} } = useBulkRSISignals(tickers);
 
   const ranked: ScoredETF[] = useMemo(() => {
     if (etfs.length === 0) return [];
@@ -113,6 +117,21 @@ const Ranking = () => {
     // Convert stored scores to ScoredETF format
     const scoredETFs: ScoredETF[] = etfs.map(etf => {
       const score = storedScores[etf.ticker];
+      const rsiData = rsiSignals[etf.ticker];
+      
+      // Determine position from RSI signals: 1=BUY, 0=HOLD, -1=SELL
+      let position: number | undefined;
+      if (rsiData?.position !== undefined) {
+        position = rsiData.position;
+      } else if (rsiData?.signal) {
+        // Fallback: convert signal string to position number
+        switch (rsiData.signal.toLowerCase()) {
+          case 'buy': position = 1; break;
+          case 'sell': position = -1; break;
+          case 'hold': position = 0; break;
+          default: position = undefined;
+        }
+      }
       
       return {
         ...etf,
@@ -121,16 +140,17 @@ const Ranking = () => {
         yieldScore: score?.yieldScore || 0,
         riskScore: score?.riskScore || 0,
         current_price: cachedPrices[etf.ticker] || etf.current_price,
-        dripData: dripData?.[etf.ticker]
+        dripData: dripData?.[etf.ticker],
+        position: position // Add position for trend indicators
       };
     });
 
     // Sort by composite score (highest first)
     const sortedETFs = scoredETFs.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
     
-    console.log(`✅ Ranked ${sortedETFs.length} ETFs using stored scores`);
+    console.log(`✅ Ranked ${sortedETFs.length} ETFs using stored scores with RSI positions`);
     return sortedETFs;
-  }, [etfs, storedScores, cachedPrices, dripData]);
+  }, [etfs, storedScores, cachedPrices, dripData, rsiSignals]);
 
   
   const filtered: ScoredETF[] = useMemo(() => {
