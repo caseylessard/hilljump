@@ -183,7 +183,34 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: an
   const cached = getFromGlobalCache<Record<string, any>>(cacheKey);
   if (cached) return cached;
 
-  console.log('🔄 Calculating fresh DRIP data...');
+  console.log('🔄 Loading DRIP data from cache...');
+  
+  try {
+    // Use the cached DRIP data from Supabase instead of calculating fresh
+    const { data, error } = await supabase.functions.invoke('get-cached-drip', {
+      body: { 
+        tickers,
+        taxPreferences: {
+          country: taxPreferences?.country || 'US',
+          enabled: taxPreferences?.enabled || false,
+          rate: taxPreferences?.rate || 0.15
+        }
+      }
+    });
+
+    if (error) throw error;
+    
+    const dripData = data?.dripData || {};
+    setGlobalCache(cacheKey, dripData);
+    return dripData;
+  } catch (error) {
+    console.error('❌ DRIP cache fetch failed:', error);
+    return {};
+  }
+};
+
+export const refreshDRIPData = async (tickers: string[], taxPreferences?: any): Promise<Record<string, any>> => {
+  console.log('🔄 Refreshing DRIP data with fresh calculations...');
   
   try {
     const { data, error } = await supabase.functions.invoke('calculate-drip', {
@@ -200,10 +227,14 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: an
     if (error) throw error;
     
     const dripData = data?.dripData || {};
+    
+    // Update cache with fresh data
+    const cacheKey = `global-drip-${tickers.sort().join(',')}-${JSON.stringify(taxPreferences)}`;
     setGlobalCache(cacheKey, dripData);
+    
     return dripData;
   } catch (error) {
-    console.error('❌ DRIP calculation failed:', error);
+    console.error('❌ DRIP refresh failed:', error);
     return {};
   }
 };

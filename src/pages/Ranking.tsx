@@ -10,7 +10,7 @@ import { ScoringControls } from '@/components/dashboard/ScoringControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { ScoredETF, scoreETFs } from '@/lib/scoring';
-import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedDRIP } from '@/hooks/useCachedETFData';
+import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedDRIP, useCachedStoredScores } from '@/hooks/useCachedETFData';
 import { Distribution, fetchLatestDistributions } from '@/lib/dividends';
 import { saveCurrentRankings } from '@/hooks/useRankingHistory';
 import { getETFs } from '@/lib/db';
@@ -18,7 +18,7 @@ import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
-import { RefreshButton } from '@/components/RefreshButton';
+import { RefreshDataButton } from '@/components/RefreshDataButton';
 import { LoadingProgress } from '@/components/LoadingProgress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -93,10 +93,11 @@ const Ranking = () => {
     setTaxRate(isCA ? 15 : 0);
   }, [profile?.country]);
 
-  // Get tickers for price and DRIP data - memoized to prevent infinite loops
+  // Get tickers for data queries - memoized to prevent infinite loops
   const tickers = useMemo(() => etfs.map(e => e.ticker), [etfs]);
   
-  // Use proper hooks for cached data that loads prices first
+  // Use stored scores by default for fast loading
+  const { data: storedScores = {}, isLoading: scoresLoading } = useCachedStoredScores(tickers, weights, taxCountry);
   const { data: cachedPrices = {}, isLoading: pricesLoading } = useCachedPrices(tickers);
   const { data: dripData } = useCachedDRIP(tickers, { 
     country: taxCountry, 
@@ -107,27 +108,29 @@ const Ranking = () => {
   const ranked: ScoredETF[] = useMemo(() => {
     if (etfs.length === 0) return [];
     
-    // Use the cached prices from the hook
-    const priceData = cachedPrices;
+    console.log('📊 Building ETF rankings from stored scores...');
     
-    // Use cached ranking if it's recent, no new price data, and no DRIP data changes
-    const now = Date.now();
-    const cacheAge = cachedState.lastRankingUpdate ? now - cachedState.lastRankingUpdate : Infinity;
-    const isCacheRecent = cacheAge < 60 * 60 * 1000; // 1 hour cache
-    const hasNewPriceData = Object.keys(priceData).length > 0;
-    const hasDripData = dripData && Object.keys(dripData).length > 0;
+    // Convert stored scores to ScoredETF format
+    const scoredETFs: ScoredETF[] = etfs.map(etf => {
+      const score = storedScores[etf.ticker];
+      
+      return {
+        ...etf,
+        compositeScore: score?.compositeScore || 0,
+        returnScore: score?.returnScore || 0,
+        yieldScore: score?.yieldScore || 0,
+        riskScore: score?.riskScore || 0,
+        current_price: cachedPrices[etf.ticker] || etf.current_price,
+        dripData: dripData?.[etf.ticker]
+      };
+    });
+
+    // Sort by composite score (highest first)
+    const sortedETFs = scoredETFs.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
     
-    // Check if we can use cached ranking
-    if (isCacheRecent && cachedRanking.length > 0) {
-      console.log('📋 Using cached ranking (age:', Math.round(cacheAge / 1000 / 60), 'minutes)');
-      return cachedRanking;
-    }
-    
-    console.log('🧮 Recalculating rankings - cache expired or empty');
-    
-    // Score with available price and DRIP data
-    return scoreETFs(etfs, weights, priceData, dripData || {});
-  }, [etfs, weights, cachedPrices, dripData]);
+    console.log(`✅ Ranked ${sortedETFs.length} ETFs using stored scores`);
+    return sortedETFs;
+  }, [etfs, storedScores, cachedPrices, dripData]);
 
   
   const filtered: ScoredETF[] = useMemo(() => {
@@ -303,7 +306,13 @@ const Ranking = () => {
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Income ETFs</h1>
           </div>
           <div className="flex justify-end">
-            <RefreshButton />
+            <RefreshDataButton 
+              type="both"
+              tickers={tickers}
+              taxPreferences={{ country: taxCountry, enabled: taxEnabled, rate: taxRate / 100 }}
+              weights={weights}
+              country={taxCountry}
+            />
           </div>
         </div>
         

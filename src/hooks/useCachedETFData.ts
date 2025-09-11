@@ -1,11 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { getCachedData, getCachedETFPrices, getCachedETFScoring, getCachedDividendData } from '@/lib/cache';
 import { 
   getCachedGlobalETFs, 
   getCachedGlobalPrices, 
   getCachedGlobalDistributions,
   getCachedGlobalDRIP,
-  getFromGlobalCache
+  getFromGlobalCache,
+  refreshDRIPData
 } from '@/lib/globalCache';
 import { fetchLatestDistributions } from '@/lib/dividends';
 import { getETFs } from '@/lib/db';
@@ -143,9 +144,27 @@ export const useCachedStoredScores = (tickers: string[], weights: any, country =
       }
     },
     enabled: tickers.length > 0,
-    staleTime: isAdmin ? 0 : 5 * 60 * 1000, // 5 minutes cache for users
-    refetchOnMount: isAdmin,
-    refetchOnWindowFocus: isAdmin,
+    staleTime: 60 * 60 * 1000, // 1 hour cache - always use stored data unless very old
+    gcTime: 24 * 60 * 60 * 1000, // Keep in memory for 1 day
+    placeholderData: (previousData) => previousData, // Show stale data while loading
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useRefreshScores = () => {
+  return useMutation({
+    mutationFn: async ({ tickers, weights, country }: { tickers: string[], weights: any, country: string }) => {
+      console.log('🔄 Triggering fresh score calculation...');
+      
+      const { data, error } = await supabase.functions.invoke('hourly-score-updater');
+      
+      if (error) {
+        throw new Error(`Score refresh failed: ${error.message}`);
+      }
+      
+      return data;
+    }
   });
 };
 
@@ -171,12 +190,27 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
       return getCachedGlobalDRIP(tickers, taxPreferences);
     },
     enabled: tickers.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes - show cached data quickly
+    staleTime: 60 * 60 * 1000, // 1 hour - prefer cached data
     gcTime: 24 * 60 * 60 * 1000, // Keep in memory for 1 day
     placeholderData: (previousData) => previousData, // Show stale data while loading
     refetchOnMount: false, // Don't auto-refetch on mount
     refetchOnWindowFocus: false, // Don't auto-refetch on focus
-    refetchInterval: 30 * 60 * 1000, // Background refresh every 30 minutes
-    refetchIntervalInBackground: true // Keep refreshing in background
+    refetchInterval: false, // Don't auto-refresh - only manual refresh
+  });
+};
+
+export const useRefreshDRIP = () => {
+  return useMutation({
+    mutationFn: async ({ tickers, taxPreferences }: { tickers: string[], taxPreferences?: any }) => {
+      console.log('🔄 Triggering fresh DRIP calculation...');
+      
+      const { data, error } = await supabase.functions.invoke('hourly-drip-updater');
+      
+      if (error) {
+        throw new Error(`DRIP refresh failed: ${error.message}`);
+      }
+      
+      return data;
+    }
   });
 };
