@@ -209,9 +209,25 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
     }
     
     // Check if cache is empty or stale - trigger fallback calculation
-    const hasValidData = data?.some(row => 
-      row.period_4w || row.period_13w || row.period_26w || row.period_52w
-    );
+    const hasValidData = data?.some(row => {
+      const parseField = (field: any) => {
+        if (!field) return null;
+        if (typeof field === 'string') {
+          try { return JSON.parse(field); } catch { return null; }
+        }
+        return field;
+      };
+      
+      const parsed4w = parseField(row.period_4w);
+      const parsed13w = parseField(row.period_13w);
+      const parsed26w = parseField(row.period_26w);  
+      const parsed52w = parseField(row.period_52w);
+      
+      return (parsed4w && parsed4w.growthPercent !== undefined) ||
+             (parsed13w && parsed13w.growthPercent !== undefined) ||
+             (parsed26w && parsed26w.growthPercent !== undefined) ||
+             (parsed52w && parsed52w.growthPercent !== undefined);
+    });
     
     console.log(`📊 DRIP Cache Check: ${data?.length || 0} records, ${hasValidData ? 'HAS' : 'MISSING'} valid data`);
     
@@ -262,12 +278,25 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
       
       // Parse structured DRIP data and convert to expected format
       const parseToLegacyFormat = (periodData: any) => {
-        if (!periodData || typeof periodData !== 'object') return null;
+        if (!periodData) return null;
+        
+        // Handle JSON strings from database
+        let parsedData = periodData;
+        if (typeof periodData === 'string') {
+          try {
+            parsedData = JSON.parse(periodData);
+          } catch (e) {
+            console.warn('Failed to parse DRIP JSON:', periodData);
+            return null;
+          }
+        }
+        
+        if (!parsedData || typeof parsedData !== 'object') return null;
         
         // Extract values from structured data
-        const growthPercent = periodData.growthPercent || 0;
-        const totalDividends = periodData.totalDividends || 0;
-        const startPrice = periodData.startPrice || 1;
+        const growthPercent = parsedData.growthPercent || 0;
+        const totalDividends = parsedData.totalDividends || 0;
+        const startPrice = parsedData.startPrice || 1;
         
         // Calculate dollar amount from percentage and starting price
         const dollarAmount = (growthPercent / 100) * startPrice;
@@ -276,9 +305,9 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
           percent: growthPercent,
           dollar: dollarAmount,
           startPrice: startPrice,
-          endPrice: periodData.endPrice || startPrice,
+          endPrice: parsedData.endPrice || startPrice,
           totalDividends: totalDividends,
-          endShares: periodData.endShares || 1
+          endShares: parsedData.endShares || 1
         };
       };
       

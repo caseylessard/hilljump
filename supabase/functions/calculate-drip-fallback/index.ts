@@ -123,14 +123,24 @@ serve(async (req) => {
         const drip26w = calculateSimpleDRIP(182);
         const drip52w = calculateSimpleDRIP(364);
 
-        results.push({
+        // Ensure we have valid structured data
+        const result = {
           ticker,
-          period_4w: drip4w,
-          period_13w: drip13w,
-          period_26w: drip26w,
-          period_52w: drip52w,
+          period_4w: drip4w ? JSON.stringify(drip4w) : null,
+          period_13w: drip13w ? JSON.stringify(drip13w) : null,
+          period_26w: drip26w ? JSON.stringify(drip26w) : null,
+          period_52w: drip52w ? JSON.stringify(drip52w) : null,
           updated_at: new Date().toISOString()
+        };
+        
+        console.log(`📊 ${ticker} DRIP Results:`, {
+          '4W': drip4w?.growthPercent?.toFixed(2) + '%',
+          '13W': drip13w?.growthPercent?.toFixed(2) + '%',
+          '26W': drip26w?.growthPercent?.toFixed(2) + '%',
+          '52W': drip52w?.growthPercent?.toFixed(2) + '%'
         });
+        
+        results.push(result);
 
         console.log(`✅ ${ticker}: 4W=${drip4w?.growthPercent?.toFixed(1)}%`);
 
