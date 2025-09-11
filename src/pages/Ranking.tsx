@@ -20,6 +20,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
 import { RefreshDataButton } from '@/components/RefreshDataButton';
+import { ForceDripRecalc } from '@/components/ForceDripRecalc';
 import { LoadingProgress } from '@/components/LoadingProgress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -397,7 +398,8 @@ const Ranking = () => {
           <div className="space-y-3">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Income ETFs</h1>
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <ForceDripRecalc />
             <RefreshDataButton 
               type="both"
               tickers={tickers}

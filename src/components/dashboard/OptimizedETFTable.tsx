@@ -236,12 +236,7 @@ export const OptimizedETFTable = ({
     
     const dripSumCache = new Map<string, number>();
     const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
-      // Debug log the data structure for the first few calls
-      if (Math.random() < 0.01) { // Log occasionally to avoid spam
-        console.log('🔍 DRIP Debug for', ticker, 'period:', period);
-        console.log('🔍 cachedDripData[ticker]:', cachedDripData?.[ticker]);
-        console.log('🔍 Full cachedDripData keys sample:', Object.keys(cachedDripData || {}).slice(0, 3));
-      }
+      // Use cached DRIP if available, otherwise fallback to estimates
       
       // Check cached DRIP data first - try multiple potential formats
       const tickerData = cachedDripData?.[ticker];
