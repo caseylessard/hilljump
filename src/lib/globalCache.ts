@@ -184,6 +184,8 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: an
   if (cached) return cached;
 
   console.log('🔄 Loading DRIP data from cache...');
+  console.log('📊 Tax preferences:', taxPreferences);
+  console.log('🎯 Requesting DRIP for', tickers.length, 'tickers');
   
   try {
     // Use the cached DRIP data from Supabase instead of calculating fresh
@@ -201,6 +203,7 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: an
     if (error) throw error;
     
     const dripData = data?.dripData || {};
+    console.log('✅ Received DRIP data for', Object.keys(dripData).length, 'tickers');
     setGlobalCache(cacheKey, dripData);
     return dripData;
   } catch (error) {

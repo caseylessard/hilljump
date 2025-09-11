@@ -111,14 +111,44 @@ const Ranking = () => {
   // Use stored scores by default for fast loading
   const { data: storedScores = {}, isLoading: scoresLoading } = useCachedStoredScores(tickers, weights, taxCountry);
   const { data: cachedPrices = {}, isLoading: pricesLoading } = useCachedPrices(tickers);
-  const { data: dripData } = useCachedDRIP(tickers, { 
+  const { data: dripData, isLoading: dripLoading } = useCachedDRIP(tickers, { 
     country: taxCountry, 
     enabled: taxEnabled, 
     rate: taxRate / 100 
   });
   
+  // Debug DRIP data loading
+  useEffect(() => {
+    if (dripData) {
+      console.log('💰 DRIP data loaded:', Object.keys(dripData).length, 'tickers');
+      console.log('💰 Sample DRIP data:', Object.keys(dripData).slice(0, 3).map(ticker => ({
+        ticker,
+        data: dripData[ticker]
+      })));
+    } else if (dripLoading) {
+      console.log('⏳ DRIP data loading...');
+    } else {
+      console.log('❌ No DRIP data available');
+    }
+  }, [dripData, dripLoading]);
+  
   // Get RSI signals for trend indicators
-  const { data: rsiSignals = {} } = useBulkRSISignals(tickers);
+  const { data: rsiSignals = {}, isLoading: rsiLoading } = useBulkRSISignals(tickers);
+  
+  // Debug RSI signals loading  
+  useEffect(() => {
+    if (rsiSignals && Object.keys(rsiSignals).length > 0) {
+      console.log('📈 RSI signals loaded:', Object.keys(rsiSignals).length, 'tickers');
+      console.log('📈 Sample RSI signals:', Object.keys(rsiSignals).slice(0, 3).map(ticker => ({
+        ticker,
+        signal: rsiSignals[ticker]
+      })));
+    } else if (rsiLoading) {
+      console.log('⏳ RSI signals loading...');
+    } else {
+      console.log('❌ No RSI signals available');
+    }
+  }, [rsiSignals, rsiLoading]);
 
   const ranked: ScoredETF[] = useMemo(() => {
     if (etfs.length === 0) return [];
