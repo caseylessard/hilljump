@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      cron_job_logs: {
+        Row: {
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          job_name: string
+          response: Json | null
+          status: string | null
+        }
+        Insert: {
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          job_name: string
+          response?: Json | null
+          status?: string | null
+        }
+        Update: {
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          job_name?: string
+          response?: Json | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       crypto_alerts: {
         Row: {
           atr_pct: number | null
