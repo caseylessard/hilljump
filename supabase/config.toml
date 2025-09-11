@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.daily-etf-updater-eodhd]
 verify_jwt = false
+
+[functions.force-drip-recalc]
+verify_jwt = false

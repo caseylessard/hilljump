@@ -34,7 +34,7 @@ export type DripResult = {
 };
 
 function ensureSorted<T extends { date: string }>(rows: T[]): T[] {
-  return rows.slice().sort((a, b) => a.date.localeCompare(b.date));
+  return rows.filter(row => row && row.date).slice().sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function addDaysISO(iso: string, days: number): string {
@@ -89,7 +89,7 @@ export function dripOverPeriod(
   opts: DripOptions = {}
 ): DripResult {
   const prices = ensureSorted(pricesInput);
-  const dists  = distsInput.slice().sort((a, b) => a.exDate.localeCompare(b.exDate));
+  const dists  = distsInput.filter(d => d && d.exDate && d.amount != null).slice().sort((a, b) => a.exDate.localeCompare(b.exDate));
 
   const startPrice = priceOnOrBefore(prices, startISO);
   const endPrice   = priceOnOrBefore(prices, endISO);
@@ -170,13 +170,18 @@ export function dripOverPeriod(
 function inferDistributionFrequency(dists: DistRow[]): 'weekly' | 'monthly' | 'quarterly' | 'unknown' {
   if (dists.length < 2) return 'unknown';
   
-  // Calculate average days between distributions
-  const sortedDists = dists.slice().sort((a, b) => a.exDate.localeCompare(b.exDate));
+  // Filter out invalid dates and calculate average days between distributions
+  const validDists = dists.filter(d => d && d.exDate);
+  const sortedDists = validDists.slice().sort((a, b) => a.exDate.localeCompare(b.exDate));
+  
+  if (sortedDists.length < 2) return 'unknown';
+  
   const intervals: number[] = [];
   
   for (let i = 1; i < sortedDists.length; i++) {
     const prev = new Date(sortedDists[i-1].exDate);
     const curr = new Date(sortedDists[i].exDate);
+    if (isNaN(prev.getTime()) || isNaN(curr.getTime())) continue;
     const daysDiff = Math.abs((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
     intervals.push(daysDiff);
   }

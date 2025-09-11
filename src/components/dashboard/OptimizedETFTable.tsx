@@ -19,6 +19,7 @@ import roundhillLogo from "@/assets/logos/roundhill.svg";
 import { useBulkETFData, useBulkDividendPredictions, useBulkRSISignals } from "@/hooks/useBulkETFData";
 import { useRankingHistory, type RankingChange } from "@/hooks/useRankingHistory";
 import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
+import { estimateQuickDrip, shouldShowEstimate } from "@/lib/dripEstimator";
 
 type Props = {
   items: ScoredETF[];
@@ -56,32 +57,67 @@ const DRIPCell = memo(({
   ticker, 
   period, 
   dripData, 
-  live 
+  live,
+  etfData
 }: { 
   ticker: string; 
   period: '4w' | '13w' | '26w' | '52w'; 
   dripData: Record<string, any>; 
   live: Record<string, LivePrice>; 
+  etfData?: ScoredETF;
 }) => {
   const tickerData = dripData[ticker];
   
-  if (!tickerData) {
+  // Check if we should show an estimate
+  const shouldEstimate = shouldShowEstimate(tickerData, period);
+  
+  if (!tickerData || shouldEstimate) {
+    // First check live data
     const liveItem = live[ticker];
     const periodKey = period as '4w' | '12w' | '52w';
     const d = liveItem?.[`drip${periodKey}Dollar` as keyof LivePrice];
     const p = liveItem?.[`drip${periodKey}Percent` as keyof LivePrice];
     
-    if (d == null && p == null) return <span>—</span>;
+    if (d != null || p != null) {
+      const up = (p as number ?? 0) >= 0;
+      return (
+        <div className="inline-flex flex-col items-end leading-tight">
+          <span>{d != null ? `${(d as number) >= 0 ? '+' : ''}$${Math.abs(d as number).toFixed(2)}` : "—"}</span>
+          <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
+            {p != null ? `${up ? "+" : ""}${(p as number).toFixed(1)}%` : "—"}
+          </span>
+        </div>
+      );
+    }
     
-    const up = (p as number ?? 0) >= 0;
-    return (
-      <div className="inline-flex flex-col items-end leading-tight">
-        <span>{d != null ? `${(d as number) >= 0 ? '+' : ''}$${Math.abs(d as number).toFixed(2)}` : "—"}</span>
-        <span className={p != null ? (up ? "text-emerald-600 text-xs" : "text-red-600 text-xs") : "text-muted-foreground text-xs"}>
-          {p != null ? `${up ? "+" : ""}${(p as number).toFixed(1)}%` : "—"}
-        </span>
-      </div>
-    );
+    // Show estimate if we have ETF data
+    if (etfData) {
+      const estimate = estimateQuickDrip({
+        current_price: etfData.current_price,
+        yield_ttm: etfData.yieldTTM,
+        total_return_1y: etfData.totalReturn1Y
+      }, period);
+      
+      if (estimate.estimatedDrip !== 0) {
+        const up = estimate.estimatedDrip >= 0;
+        return (
+          <div className="inline-flex flex-col items-end leading-tight">
+            <Badge 
+              variant="outline" 
+              className="text-xs px-1 py-0 h-4 text-muted-foreground border-muted-foreground/30"
+              title={estimate.note}
+            >
+              est
+            </Badge>
+            <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
+              {up ? "+" : ""}{estimate.estimatedDrip.toFixed(1)}%
+            </span>
+          </div>
+        );
+      }
+    }
+    
+    return <span>—</span>;
   }
   
   const percentKey = `drip${period}Percent`;
@@ -240,13 +276,28 @@ export const OptimizedETFTable = ({
       
       // Fallback to live data
       const liveItem = live?.[ticker];
+      let liveValue = 0;
       switch (period) {
-        case "4w": return liveItem?.drip4wPercent ?? 0;
-        case "13w": return liveItem?.drip13wPercent ?? 0;
-        case "26w": return liveItem?.drip26wPercent ?? 0;
-        case "52w": return liveItem?.drip52wPercent ?? 0;
-        default: return 0;
+        case "4w": liveValue = liveItem?.drip4wPercent ?? 0; break;
+        case "13w": liveValue = liveItem?.drip13wPercent ?? 0; break;
+        case "26w": liveValue = liveItem?.drip26wPercent ?? 0; break;
+        case "52w": liveValue = liveItem?.drip52wPercent ?? 0; break;
       }
+      
+      if (liveValue !== 0) return liveValue;
+      
+      // Final fallback: estimate based on ETF fundamentals
+      const etf = originalRanking?.find(e => e.ticker === ticker);
+      if (etf) {
+        const estimate = estimateQuickDrip({
+          current_price: etf.current_price,
+          yield_ttm: etf.yieldTTM,
+          total_return_1y: etf.totalReturn1Y
+        }, period);
+        return estimate.estimatedDrip;
+      }
+      
+      return 0;
     };
     
     const getDripSum = (ticker: string): number => {
@@ -630,16 +681,16 @@ export const OptimizedETFTable = ({
                   <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <DRIPCell ticker={etf.ticker} period="4w" dripData={cachedDripData} live={live} />
+                  <DRIPCell ticker={etf.ticker} period="4w" dripData={cachedDripData} live={live} etfData={etf} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <DRIPCell ticker={etf.ticker} period="13w" dripData={cachedDripData} live={live} />
+                  <DRIPCell ticker={etf.ticker} period="13w" dripData={cachedDripData} live={live} etfData={etf} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <DRIPCell ticker={etf.ticker} period="26w" dripData={cachedDripData} live={live} />
+                  <DRIPCell ticker={etf.ticker} period="26w" dripData={cachedDripData} live={live} etfData={etf} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <DRIPCell ticker={etf.ticker} period="52w" dripData={cachedDripData} live={live} />
+                  <DRIPCell ticker={etf.ticker} period="52w" dripData={cachedDripData} live={live} etfData={etf} />
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   <div className="inline-flex flex-col items-end">
