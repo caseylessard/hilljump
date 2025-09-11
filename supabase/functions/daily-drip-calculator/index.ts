@@ -280,7 +280,7 @@ serve(async (req) => {
           const fundCountry = etfInfo?.country || 'US';
 
           // Fetch price data (last 400 days to ensure we have enough for 52w)
-          const { data: priceData } = await supabaseClient
+          const { data: priceData } = await supabase
             .from('historical_prices')
             .select('date, close_price')
             .eq('ticker', ticker)
@@ -288,7 +288,7 @@ serve(async (req) => {
             .order('date', { ascending: true });
 
           // Fetch dividend data (last 2 years)
-          const { data: divData } = await supabaseClient
+          const { data: divData } = await supabase
             .from('dividends')
             .select('ex_date, amount')
             .eq('ticker', ticker)
@@ -306,10 +306,10 @@ serve(async (req) => {
             try {
               // Calculate DRIP for US users (with 15% withholding on CA funds)
               const usTaxWithholding = (fundCountry === 'CA') ? 0.15 : 0;
-              const usDripData = dripWindows(priceData, divData, endDateISO, [28, 91, 182, 364], 1, { taxWithholdRate: usTaxWithholding });
+              const usDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: usTaxWithholding });
               
               // Calculate DRIP for CA users (no withholding)
-              const caDripData = dripWindows(priceData, divData, endDateISO, [28, 91, 182, 364], 1, { taxWithholdRate: 0 });
+              const caDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: 0 });
               
               // Debug logging for first ticker
               if (ticker === batch[0]) {
