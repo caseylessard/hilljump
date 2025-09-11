@@ -175,6 +175,18 @@ export const OptimizedETFTable = ({
       originalRankMap.set(etf.ticker, index + 1);
     });
     
+    // Calculate score-based ranking for consistent rank display
+    const scoreBasedRanking = [...items].sort((a, b) => {
+      const scoreA = (a.compositeScore || 0);
+      const scoreB = (b.compositeScore || 0);
+      return scoreB - scoreA; // Highest score first
+    });
+    
+    const scoreRankMap = new Map<string, number>();
+    scoreBasedRanking.forEach((etf, index) => {
+      scoreRankMap.set(etf.ticker, index + 1);
+    });
+    
     const dripSumCache = new Map<string, number>();
     const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
       const tickerData = cachedDripData[ticker];
@@ -212,6 +224,7 @@ export const OptimizedETFTable = ({
     
     return {
       originalRankMap,
+      scoreRankMap,
       getDripPercent,
       getDripSum,
       dripSumCache
@@ -511,7 +524,7 @@ export const OptimizedETFTable = ({
               >
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono">{idx + 1}</span>
+                    <span className="font-mono">{lookupTables.scoreRankMap.get(etf.ticker) || idx + 1}</span>
                     <RankingChangeIndicator ticker={etf.ticker} changes={rankingChanges} />
                   </div>
                 </TableCell>
