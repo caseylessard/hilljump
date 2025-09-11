@@ -22,9 +22,9 @@ export const useCachedETFs = () => {
     queryFn: async () => {
       return getCachedGlobalETFs();
     },
-    staleTime: isAdmin ? 0 : 60 * 60 * 1000, // 1 hour cache
-    refetchOnMount: isAdmin,
-    refetchOnWindowFocus: isAdmin,
+    staleTime: isAdmin ? 0 : 24 * 60 * 60 * 1000, // 1 day for users, stale immediately for admins
+    refetchOnMount: false, // Don't auto-refetch on mount
+    refetchOnWindowFocus: false // Don't auto-refetch on focus
   });
 };
 
@@ -38,10 +38,10 @@ export const useCachedPrices = (tickers: string[]) => {
       return getCachedGlobalPrices(tickers);
     },
     enabled: tickers.length > 0,
-    staleTime: isAdmin ? 0 : 5 * 60 * 1000, // 5 min cache for users, fresh for admins
-    gcTime: 10 * 60 * 1000, // Keep in memory for 10 minutes
-    refetchOnMount: false,
-    refetchOnWindowFocus: false
+    staleTime: isAdmin ? 0 : 24 * 60 * 60 * 1000, // 1 day for users, stale immediately for admins
+    gcTime: 24 * 60 * 60 * 1000, // Keep in memory for 1 day
+    refetchOnMount: false, // Don't auto-refetch on mount
+    refetchOnWindowFocus: false // Don't auto-refetch on focus
   });
 };
 
@@ -53,7 +53,9 @@ export const useCachedDistributions = (tickers: string[]) => {
       return getCachedGlobalDistributions(tickers);
     },
     enabled: tickers.length > 0,
-    staleTime: 60 * 60 * 1000, // 1 hour cache
+    staleTime: 24 * 60 * 60 * 1000, // 1 day cache
+    refetchOnMount: false, // Don't auto-refetch on mount
+    refetchOnWindowFocus: false // Don't auto-refetch on focus
   });
 };
 
@@ -169,7 +171,8 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
       return getCachedGlobalDRIP(tickers, taxPreferences);
     },
     enabled: tickers.length > 0,
-    staleTime: 60 * 60 * 1000, // 1 hour cache (unless tax preferences change)
-    refetchOnMount: true,
+    staleTime: 24 * 60 * 60 * 1000, // 1 day cache
+    refetchOnMount: false, // Don't auto-refetch on mount
+    refetchOnWindowFocus: false // Don't auto-refetch on focus
   });
 };

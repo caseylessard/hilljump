@@ -18,6 +18,7 @@ import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
+import { RefreshButton } from '@/components/RefreshButton';
 import { LoadingProgress } from '@/components/LoadingProgress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -73,10 +74,10 @@ const Ranking = () => {
   const { profile } = useUserProfile();
   const { data: etfs = [], isLoading, error } = useCachedETFs();
   
-  // Warm global cache on first load
-  useEffect(() => {
-    warmGlobalCache();
-  }, []);
+  // Warm global cache on first load - disabled, now only on background refresh
+  // useEffect(() => {
+  //   warmGlobalCache();
+  // }, []);
 
   // Get tax country from profile, fallback to US
   const taxCountry = profile?.country === 'CA' ? 'CA' : 'US';
@@ -305,6 +306,9 @@ const Ranking = () => {
         <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">
           <div className="space-y-3">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Income ETFs</h1>
+          </div>
+          <div className="flex justify-end">
+            <RefreshButton />
           </div>
         </div>
         

@@ -8,9 +8,9 @@ interface CacheEntry<T> {
   expires: number;
 }
 
-// Global cache storage - 1 hour TTL
+// Global cache storage - 1 day TTL
 const globalCache = new Map<string, CacheEntry<any>>();
-const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 1 day in milliseconds
 
 // Helper to check if cache entry is valid
 const isCacheValid = (entry: CacheEntry<any>): boolean => {
@@ -34,7 +34,7 @@ export const setGlobalCache = <T>(key: string, data: T): void => {
     timestamp: now,
     expires: now + CACHE_DURATION
   });
-  console.log(`💾 Cached data for: ${key} (expires in 1 hour)`);
+  console.log(`💾 Cached data for: ${key} (expires in 24 hours)`);
 };
 
 // Clear expired entries
@@ -280,12 +280,17 @@ export const getCachedGlobalHistoricalPrices = async (tickers: string[]): Promis
 };
 
 // Enhanced cache warming with progressive loading strategy
-export const warmGlobalCache = async () => {
-  console.log('🔥 Warming global cache with progressive loading...');
+export const warmGlobalCache = async (forceRefresh = false) => {
+  console.log(`🔥 ${forceRefresh ? 'Force refreshing' : 'Warming'} global cache with progressive loading...`);
   
   try {
-    // Clear expired entries first
-    clearExpiredCache();
+    // Clear expired entries first, or all if force refresh
+    if (forceRefresh) {
+      globalCache.clear();
+      console.log('🗑️ Cleared all cache entries for force refresh');
+    } else {
+      clearExpiredCache();
+    }
     
     // Get ETFs first
     const etfs = await getCachedGlobalETFs();
@@ -304,9 +309,9 @@ export const warmGlobalCache = async () => {
       getCachedGlobalDRIP(tickers.slice(0, 100)) // Top 100 for DRIP (increased from 50)
     ]);
     
-    console.log('✅ Global cache warmed successfully with progressive loading');
+    console.log(`✅ Global cache ${forceRefresh ? 'refreshed' : 'warmed'} successfully with progressive loading`);
   } catch (error) {
-    console.error('❌ Cache warming failed:', error);
+    console.error(`❌ Cache ${forceRefresh ? 'refresh' : 'warming'} failed:`, error);
   }
 };
 

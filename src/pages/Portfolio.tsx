@@ -10,6 +10,7 @@ import { useBulkETFData } from "@/hooks/useBulkETFData";
 import { useCachedPrices } from "@/hooks/useCachedETFData";
 import { buildAIPortfolio, type AIPortfolioETF, type WeightingMethod, type ScoreSource } from "@/lib/aiPortfolio";
 import Navigation from "@/components/Navigation";
+import { RefreshButton } from "@/components/RefreshButton";
 import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart } from "lucide-react";
 
 const Portfolio = () => {
@@ -207,9 +208,12 @@ const Portfolio = () => {
       <Navigation />
       
       <header className="container py-8">
-        <div className="flex items-center gap-3 mb-4">
-          <TrendingUp className="h-8 w-8 text-primary" />
-          <h1 className="text-4xl font-bold">AI Portfolio Builder</h1>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="h-8 w-8 text-primary" />
+            <h1 className="text-4xl font-bold">AI Portfolio Builder</h1>
+          </div>
+          <RefreshButton />
         </div>
         <p className="text-lg text-muted-foreground">
           Build an AI-optimized ETF portfolio using Ladder-Delta Trend scoring, 1-year returns, and advanced risk metrics.

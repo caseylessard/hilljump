@@ -11,14 +11,14 @@ import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedYields
 import { initializeCache } from "@/lib/cacheUtils";
 
 const Home = () => {
-  // Preload all data for other pages
-  const { data: etfs = [] } = useCachedETFs();
-  const tickers = (etfs as any[]).map(e => e.ticker);
+  // Preload data silently in background - disabled, data comes from cache
+  // const { data: etfs = [] } = useCachedETFs();
+  // const tickers = (etfs as any[]).map(e => e.ticker);
   
-  // Trigger data preloading
-  useCachedPrices(tickers);
-  useCachedDistributions(tickers);
-  useCachedYields(tickers);
+  // Trigger data preloading - disabled
+  // useCachedPrices(tickers);
+  // useCachedDistributions(tickers);
+  // useCachedYields(tickers);
 
   useEffect(() => {
     // Initialize cache system
