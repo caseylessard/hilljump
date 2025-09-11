@@ -753,7 +753,7 @@ const NextDistributionCell = ({ ticker }: { ticker: string }) => {
       }
 
       // Otherwise, try to predict the next distribution
-      const prediction = await predictNextDistribution(ticker);
+      const prediction = await predictNextDistribution(ticker, []);
       if (prediction) {
         // Get currency from ETF data for predictions
         const { data: etfData } = await supabase

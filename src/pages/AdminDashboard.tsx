@@ -6,9 +6,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Navigate } from "react-router-dom";
 
 // Import admin components
-import { QuickPriceTest } from "@/components/QuickPriceTest";
-import HistoricalPriceTest from "@/components/HistoricalPriceTest";
-import PriceSystemTest from "@/components/PriceSystemTest";
+// Test components removed - functionality consolidated
 import MstyEodhdTest from "@/components/admin/MstyEodhdTest";
 import ComprehensiveEodhdTest from "@/components/admin/ComprehensiveEodhdTest";
 import { DividendSystemTest } from "@/components/admin/DividendSystemTest";
@@ -25,7 +23,7 @@ import { DataUpdater } from "@/components/admin/DataUpdater";
 import { DividendDataMonitor } from "@/components/admin/DividendDataMonitor";
 import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
 import { HistoricalPriceImport } from "@/components/admin/HistoricalPriceImport";
-import QuickETFTest from "@/components/QuickETFTest";
+// QuickETFTest component removed
 import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
 import ETFMetadataFetcher from "@/components/admin/ETFMetadataFetcher";
 
@@ -148,8 +146,9 @@ const AdminDashboard = () => {
                     <CardTitle>Price Testing & Updates</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <QuickPriceTest />
-                    <PriceSystemTest />
+                    <div className="text-center py-4 text-muted-foreground">
+                      Price testing components consolidated into data management tools
+                    </div>
                     <TestCanadianPrices />
                   </CardContent>
                 </Card>
@@ -169,7 +168,9 @@ const AdminDashboard = () => {
                     <CardTitle>Historical Data</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <HistoricalPriceTest />
+                    <div className="text-center py-4 text-muted-foreground">
+                      Historical price testing consolidated into import tools
+                    </div>
                     <HistoricalPriceImport />
                   </CardContent>
                 </Card>
@@ -184,7 +185,9 @@ const AdminDashboard = () => {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <DailyAlertsTestSuite />
-                    <QuickETFTest />
+                    <div className="text-center py-4 text-muted-foreground">
+                      ETF testing tools consolidated into data management section
+                    </div>
                   </CardContent>
                 </Card>
               </div>

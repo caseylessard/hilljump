@@ -14,9 +14,7 @@ import Navigation from "@/components/Navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, Zap } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
-import { QuickPriceTest } from "@/components/QuickPriceTest";
-import HistoricalPriceTest from "@/components/HistoricalPriceTest";
-import PriceSystemTest from "@/components/PriceSystemTest";
+// Test components removed - functionality consolidated
 import MstyEodhdTest from "@/components/admin/MstyEodhdTest";
 import ComprehensiveEodhdTest from "@/components/admin/ComprehensiveEodhdTest";
 import { DividendSystemTest } from "@/components/admin/DividendSystemTest";
@@ -697,9 +695,9 @@ const Profile = () => {
               <ComprehensiveEodhdTest />
               <DividendSystemTest />
                     <MstyEodhdTest />
-                    <QuickPriceTest />
-                    <HistoricalPriceTest />
-                    <PriceSystemTest />
+                    <div className="text-center py-4 text-muted-foreground">
+                      Price testing components consolidated into admin tools
+                    </div>
                   </div>
                 </div>
               </>

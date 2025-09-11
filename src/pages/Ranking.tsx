@@ -20,11 +20,10 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
 import { RefreshDataButton } from '@/components/RefreshDataButton';
-import { ForceDripRecalc } from '@/components/ForceDripRecalc';
-import { LoadingProgress } from '@/components/LoadingProgress';
+// Removed deleted components - functionality consolidated
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import ShowDripWork from '@/components/ShowDripWork';
+// ShowDripWork component removed
 import { warmGlobalCache } from '@/lib/globalCache';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
@@ -352,7 +351,7 @@ const Ranking = () => {
       const saveRankingToCache = async () => {
         try {
           const { cache } = await import('@/lib/cache');
-          cache.set('ranking', ranked, 'live-calculated');
+          cache.set('ranking', ranked);
           console.log('💾 Saved updated ranking to cache');
 
           // Save to database for historical tracking (only once per day)
@@ -399,7 +398,6 @@ const Ranking = () => {
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Income ETFs</h1>
           </div>
           <div className="flex justify-end gap-2">
-            <ForceDripRecalc />
             <RefreshDataButton 
               type="both"
               tickers={tickers}
@@ -411,17 +409,14 @@ const Ranking = () => {
         </div>
         
         <div className="container">
-          <LoadingProgress 
-            etfsLoading={isLoading}
-            pricesLoading={pricesLoading}
-            distributionsLoading={Object.keys(distributions).length === 0 && etfs.length > 0}
-            scoresLoading={ranked.length === 0 && etfs.length > 0}
-            yieldsLoading={false}
-            lastUpdated={lastUpdated}
-            pricesProgress={loadingProgress.prices}
-            distributionsProgress={loadingProgress.distributions}
-            scoresProgress={loadingProgress.scores}
-          />
+          {/* Loading progress tracking - simplified version */}
+          {(isLoading || pricesLoading || Object.keys(distributions).length === 0 && etfs.length > 0) && (
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+              <div className="text-sm text-muted-foreground">
+                Loading data... Prices: {loadingProgress.prices.current}/{loadingProgress.prices.total}
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -586,10 +581,12 @@ const Ranking = () => {
 
         <p className="text-muted-foreground text-xs">Not investment advice.</p>
         
-        {/* DRIP Calculation Test - temporary for debugging */}
+        {/* Admin debugging section simplified */}
         {isAdmin && (
           <div className="border-t pt-8">
-            <ShowDripWork />
+            <div className="text-center py-4 text-muted-foreground">
+              DRIP calculation tools consolidated into admin dashboard
+            </div>
           </div>
         )}
       </main>

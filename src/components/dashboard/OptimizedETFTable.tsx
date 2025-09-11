@@ -192,7 +192,7 @@ export const OptimizedETFTable = ({
   persistentRanking = []
 }: Props) => {
   // Performance monitoring
-  const { getPerformanceReport } = usePerformanceMonitor('OptimizedETFTable');
+  const performanceMonitor = usePerformanceMonitor(true);
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
