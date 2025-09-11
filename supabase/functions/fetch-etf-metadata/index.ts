@@ -94,94 +94,19 @@ async function fetchEODHDETFMetadata(ticker: string, apiKey: string): Promise<Pa
     return { ticker };
   }
 }
-    const fundProfile = result.fundProfile;
-    const summaryProfile = result.summaryProfile;
-    const keyStats = result.defaultKeyStatistics;
-    const price = result.price;
+
+// Fetch ETF metadata from Yahoo Finance
+async function fetchYahooETFMetadata(ticker: string): Promise<Partial<ETFMetadata>> {
+  try {
+    console.log(`📊 Fetching Yahoo metadata for ${ticker}`);
     
-    // Extract and clean the data
-    const metadata: Partial<ETFMetadata> = { ticker };
-    
-    // Basic info
-    if (price?.shortName) metadata.name = price.shortName;
-    if (price?.longName && !metadata.name) metadata.name = price.longName;
-    
-    // Fund profile data
-    if (fundProfile) {
-      if (fundProfile.categoryName) metadata.category = fundProfile.categoryName;
-      if (fundProfile.fundFamily) metadata.manager = fundProfile.fundFamily;
-      if (fundProfile.legalType) metadata.fund = fundProfile.legalType;
-    }
-    
-    // Asset profile (more detailed for some ETFs)
-    if (assetProfile) {
-      if (assetProfile.longBusinessSummary) {
-        metadata.summary = assetProfile.longBusinessSummary.slice(0, 500); // Limit length
-      }
-      if (assetProfile.industry) metadata.industry = assetProfile.industry;
-      if (assetProfile.sector && !metadata.category) metadata.category = assetProfile.sector;
-    }
-    
-    // Summary profile
-    if (summaryProfile?.longBusinessSummary && !metadata.summary) {
-      metadata.summary = summaryProfile.longBusinessSummary.slice(0, 500);
-    }
-    
-    // Key statistics for AUM
-    if (keyStats?.totalAssets?.raw) {
-      metadata.aum = keyStats.totalAssets.raw;
-    }
-    
-    // Infer provider from ticker patterns and fund family
-    if (metadata.manager) {
-      const manager = metadata.manager.toLowerCase();
-      if (manager.includes('vanguard')) metadata.provider_group = 'Vanguard';
-      else if (manager.includes('ishares') || manager.includes('blackrock')) metadata.provider_group = 'iShares';
-      else if (manager.includes('spdr') || manager.includes('state street')) metadata.provider_group = 'SPDR';
-      else if (manager.includes('invesco')) metadata.provider_group = 'Invesco';
-      else if (manager.includes('schwab')) metadata.provider_group = 'Schwab';
-      else if (manager.includes('fidelity')) metadata.provider_group = 'Fidelity';
-      else if (manager.includes('direxion')) metadata.provider_group = 'Direxion';
-      else if (manager.includes('proshares')) metadata.provider_group = 'ProShares';
-    }
-    
-    // Try to infer strategy from name and category
-    if (metadata.name && metadata.category) {
-      const name = metadata.name.toLowerCase();
-      const category = metadata.category.toLowerCase();
-      
-      if (name.includes('dividend') || category.includes('dividend')) {
-        metadata.strategy = 'Dividend Focused';
-      } else if (name.includes('growth') || category.includes('growth')) {
-        metadata.strategy = 'Growth';
-      } else if (name.includes('value') || category.includes('value')) {
-        metadata.strategy = 'Value';
-      } else if (name.includes('sector') || name.includes('technology') || name.includes('healthcare')) {
-        metadata.strategy = 'Sector/Thematic';
-      } else if (name.includes('international') || name.includes('emerging')) {
-        metadata.strategy = 'International';
-      } else if (name.includes('bond') || name.includes('fixed')) {
-        metadata.strategy = 'Fixed Income';
-      } else if (name.includes('commodity') || name.includes('gold') || name.includes('oil')) {
-        metadata.strategy = 'Commodity';
-      } else {
-        metadata.strategy = 'Broad Market';
-      }
-    }
-    
-    console.log(`✅ Metadata found for ${ticker}:`, {
-      name: metadata.name,
-      category: metadata.category,
-      manager: metadata.manager,
-      strategy: metadata.strategy,
-      hasSummary: !!metadata.summary
-    });
-    
-    return metadata;
+    // This would be implemented if Yahoo Finance API was available
+    // For now, return empty metadata
+    return { ticker };
     
   } catch (error) {
-    console.error(`Error fetching metadata for ${ticker}:`, error);
-    return {};
+    console.error(`Error fetching Yahoo metadata for ${ticker}:`, error);
+    return { ticker };
   }
 }
 
