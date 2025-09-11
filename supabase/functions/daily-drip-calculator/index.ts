@@ -326,21 +326,78 @@ serve(async (req) => {
               
               const timestamp = new Date().toISOString();
               
+              // Store with proper structure - store percentages and dollar amounts separately
               usBatchResults.push({
                 ticker,
-                period_4w: usDripData['4w'] || null,
-                period_13w: usDripData['13w'] || null,
-                period_26w: usDripData['26w'] || null,
-                period_52w: usDripData['52w'] || null,
+                period_4w: usDripData['4w'] ? {
+                  growthPercent: usDripData['4w'].growthPercent,
+                  startPrice: usDripData['4w'].startPrice,
+                  endPrice: usDripData['4w'].endPrice,
+                  totalDividends: usDripData['4w'].totalDividends,
+                  endShares: usDripData['4w'].endShares,
+                  reinvestmentFactor: usDripData['4w'].reinvestmentFactor
+                } : null,
+                period_13w: usDripData['13w'] ? {
+                  growthPercent: usDripData['13w'].growthPercent,
+                  startPrice: usDripData['13w'].startPrice,
+                  endPrice: usDripData['13w'].endPrice,
+                  totalDividends: usDripData['13w'].totalDividends,
+                  endShares: usDripData['13w'].endShares,
+                  reinvestmentFactor: usDripData['13w'].reinvestmentFactor
+                } : null,
+                period_26w: usDripData['26w'] ? {
+                  growthPercent: usDripData['26w'].growthPercent,
+                  startPrice: usDripData['26w'].startPrice,
+                  endPrice: usDripData['26w'].endPrice,
+                  totalDividends: usDripData['26w'].totalDividends,
+                  endShares: usDripData['26w'].endShares,
+                  reinvestmentFactor: usDripData['26w'].reinvestmentFactor
+                } : null,
+                period_52w: usDripData['52w'] ? {
+                  growthPercent: usDripData['52w'].growthPercent,
+                  startPrice: usDripData['52w'].startPrice,
+                  endPrice: usDripData['52w'].endPrice,
+                  totalDividends: usDripData['52w'].totalDividends,
+                  endShares: usDripData['52w'].endShares,
+                  reinvestmentFactor: usDripData['52w'].reinvestmentFactor
+                } : null,
                 updated_at: timestamp
               });
               
               caBatchResults.push({
                 ticker,
-                period_4w: caDripData['4w'] || null,
-                period_13w: caDripData['13w'] || null,
-                period_26w: caDripData['26w'] || null,
-                period_52w: caDripData['52w'] || null,
+                period_4w: caDripData['4w'] ? {
+                  growthPercent: caDripData['4w'].growthPercent,
+                  startPrice: caDripData['4w'].startPrice,
+                  endPrice: caDripData['4w'].endPrice,
+                  totalDividends: caDripData['4w'].totalDividends,
+                  endShares: caDripData['4w'].endShares,
+                  reinvestmentFactor: caDripData['4w'].reinvestmentFactor
+                } : null,
+                period_13w: caDripData['13w'] ? {
+                  growthPercent: caDripData['13w'].growthPercent,
+                  startPrice: caDripData['13w'].startPrice,
+                  endPrice: caDripData['13w'].endPrice,
+                  totalDividends: caDripData['13w'].totalDividends,
+                  endShares: caDripData['13w'].endShares,
+                  reinvestmentFactor: caDripData['13w'].reinvestmentFactor
+                } : null,
+                period_26w: caDripData['26w'] ? {
+                  growthPercent: caDripData['26w'].growthPercent,
+                  startPrice: caDripData['26w'].startPrice,
+                  endPrice: caDripData['26w'].endPrice,
+                  totalDividends: caDripData['26w'].totalDividends,
+                  endShares: caDripData['26w'].endShares,
+                  reinvestmentFactor: caDripData['26w'].reinvestmentFactor
+                } : null,
+                period_52w: caDripData['52w'] ? {
+                  growthPercent: caDripData['52w'].growthPercent,
+                  startPrice: caDripData['52w'].startPrice,  
+                  endPrice: caDripData['52w'].endPrice,
+                  totalDividends: caDripData['52w'].totalDividends,
+                  endShares: caDripData['52w'].endShares,
+                  reinvestmentFactor: caDripData['52w'].reinvestmentFactor
+                } : null,
                 updated_at: timestamp
               });
               

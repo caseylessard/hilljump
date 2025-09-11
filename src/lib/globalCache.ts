@@ -221,7 +221,40 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
         });
       }
       
+      // Parse structured DRIP data and convert to expected format
+      const parseToLegacyFormat = (periodData: any) => {
+        if (!periodData || typeof periodData !== 'object') return null;
+        
+        // Extract values from structured data
+        const growthPercent = periodData.growthPercent || 0;
+        const totalDividends = periodData.totalDividends || 0;
+        const startPrice = periodData.startPrice || 1;
+        
+        // Calculate dollar amount from percentage and starting price
+        const dollarAmount = (growthPercent / 100) * startPrice;
+        
+        return {
+          percent: growthPercent,
+          dollar: dollarAmount,
+          startPrice: startPrice,
+          endPrice: periodData.endPrice || startPrice,
+          totalDividends: totalDividends,
+          endShares: periodData.endShares || 1
+        };
+      };
+      
       result[row.ticker] = {
+        // Convert structured data to expected format for backwards compatibility
+        drip4wPercent: parseToLegacyFormat(row.period_4w)?.percent || 0,
+        drip4wDollar: parseToLegacyFormat(row.period_4w)?.dollar || 0,
+        drip13wPercent: parseToLegacyFormat(row.period_13w)?.percent || 0,
+        drip13wDollar: parseToLegacyFormat(row.period_13w)?.dollar || 0,
+        drip26wPercent: parseToLegacyFormat(row.period_26w)?.percent || 0,
+        drip26wDollar: parseToLegacyFormat(row.period_26w)?.dollar || 0,
+        drip52wPercent: parseToLegacyFormat(row.period_52w)?.percent || 0,
+        drip52wDollar: parseToLegacyFormat(row.period_52w)?.dollar || 0,
+        
+        // Also store the raw structured data for advanced use
         '4w': row.period_4w,
         '13w': row.period_13w,
         '26w': row.period_26w,
