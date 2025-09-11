@@ -197,15 +197,17 @@ export const OptimizedETFTable = ({
     
     const dripSumCache = new Map<string, number>();
     const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
-      const tickerData = cachedDripData[ticker];
-      if (tickerData) {
-        const percentKey = `drip${period}Percent`;
-        const percent = tickerData[percentKey];
-        if (percent !== undefined) {
-          return percent;
+      // Check cached DRIP data first (format: ticker.4w, ticker.13w, etc.)
+      const tickerData = cachedDripData?.[ticker];
+      if (tickerData && tickerData[period]) {
+        const periodData = tickerData[period];
+        // Extract percentage from cached data
+        if (periodData && typeof periodData.percentage === 'number') {
+          return periodData.percentage;
         }
       }
       
+      // Fallback to live data
       const liveItem = live?.[ticker];
       switch (period) {
         case "4w": return liveItem?.drip4wPercent ?? 0;

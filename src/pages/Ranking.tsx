@@ -125,6 +125,12 @@ const Ranking = () => {
         ticker,
         data: dripData[ticker]
       })));
+      
+      // Debug actual data structure
+      const sampleTicker = Object.keys(dripData)[0];
+      if (sampleTicker) {
+        console.log('💰 Sample DRIP structure for', sampleTicker, ':', dripData[sampleTicker]);
+      }
     } else if (dripLoading) {
       console.log('⏳ DRIP data loading...');
     } else {
@@ -145,8 +151,9 @@ const Ranking = () => {
       })));
     } else if (rsiLoading) {
       console.log('⏳ RSI signals loading...');
-    } else {
-      console.log('❌ No RSI signals available');
+    } else if (!rsiLoading) {
+      console.log('❌ No RSI signals available, rsiLoading:', rsiLoading);
+      console.log('🔍 RSI signals object:', rsiSignals);
     }
   }, [rsiSignals, rsiLoading]);
 
