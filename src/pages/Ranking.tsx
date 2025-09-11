@@ -562,6 +562,7 @@ const Ranking = () => {
             live={cachedPrices}
             distributions={distributions}
             cachedDripData={dripData || {}}
+            rsiSignals={rsiSignals || {}}
             originalRanking={ranked}
             persistentRanking={persistentRanking}
             allowSorting={isSubscribed || isAdmin}

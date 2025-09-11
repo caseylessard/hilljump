@@ -26,6 +26,7 @@ type Props = {
   distributions?: Record<string, { amount: number; date: string; currency?: string }>;
   allowSorting?: boolean;
   cachedDripData?: Record<string, any>;
+  rsiSignals?: Record<string, any>;
   originalRanking?: ScoredETF[];
   persistentRanking?: Array<{ticker: string, rank: number, score: number, updatedAt: number}>;
 };
@@ -150,6 +151,7 @@ export const OptimizedETFTable = ({
   distributions = {}, 
   allowSorting = true, 
   cachedDripData = {}, 
+  rsiSignals = {},
   originalRanking = [],
   persistentRanking = []
 }: Props) => {
@@ -167,8 +169,9 @@ export const OptimizedETFTable = ({
   // Bulk data fetching hooks
   const { data: bulkETFData = {} } = useBulkETFData(tickers);
   const { data: dividendPredictions = {} } = useBulkDividendPredictions(tickers);
-  const { data: rsiSignals = {} } = useBulkRSISignals(tickers);
   const { data: rankingChanges = {} } = useRankingHistory(tickers);
+  
+  // Use passed RSI signals instead of fetching again
   
   // Pre-compute lookup tables for performance
   const lookupTables = useMemo(() => {
@@ -197,13 +200,33 @@ export const OptimizedETFTable = ({
     
     const dripSumCache = new Map<string, number>();
     const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
-      // Check cached DRIP data first (format: ticker.4w, ticker.13w, etc.)
+      // Debug log the data structure for the first few calls
+      if (Math.random() < 0.01) { // Log occasionally to avoid spam
+        console.log('🔍 DRIP Debug for', ticker, 'period:', period);
+        console.log('🔍 cachedDripData[ticker]:', cachedDripData?.[ticker]);
+        console.log('🔍 Full cachedDripData keys sample:', Object.keys(cachedDripData || {}).slice(0, 3));
+      }
+      
+      // Check cached DRIP data first - try multiple potential formats
       const tickerData = cachedDripData?.[ticker];
-      if (tickerData && tickerData[period]) {
-        const periodData = tickerData[period];
-        // Extract percentage from cached data
-        if (periodData && typeof periodData.percentage === 'number') {
-          return periodData.percentage;
+      if (tickerData) {
+        // Format 1: ticker.period structure
+        if (tickerData[period] && typeof tickerData[period].percentage === 'number') {
+          return tickerData[period].percentage;
+        }
+        
+        // Format 2: Direct percentage properties
+        const percentKey = `drip${period}Percent`;
+        if (typeof tickerData[percentKey] === 'number') {
+          return tickerData[percentKey];
+        }
+        
+        // Format 3: Nested period object with percentage
+        if (tickerData[period] && typeof tickerData[period] === 'object') {
+          const periodData = tickerData[period];
+          if (typeof periodData.percentage === 'number') {
+            return periodData.percentage;
+          }
         }
       }
       
@@ -385,8 +408,14 @@ export const OptimizedETFTable = ({
       return sortDir === "asc" ? an - bn : bn - an;
     };
     
-    return [...items].sort(cmp);
-  }, [items, sortKey, sortDir, live, distributions, lookupTables]);
+    // Enrich items with RSI signals position before sorting
+    const enrichedItems = items.map(etf => ({
+      ...etf,
+      position: rsiSignals[etf.ticker] || 0 // Add RSI position from signals
+    }));
+    
+    return enrichedItems.sort(cmp);
+  }, [items, sortKey, sortDir, live, distributions, lookupTables, rsiSignals]);
   
   const headerBtnClass = allowSorting ? "flex items-center gap-1" : "flex items-center gap-1 opacity-50 pointer-events-none";
   
