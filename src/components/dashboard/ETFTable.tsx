@@ -30,9 +30,10 @@ type Props = {
   allowSorting?: boolean;
   cachedDripData?: Record<string, any>;
   originalRanking?: ScoredETF[]; // Full original ranking to preserve rank numbers
+  cachedPrices?: Record<string, any>; // Add cached prices prop
 };
 
-export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [] }: Props) => {
+export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [], cachedPrices = {} }: Props) => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
@@ -232,26 +233,29 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     return ticker.replace(/\.(TO|NE)$/, '');
   }
 
-  // Component for ranking change indicator
-  const RankingChangeIndicator = ({ ticker }: { ticker: string }) => {
-    const change = rankingChanges[ticker];
-    // Only show if there's meaningful data and the change is reasonable (< 50 positions)
-    if (!change || change.isNew || !change.previousRank || Math.abs(change.change) > 50) return null;
+  // Component for ranking change indicator - shows actual position changes vs stored rankings
+  const RankingChangeIndicator = ({ ticker, currentRank }: { ticker: string; currentRank: number }) => {
+    // Find the stored persistent ranking for this ticker
+    const persistentRankItem = originalRanking.find(etf => etf.ticker === ticker);
+    if (!persistentRankItem) return null;
     
-    if (change.change === 0) {
-      return <Minus className="h-3 w-3 text-muted-foreground" />;
-    }
+    const storedRank = originalRankMap.get(ticker);
+    if (!storedRank || storedRank === currentRank) return null;
     
-    // Positive change = moved up in ranking (lower rank number = better)
-    // e.g., moved from rank 12 to rank 1 = change of +11 = improvement
-    const movedUp = change.change > 0;
+    // Calculate change: positive = improvement (lower rank number)
+    const change = storedRank - currentRank;
+    
+    // Only show meaningful changes (> 1 position, < 20 positions to avoid noise)
+    if (Math.abs(change) <= 1 || Math.abs(change) > 20) return null;
+    
+    const movedUp = change > 0; // moved to better position (lower number)
     const Icon = movedUp ? TrendingUp : TrendingDown;
     const colorClass = movedUp ? "text-emerald-600" : "text-red-600";
     
     return (
       <div className={`flex items-center gap-1 ${colorClass}`}>
         <Icon className="h-3 w-3" />
-        <span className="text-xs">{Math.abs(change.change)}</span>
+        <span className="text-xs">{Math.abs(change)}</span>
       </div>
     );
   };
@@ -496,12 +500,12 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                    setOpen(true); 
                  }}
                >
-                 <TableCell>
-                   <div className="flex items-center gap-2">
-                     <span className="font-mono">{originalRankMap.get(etf.ticker) || idx + 1}</span>
-                     <RankingChangeIndicator ticker={etf.ticker} />
-                   </div>
-                 </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono">{idx + 1}</span>
+                      <RankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} />
+                    </div>
+                  </TableCell>
                  <TableCell>
                    <div className="inline-flex flex-col">
                      <span className="inline-flex items-center">
@@ -533,36 +537,39 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                          );
                        })()}
                     </TableCell>
-                  <TableCell className="text-right">
-                    {(() => {
-                      // Use full ticker for live data lookup
-                      const price = liveItem?.price;
-                      const cp = liveItem?.changePercent;
-                      
-       // Debug logging for MSTY
-       if (etf.ticker === 'MSTY') {
-         console.log(`🔍 MSTY Debug:`, {
-           ticker: etf.ticker,
-           dripData: dripData[etf.ticker],
-           liveItem,
-           dripDataKeys: Object.keys(dripData)
-         });
-       }
-                      
-                      if (price == null) return "—";
-                     const up = (cp ?? 0) >= 0;
-                     return (
-                       <div className="inline-flex flex-col items-end leading-tight">
-                         <span>${price.toFixed(2)}</span>
-                         {cp != null && (
-                           <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
-                             {up ? "+" : ""}{cp.toFixed(2)}%
-                           </span>
-                         )}
-                       </div>
-                     );
-                   })()}
-                 </TableCell>
+                   <TableCell className="text-right">
+                     {(() => {
+                       // Use full ticker for live data lookup
+                       const price = liveItem?.price;
+                       const cp = liveItem?.changePercent;
+                       
+                       if (price == null) return "—";
+                       const up = (cp ?? 0) >= 0;
+                       
+                       // Get price update date from cached prices  
+                       const cachedPrice = cachedPrices[etf.ticker];
+                       const priceDate = cachedPrice?.priceUpdatedAt;
+                       const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
+                       
+                       return (
+                         <div className="inline-flex flex-col items-end leading-tight">
+                           <span>${price.toFixed(2)}</span>
+                           <div className="text-xs space-y-0">
+                             {cp != null && (
+                               <div className={up ? "text-emerald-600" : "text-red-600"}>
+                                 {up ? "+" : ""}{cp.toFixed(2)}%
+                               </div>
+                             )}
+                             {dateStr && (
+                               <div className="text-muted-foreground">
+                                 {dateStr}
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       );
+                     })()}
+                   </TableCell>
                 <TableCell className="text-right">
                   {(() => {
                     // Use full ticker for distributions lookup

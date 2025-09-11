@@ -409,11 +409,18 @@ const Ranking = () => {
         </div>
         
         <div className="container">
-          {/* Loading progress tracking - simplified version */}
-          {(isLoading || pricesLoading || Object.keys(distributions).length === 0 && etfs.length > 0) && (
-            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
-              <div className="text-sm text-muted-foreground">
-                Loading data... Prices: {loadingProgress.prices.current}/{loadingProgress.prices.total}
+          {/* Detailed loading progress tracking */}
+          {(isLoading || pricesLoading || scoresLoading || dripLoading || Object.keys(distributions).length === 0 && etfs.length > 0) && (
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg space-y-2">
+              <div className="text-sm font-medium">Loading ETF Data...</div>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                {isLoading && <div>• Fetching ETF list from database...</div>}
+                {pricesLoading && <div>• Loading current prices ({loadingProgress.prices.current}/{loadingProgress.prices.total})</div>}
+                {scoresLoading && <div>• Loading scoring data...</div>}
+                {dripLoading && <div>• Calculating DRIP returns...</div>}
+                {rsiLoading && <div>• Fetching trend signals...</div>}
+                {Object.keys(distributions).length === 0 && etfs.length > 0 && <div>• Loading distribution history...</div>}
+                {!isLoading && !pricesLoading && !scoresLoading && !dripLoading && <div>• Finalizing rankings...</div>}
               </div>
             </div>
           )}
@@ -554,16 +561,17 @@ const Ranking = () => {
             </div>
           </div>
 
-          <OptimizedETFTable 
-            items={filtered} 
-            live={cachedPrices}
-            distributions={distributions}
-            cachedDripData={dripData || {}}
-            rsiSignals={rsiSignals || {}}
-            originalRanking={ranked}
-            persistentRanking={persistentRanking}
-            allowSorting={isSubscribed || isAdmin}
-          />
+           <OptimizedETFTable 
+             items={filtered} 
+             live={cachedPrices}
+             distributions={distributions}
+             cachedDripData={dripData || {}}
+             rsiSignals={rsiSignals || {}}
+             originalRanking={ranked}
+             persistentRanking={persistentRanking}
+             allowSorting={isSubscribed || isAdmin}
+             cachedPrices={cachedPrices}
+           />
         </section>
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>

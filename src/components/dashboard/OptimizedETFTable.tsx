@@ -30,7 +30,30 @@ type Props = {
   rsiSignals?: Record<string, any>;
   originalRanking?: ScoredETF[];
   persistentRanking?: Array<{ticker: string, rank: number, score: number, updatedAt: number}>;
+  cachedPrices?: Record<string, any>;
 };
+
+  // Updated ranking change indicator to show actual position changes
+  const PersistentRankingChangeIndicator = memo(({ ticker, currentRank, persistentRanking }: { ticker: string; currentRank: number; persistentRanking: Array<{ticker: string, rank: number, score: number, updatedAt: number}> }) => {
+    const persistentRank = persistentRanking.find(r => r.ticker === ticker)?.rank;
+    if (!persistentRank || persistentRank === currentRank) return null;
+    
+    const change = persistentRank - currentRank;
+    
+    // Only show meaningful changes (> 1 position, < 20 positions to avoid noise)
+    if (Math.abs(change) <= 1 || Math.abs(change) > 20) return null;
+    
+    const movedUp = change > 0; // moved to better position (lower number)
+    const Icon = movedUp ? TrendingUp : TrendingDown;
+    const colorClass = movedUp ? "text-emerald-600" : "text-red-600";
+    
+    return (
+      <div className={`flex items-center gap-1 ${colorClass}`}>
+        <Icon className="h-3 w-3" />
+        <span className="text-xs">{Math.abs(change)}</span>
+      </div>
+    );
+  });
 
 // Memoized components for performance
 const RankingChangeIndicator = memo(({ ticker, changes }: { ticker: string; changes: Record<string, RankingChange> }) => {
@@ -189,7 +212,8 @@ export const OptimizedETFTable = ({
   cachedDripData = {}, 
   rsiSignals = {},
   originalRanking = [],
-  persistentRanking = []
+  persistentRanking = [],
+  cachedPrices = {}
 }: Props) => {
   // Performance monitoring
   const performanceMonitor = usePerformanceMonitor(true);
@@ -616,12 +640,12 @@ export const OptimizedETFTable = ({
                   setOpen(true); 
                 }}
               >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono">{lookupTables.persistentRankMap.get(etf.ticker) || lookupTables.scoreRankMap.get(etf.ticker) || idx + 1}</span>
-                    <RankingChangeIndicator ticker={etf.ticker} changes={rankingChanges} />
-                  </div>
-                </TableCell>
+                 <TableCell>
+                   <div className="flex items-center gap-2">
+                     <span className="font-mono">{idx + 1}</span>
+                     <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />
+                   </div>
+                 </TableCell>
                 <TableCell>
                   <div className="inline-flex flex-col">
                     <span className="inline-flex items-center">
@@ -633,25 +657,38 @@ export const OptimizedETFTable = ({
                 <TableCell className="text-center">
                   <TrendIndicator position={etf.position} />
                 </TableCell>
-                <TableCell className="text-right">
-                  {(() => {
-                    const price = liveItem?.price;
-                    const cp = liveItem?.changePercent;
-                    
-                    if (price == null) return "—";
-                    const up = (cp ?? 0) >= 0;
-                    return (
-                      <div className="inline-flex flex-col items-end leading-tight">
-                        <span>${price.toFixed(2)}</span>
-                        {cp != null && (
-                          <span className={up ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
-                            {up ? "+" : ""}{cp.toFixed(2)}%
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </TableCell>
+                 <TableCell className="text-right">
+                   {(() => {
+                     const price = liveItem?.price;
+                     const cp = liveItem?.changePercent;
+                     
+                     if (price == null) return "—";
+                     const up = (cp ?? 0) >= 0;
+                     
+                     // Get price update date from cached prices
+                     const cachedPrice = cachedPrices[etf.ticker];
+                     const priceDate = cachedPrice?.priceUpdatedAt;
+                     const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
+                     
+                     return (
+                       <div className="inline-flex flex-col items-end leading-tight">
+                         <span>${price.toFixed(2)}</span>
+                         <div className="text-xs space-y-0">
+                           {cp != null && (
+                             <div className={up ? "text-emerald-600" : "text-red-600"}>
+                               {up ? "+" : ""}{cp.toFixed(2)}%
+                             </div>
+                           )}
+                           {dateStr && (
+                             <div className="text-muted-foreground">
+                               {dateStr}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     );
+                   })()}
+                 </TableCell>
                 <TableCell className="text-right">
                   {(() => {
                     const dist = distributions[etf.ticker];
