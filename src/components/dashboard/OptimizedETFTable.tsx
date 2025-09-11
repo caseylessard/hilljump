@@ -511,7 +511,7 @@ export const OptimizedETFTable = ({
               >
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono">{lookupTables.originalRankMap.get(etf.ticker) || idx + 1}</span>
+                    <span className="font-mono">{idx + 1}</span>
                     <RankingChangeIndicator ticker={etf.ticker} changes={rankingChanges} />
                   </div>
                 </TableCell>
