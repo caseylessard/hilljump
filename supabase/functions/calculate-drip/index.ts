@@ -28,7 +28,11 @@ type DripResult = {
 };
 
 function ensureSorted<T extends { date: string }>(rows: T[]): T[] {
-  return rows.slice().sort((a, b) => a.date.localeCompare(b.date));
+  // Filter out rows with null/undefined dates and sort
+  return rows
+    .filter(row => row && row.date && typeof row.date === 'string')
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function addDaysISO(iso: string, days: number): string {

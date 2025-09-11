@@ -38,7 +38,10 @@ interface DripOptions {
 }
 
 function ensureSorted<T extends { date: string }>(rows: T[]): T[] {
-  return [...rows].sort((a, b) => a.date.localeCompare(b.date));
+  // Filter out rows with null/undefined dates and sort
+  return [...rows]
+    .filter(row => row && row.date && typeof row.date === 'string')
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function addDaysISO(dateISO: string, days: number): string {
