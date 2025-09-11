@@ -52,14 +52,20 @@ serve(async (req) => {
 
   try {
     const { tickers } = await req.json();
-    console.log(`📊 Calculating RSI for ${tickers?.length || 0} tickers via Yahoo Finance`);
+    const apiKey = Deno.env.get('EODHD_API_KEY');
+    
+    if (!apiKey) {
+      throw new Error('EODHD API key not found');
+    }
+
+    console.log(`📊 Calculating RSI for ${tickers?.length || 0} tickers via EODHD`);
 
     if (!tickers || !Array.isArray(tickers)) {
       throw new Error('Tickers array is required');
     }
 
     const signals: Record<string, RSISignal> = {};
-    const batchSize = 5; // Small batches to be respectful
+    const batchSize = 10; // EODHD allows higher rate limits
 
     // Process tickers in batches
     for (let i = 0; i < tickers.length; i += batchSize) {
@@ -71,46 +77,35 @@ serve(async (req) => {
         try {
           console.log(`🔍 Fetching historical data for ${ticker}`);
           
-          // Get 30 days of historical data (enough for 14-period RSI)
-          const endDate = Math.floor(Date.now() / 1000);
-          const startDate = endDate - (30 * 24 * 60 * 60); // 30 days ago
+          // Format ticker for EODHD (handle Canadian tickers)
+          const eodhTicker = ticker.includes('.TO') 
+            ? ticker.replace('.TO', '.TSE') 
+            : ticker.includes('.') 
+              ? ticker 
+              : `${ticker}.US`;
           
-          const url = `https://query1.finance.yahoo.com/v7/finance/download/${ticker}?period1=${startDate}&period2=${endDate}&interval=1d&events=history`;
+          // Get 30 days of historical data
+          const endDate = new Date().toISOString().split('T')[0];
+          const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
           
-          const response = await fetch(url, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-              'Accept': 'text/csv',
-              'Accept-Language': 'en-US,en;q=0.9',
-              'Accept-Encoding': 'gzip, deflate, br',
-              'Connection': 'keep-alive',
-              'Upgrade-Insecure-Requests': '1'
-            }
-          });
+          const url = `https://eodhd.com/api/eod/${eodhTicker}?api_token=${apiKey}&from=${startDate}&to=${endDate}&fmt=json`;
+          
+          const response = await fetch(url);
           
           if (!response.ok) {
             console.error(`❌ Failed to fetch data for ${ticker}: ${response.status}`);
             return null;
           }
 
-          const csvText = await response.text();
-          const lines = csvText.trim().split('\n');
+          const data = await response.json();
           
-          if (lines.length < 16) { // Need at least 15 days for 14-period RSI
-            console.error(`❌ Not enough data for ${ticker}: ${lines.length - 1} days`);
+          if (!Array.isArray(data) || data.length < 15) {
+            console.error(`❌ Not enough data for ${ticker}: ${data?.length || 0} days`);
             return null;
           }
 
-          // Parse CSV and extract closing prices
-          const prices: number[] = [];
-          for (let j = 1; j < lines.length; j++) { // Skip header
-            const columns = lines[j].split(',');
-            const closePrice = parseFloat(columns[4]); // Close price is column 4
-            
-            if (!isNaN(closePrice)) {
-              prices.push(closePrice);
-            }
-          }
+          // Extract closing prices
+          const prices = data.map(d => parseFloat(d.close)).filter(price => !isNaN(price));
 
           if (prices.length < 15) {
             console.error(`❌ Not enough valid prices for ${ticker}: ${prices.length}`);
@@ -155,10 +150,10 @@ serve(async (req) => {
         }
       });
 
-      // Add delay between batches to be respectful
+      // Add delay between batches
       if (i + batchSize < tickers.length) {
         console.log('⏸️ Pausing between batches...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
@@ -169,7 +164,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('❌ Error in yfinance-rsi function:', error);
+    console.error('❌ Error in EODHD RSI function:', error);
     return new Response(
       JSON.stringify({ 
         error: error.message,

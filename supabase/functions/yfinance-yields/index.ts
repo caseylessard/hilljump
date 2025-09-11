@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +13,11 @@ serve(async (req) => {
 
   try {
     const { tickers } = await req.json()
+    const apiKey = Deno.env.get('EODHD_API_KEY')
+    
+    if (!apiKey) {
+      throw new Error('EODHD API key not found')
+    }
     
     if (!tickers || !Array.isArray(tickers)) {
       return new Response(JSON.stringify({ error: 'Invalid tickers array' }), {
@@ -22,13 +26,13 @@ serve(async (req) => {
       })
     }
 
-    console.log(`📊 Fetching yields for ${tickers.length} tickers from Yahoo Finance`)
+    console.log(`📊 Fetching yields for ${tickers.length} tickers from EODHD`)
 
     const yields: Record<string, number> = {}
     let successCount = 0
 
-    // Process tickers in small batches to avoid rate limiting
-    const batchSize = 5
+    // Process tickers in batches
+    const batchSize = 10 // EODHD allows higher rate limits
     for (let i = 0; i < tickers.length; i += batchSize) {
       const batch = tickers.slice(i, i + batchSize)
       
@@ -36,25 +40,26 @@ serve(async (req) => {
         try {
           console.log(`🔍 Fetching yield for ${ticker}`)
           
-          // Yahoo Finance API endpoint
-          const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail`
-          const response = await fetch(url, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              'Accept': 'application/json'
-            }
-          })
+          // Format ticker for EODHD (handle Canadian tickers)
+          const eodhTicker = ticker.includes('.TO') 
+            ? ticker.replace('.TO', '.TSE') 
+            : ticker.includes('.') 
+              ? ticker 
+              : `${ticker}.US`;
+          
+          // EODHD Fundamentals API for dividend yield
+          const url = `https://eodhd.com/api/fundamentals/${eodhTicker}?api_token=${apiKey}&filter=Highlights::DividendYield`
+          const response = await fetch(url)
           
           if (response.ok) {
             const data = await response.json()
-            const summaryDetail = data?.quoteSummary?.result?.[0]?.summaryDetail
+            const dividendYield = data?.Highlights?.DividendYield
             
-            if (summaryDetail?.dividendYield?.raw && typeof summaryDetail.dividendYield.raw === 'number') {
-              // Convert from decimal to percentage (e.g., 0.05 -> 5.0)
-              const yieldValue = summaryDetail.dividendYield.raw * 100
-              yields[ticker] = yieldValue
+            if (dividendYield && typeof dividendYield === 'number' && dividendYield > 0) {
+              // EODHD returns yield as percentage (e.g., 5.2 for 5.2%)
+              yields[ticker] = dividendYield
               successCount++
-              console.log(`✅ ${ticker}: ${yieldValue.toFixed(2)}%`)
+              console.log(`✅ ${ticker}: ${dividendYield.toFixed(2)}%`)
             } else {
               console.log(`❌ No yield data for ${ticker}`)
             }
@@ -63,7 +68,7 @@ serve(async (req) => {
           }
           
           // Small delay between requests
-          await new Promise(resolve => setTimeout(resolve, 200))
+          await new Promise(resolve => setTimeout(resolve, 100))
           
         } catch (error) {
           console.log(`❌ Error fetching ${ticker}:`, error.message)
@@ -73,7 +78,7 @@ serve(async (req) => {
       // Pause between batches
       if (i + batchSize < tickers.length) {
         console.log(`⏸️ Pausing between batches...`)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
     }
 
@@ -90,7 +95,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('❌ Yahoo Finance error:', error)
+    console.error('❌ EODHD error:', error)
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
       details: error.message 

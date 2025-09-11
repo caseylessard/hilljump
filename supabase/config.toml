@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.alerts_ingest]
 verify_jwt = false
+
+[functions.daily-etf-updater-eodhd]
+verify_jwt = false

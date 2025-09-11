@@ -21,33 +21,79 @@ interface ETFMetadata {
   fund?: string;
 }
 
-// Fetch comprehensive ETF metadata from Yahoo Finance
-async function fetchYahooETFMetadata(ticker: string): Promise<Partial<ETFMetadata>> {
+// Fetch comprehensive ETF metadata from EODHD
+async function fetchEODHDETFMetadata(ticker: string, apiKey: string): Promise<Partial<ETFMetadata>> {
   try {
-    console.log(`📊 Fetching metadata for ${ticker} from Yahoo Finance`);
+    console.log(`📊 Fetching metadata for ${ticker} from EODHD`);
     
-    // Get comprehensive ETF data including fund profile
-    const quoteUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=assetProfile,fundProfile,summaryProfile,topHoldings,defaultKeyStatistics,price`;
-    const response = await fetch(quoteUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json,text/plain,*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Cache-Control': 'no-cache'
-      }
-    });
+    // Format ticker for EODHD
+    const eodhTicker = ticker.includes('.TO') 
+      ? ticker.replace('.TO', '.TSE') 
+      : ticker.includes('.') 
+        ? ticker 
+        : `${ticker}.US`;
+
+    const result: Partial<ETFMetadata> = { ticker };
+    
+    // Get comprehensive ETF fundamentals
+    const fundUrl = `https://eodhd.com/api/fundamentals/${eodhTicker}?api_token=${apiKey}`;
+    const response = await fetch(fundUrl);
     
     if (!response.ok) {
-      console.warn(`Yahoo Finance failed for ${ticker}: ${response.status}`);
-      return {};
+      console.warn(`EODHD failed for ${ticker}: ${response.status}`);
+      return result;
     }
     
     const data = await response.json();
-    const result = data?.quoteSummary?.result?.[0];
     
-    if (!result) return {};
+    // Extract ETF metadata from EODHD response
+    const general = data?.General;
+    const highlights = data?.Highlights;
     
-    const assetProfile = result.assetProfile;
+    if (general) {
+      result.name = general.Name;
+      result.category = general.Category;
+      result.summary = general.Description;
+      result.manager = general.Company;
+      result.industry = general.Sector;
+      
+      // Parse provider from company name or ticker patterns
+      if (general.Company) {
+        const company = general.Company.toLowerCase();
+        if (company.includes('ishares') || company.includes('blackrock')) {
+          result.provider_group = 'BlackRock';
+        } else if (company.includes('vanguard')) {
+          result.provider_group = 'Vanguard';
+        } else if (company.includes('spdr') || company.includes('state street')) {
+          result.provider_group = 'State Street';
+        } else if (company.includes('invesco')) {
+          result.provider_group = 'Invesco';
+        } else {
+          result.provider_group = general.Company;
+        }
+      }
+    }
+    
+    if (highlights) {
+      if (highlights.SharesOutstanding && highlights.MarketCapitalization) {
+        result.aum = highlights.MarketCapitalization * 1000000; // Convert to actual value
+      }
+    }
+
+    console.log(`✅ EODHD metadata for ${ticker}:`, {
+      name: result.name,
+      category: result.category,
+      manager: result.manager,
+      aum: result.aum
+    });
+
+    return result;
+
+  } catch (error) {
+    console.error(`Error fetching EODHD metadata for ${ticker}:`, error);
+    return { ticker };
+  }
+}
     const fundProfile = result.fundProfile;
     const summaryProfile = result.summaryProfile;
     const keyStats = result.defaultKeyStatistics;
@@ -224,13 +270,18 @@ serve(async (req) => {
 
       const updatePromises = batch.map(async (etf) => {
         try {
-          // Start with Yahoo Finance
-          let metadata = await fetchYahooETFMetadata(etf.ticker);
+          // Start with EODHD
+          const eodhApiKey = Deno.env.get('EODHD_API_KEY');
+          let metadata = {};
+          
+          if (eodhApiKey) {
+            metadata = await fetchEODHDETFMetadata(etf.ticker, eodhApiKey);
+          }
           
           // If still missing key data, try Alpha Vantage
           if (alphaVantageKey && (!metadata.name || !metadata.category)) {
             const alphaData = await fetchAlphaVantageMetadata(etf.ticker, alphaVantageKey);
-            metadata = { ...alphaData, ...metadata }; // Yahoo takes precedence
+            metadata = { ...alphaData, ...metadata }; // EODHD takes precedence
           }
           
           // Only update if we found new data
