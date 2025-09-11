@@ -306,10 +306,10 @@ serve(async (req) => {
             try {
               // Calculate DRIP for US users (with 15% withholding on CA funds)
               const usTaxWithholding = (fundCountry === 'CA') ? 0.15 : 0;
-              const usDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: usTaxWithholding });
+              const usDripData = dripWindows(priceData, divData, endDateISO, [28, 91, 182, 364], 1, { taxWithholdRate: usTaxWithholding });
               
               // Calculate DRIP for CA users (no withholding)
-              const caDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: 0 });
+              const caDripData = dripWindows(priceData, divData, endDateISO, [28, 91, 182, 364], 1, { taxWithholdRate: 0 });
               
               // Debug logging for first ticker
               if (ticker === batch[0]) {
