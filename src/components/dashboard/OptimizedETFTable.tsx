@@ -210,22 +210,30 @@ export const OptimizedETFTable = ({
       // Check cached DRIP data first - try multiple potential formats
       const tickerData = cachedDripData?.[ticker];
       if (tickerData) {
-        // Format 1: ticker.period structure
+        // Format 1: Direct period object with growthPercent (from Supabase cache)
+        if (tickerData[period] && typeof tickerData[period].growthPercent === 'number') {
+          return tickerData[period].growthPercent;
+        }
+        
+        // Format 2: ticker.period structure with percentage
         if (tickerData[period] && typeof tickerData[period].percentage === 'number') {
           return tickerData[period].percentage;
         }
         
-        // Format 2: Direct percentage properties
+        // Format 3: Direct percentage properties
         const percentKey = `drip${period}Percent`;
         if (typeof tickerData[percentKey] === 'number') {
           return tickerData[percentKey];
         }
         
-        // Format 3: Nested period object with percentage
+        // Format 4: Nested period object with percentage
         if (tickerData[period] && typeof tickerData[period] === 'object') {
           const periodData = tickerData[period];
           if (typeof periodData.percentage === 'number') {
             return periodData.percentage;
+          }
+          if (typeof periodData.growthPercent === 'number') {
+            return periodData.growthPercent;
           }
         }
       }

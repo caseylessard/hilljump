@@ -139,7 +139,7 @@ const Ranking = () => {
   }, [dripData, dripLoading]);
   
   // Get RSI signals for trend indicators
-  const { data: rsiSignals = {}, isLoading: rsiLoading } = useBulkRSISignals(tickers);
+  const { data: rsiSignals = {}, isLoading: rsiLoading } = useBulkRSISignals(tickers.slice(0, 50)); // Limit to prevent timeout
   
   // Debug RSI signals loading  
   useEffect(() => {

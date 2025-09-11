@@ -196,8 +196,16 @@ function calculateRiskScore(etf: any): number {
 function calculateDripScore(dripData: any): number {
   if (!dripData) return 50; // Default score if no DRIP data
   
-  const period4w = dripData.period_4w?.valueGrowthPct || 0;
-  const period52w = dripData.period_52w?.valueGrowthPct || 0;
+  // Fix: Use 'growthPercent' not 'valueGrowthPct'
+  const period4w = dripData.period_4w?.growthPercent || 0;
+  const period52w = dripData.period_52w?.growthPercent || 0;
+  
+  console.log(`🔍 DRIP Score Debug:`, {
+    period4w,
+    period52w,
+    raw4w: dripData.period_4w,
+    raw52w: dripData.period_52w
+  });
   
   // Weight 4-week and 52-week performance
   const score = (period4w * 0.8) + (period52w * 0.2);

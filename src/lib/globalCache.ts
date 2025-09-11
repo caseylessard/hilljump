@@ -178,36 +178,66 @@ export const getCachedGlobalDistributions = async (tickers: string[]): Promise<R
   }
 };
 
-export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: any): Promise<Record<string, any>> => {
-  const cacheKey = `global-drip-${tickers.sort().join(',')}-${JSON.stringify(taxPreferences)}`;
-  const cached = getFromGlobalCache<Record<string, any>>(cacheKey);
-  if (cached) return cached;
+export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { country: string, enabled: boolean, rate: number }) => {
+  const cacheKey = `drip-${tickers.slice(0, 50).sort().join(',')}-${JSON.stringify(taxPreferences)}`;
+  
+  // Check if data exists and is fresh (within 1 hour)
+  const cached = globalCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < 60 * 60 * 1000) {
+    console.log('🎯 Using cached DRIP data for', tickers.length, 'tickers');
+    return cached.data;
+  }
 
-  console.log('🔄 Loading DRIP data from cache...');
-  console.log('📊 Tax preferences:', taxPreferences);
-  console.log('🎯 Requesting DRIP for', tickers.length, 'tickers');
+  console.log('🔄 Fetching fresh DRIP data for', tickers.length, 'tickers');
   
   try {
-    // Use the cached DRIP data from Supabase instead of calculating fresh
-    const { data, error } = await supabase.functions.invoke('get-cached-drip', {
-      body: { 
-        tickers,
-        taxPreferences: {
-          country: taxPreferences?.country || 'US',
-          enabled: taxPreferences?.enabled || false,
-          rate: taxPreferences?.rate || 0.15
-        }
-      }
-    });
-
-    if (error) throw error;
+    // Determine which cache table to use based on tax preferences
+    const tableName = (taxPreferences?.country === 'CA' && taxPreferences?.enabled) 
+      ? 'drip_cache_ca' 
+      : 'drip_cache_us';
     
-    const dripData = data?.dripData || {};
-    console.log('✅ Received DRIP data for', Object.keys(dripData).length, 'tickers');
-    setGlobalCache(cacheKey, dripData);
-    return dripData;
+    console.log(`📊 Using DRIP table: ${tableName}`);
+    
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('ticker, period_4w, period_13w, period_26w, period_52w, updated_at')
+      .in('ticker', tickers);
+    
+    if (error) {
+      console.error('❌ DRIP fetch error:', error);
+      return {};
+    }
+    
+    console.log(`📊 DRIP Debug - Raw data sample:`, data?.slice(0, 2));
+    
+    const result: Record<string, any> = {};
+    data?.forEach(row => {
+      // Debug the actual structure
+      if (Math.random() < 0.1) {
+        console.log('🔍 DRIP Row Debug:', {
+          ticker: row.ticker,
+          period_4w: row.period_4w,
+          period_13w: row.period_13w
+        });
+      }
+      
+      result[row.ticker] = {
+        '4w': row.period_4w,
+        '13w': row.period_13w,
+        '26w': row.period_26w,
+        '52w': row.period_52w,
+        lastUpdated: row.updated_at
+      };
+    });
+    
+    // Cache the result
+    setGlobalCache(cacheKey, result);
+    
+    console.log(`✅ Cached DRIP data for ${Object.keys(result).length} tickers`);
+    return result;
+    
   } catch (error) {
-    console.error('❌ DRIP cache fetch failed:', error);
+    console.error('❌ DRIP fetch failed:', error);
     return {};
   }
 };

@@ -270,12 +270,17 @@ serve(async (req) => {
 
       for (const ticker of batch) {
         try {
+          // Debug logging for the first ticker in each batch
+          if (ticker === batch[0]) {
+            console.log(`🔍 Debug calculation for ${ticker}:`);
+          }
+          
           // Find ETF info for tax calculations
           const etfInfo = etfs?.find(e => e.ticker === ticker);
           const fundCountry = etfInfo?.country || 'US';
 
           // Fetch price data (last 400 days to ensure we have enough for 52w)
-          const { data: priceData } = await supabase
+          const { data: priceData } = await supabaseClient
             .from('historical_prices')
             .select('date, close_price')
             .eq('ticker', ticker)
@@ -283,42 +288,66 @@ serve(async (req) => {
             .order('date', { ascending: true });
 
           // Fetch dividend data (last 2 years)
-          const { data: divData } = await supabase
+          const { data: divData } = await supabaseClient
             .from('dividends')
             .select('ex_date, amount')
             .eq('ticker', ticker)
             .gte('ex_date', new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
             .order('ex_date', { ascending: true });
 
-          if (priceData && priceData.length > 0 && divData) {
-            // Calculate DRIP for US users (with 15% withholding on CA funds)
-            const usTaxWithholding = (fundCountry === 'CA') ? 0.15 : 0;
-            const usDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: usTaxWithholding });
-            
-            // Calculate DRIP for CA users (no withholding)
-            const caDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: 0 });
-            
-            const timestamp = new Date().toISOString();
-            
-            usBatchResults.push({
-              ticker,
-              period_4w: usDripData['4w'] || null,
-              period_13w: usDripData['13w'] || null,
-              period_26w: usDripData['26w'] || null,
-              period_52w: usDripData['52w'] || null,
-              updated_at: timestamp
-            });
-            
-            caBatchResults.push({
-              ticker,
-              period_4w: caDripData['4w'] || null,
-              period_13w: caDripData['13w'] || null,
-              period_26w: caDripData['26w'] || null,
-              period_52w: caDripData['52w'] || null,
-              updated_at: timestamp
-            });
-            
-            totalProcessed++;
+          // Debug logging for first ticker
+          if (ticker === batch[0]) {
+            console.log(`📊 ${ticker}: Prices=${priceData?.length || 0}, Divs=${divData?.length || 0}`);
+            console.log(`🔍 Sample price:`, priceData?.slice(-1));
+            console.log(`🔍 Sample div:`, divData?.slice(-1));
+          }
+
+          if (priceData && priceData.length > 10 && divData && divData.length > 0) {
+            try {
+              // Calculate DRIP for US users (with 15% withholding on CA funds)
+              const usTaxWithholding = (fundCountry === 'CA') ? 0.15 : 0;
+              const usDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: usTaxWithholding });
+              
+              // Calculate DRIP for CA users (no withholding)
+              const caDripData = dripWindows(priceData, divData, endDateISO, { taxWithholding: 0 });
+              
+              // Debug logging for first ticker
+              if (ticker === batch[0]) {
+                console.log(`🔍 ${ticker} DRIP Results:`, {
+                  us4w: usDripData['4w'] ? 'calculated' : 'null',
+                  ca4w: caDripData['4w'] ? 'calculated' : 'null',
+                  us4wPercent: usDripData['4w']?.growthPercent,
+                  ca4wPercent: caDripData['4w']?.growthPercent
+                });
+              }
+              
+              const timestamp = new Date().toISOString();
+              
+              usBatchResults.push({
+                ticker,
+                period_4w: usDripData['4w'] || null,
+                period_13w: usDripData['13w'] || null,
+                period_26w: usDripData['26w'] || null,
+                period_52w: usDripData['52w'] || null,
+                updated_at: timestamp
+              });
+              
+              caBatchResults.push({
+                ticker,
+                period_4w: caDripData['4w'] || null,
+                period_13w: caDripData['13w'] || null,
+                period_26w: caDripData['26w'] || null,
+                period_52w: caDripData['52w'] || null,
+                updated_at: timestamp
+              });
+              
+              totalProcessed++;
+            } catch (dripError) {
+              console.error(`❌ DRIP calculation error for ${ticker}:`, dripError.message);
+              totalErrors++;
+            }
+          } else {
+            console.warn(`⚠️ ${ticker}: Insufficient data - Prices=${priceData?.length || 0}, Divs=${divData?.length || 0}`);
           }
         } catch (error) {
           console.error(`❌ Error calculating DRIP for ${ticker}:`, error);
