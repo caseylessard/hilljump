@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { ETFTable } from '@/components/dashboard/ETFTable';
 import { OptimizedETFTable } from '@/components/dashboard/OptimizedETFTable';
-import { SimpleETFTable } from '@/components/dashboard/SimpleETFTable';
+
 import { ScoringControls } from '@/components/dashboard/ScoringControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -561,12 +561,6 @@ const Ranking = () => {
               )}
             </div>
           </div>
-
-           <SimpleETFTable 
-             items={filtered} 
-             live={cachedPrices}
-             distributions={distributions}
-           />
 
            <OptimizedETFTable 
              items={filtered} 
