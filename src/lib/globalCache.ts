@@ -190,6 +190,9 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
 
   console.log('🔄 Fetching fresh DRIP data for', tickers.length, 'tickers');
   
+  // Force fresh fetch by clearing the cache
+  globalCache.delete(cacheKey);
+  
   try {
     // Determine which cache table to use based on tax preferences
     const tableName = (taxPreferences?.country === 'CA' && taxPreferences?.enabled) 
@@ -223,13 +226,37 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
       const parsed26w = parseField(row.period_26w);  
       const parsed52w = parseField(row.period_52w);
       
-      return (parsed4w && parsed4w.growthPercent !== undefined) ||
-             (parsed13w && parsed13w.growthPercent !== undefined) ||
-             (parsed26w && parsed26w.growthPercent !== undefined) ||
-             (parsed52w && parsed52w.growthPercent !== undefined);
+      const hasValid = (parsed4w && parsed4w.growthPercent !== undefined) ||
+                      (parsed13w && parsed13w.growthPercent !== undefined) ||
+                      (parsed26w && parsed26w.growthPercent !== undefined) ||
+                      (parsed52w && parsed52w.growthPercent !== undefined);
+      
+      // Debug specific tickers
+      if (row.ticker === 'AAPW' || row.ticker === 'MSTY') {
+        console.log(`🔍 ${row.ticker} validation debug:`, {
+          period_4w_type: typeof row.period_4w,
+          period_4w_raw: row.period_4w,
+          parsed4w_growth: parsed4w?.growthPercent,
+          hasValid,
+          updated_at: row.updated_at
+        });
+      }
+      
+      return hasValid;
     });
     
     console.log(`📊 DRIP Cache Check: ${data?.length || 0} records, ${hasValidData ? 'HAS' : 'MISSING'} valid data`);
+    
+    // Debug: Show actual data structure
+    if (data?.length > 0) {
+      const sampleData = data[0];
+      console.log(`🔍 Sample DRIP data structure:`, {
+        ticker: sampleData.ticker,
+        period_4w_type: typeof sampleData.period_4w,
+        period_4w_value: sampleData.period_4w,
+        has_growth_percent: sampleData.period_4w && typeof sampleData.period_4w === 'object' && 'growthPercent' in sampleData.period_4w
+      });
+    }
     
     let finalData = data; // Use a mutable variable
     
@@ -333,6 +360,22 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
     
     // Cache the result
     setGlobalCache(cacheKey, result);
+    
+    // Debug final result for key tickers
+    if (result.AAPW || result.MSTY) {
+      console.log(`🎯 Final DRIP result for key tickers:`, {
+        AAPW: result.AAPW ? {
+          drip4wPercent: result.AAPW.drip4wPercent,
+          drip13wPercent: result.AAPW.drip13wPercent,
+          raw4w: result.AAPW['4w']
+        } : 'not found',
+        MSTY: result.MSTY ? {
+          drip4wPercent: result.MSTY.drip4wPercent,
+          drip13wPercent: result.MSTY.drip13wPercent,
+          raw4w: result.MSTY['4w']
+        } : 'not found'
+      });
+    }
     
     console.log(`✅ Cached DRIP data for ${Object.keys(result).length} tickers`);
     return result;
