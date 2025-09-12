@@ -161,14 +161,14 @@ function calculateTrendScore(etf: any, priceData: any): number {
     return Math.max(0, Math.min(100, 50 + returnPct / 2)); // Normalize around 50
   }
 
-  return 50; // Default neutral score
+  return 10; // Low score for missing data - don't reward lack of performance data
 }
 
 // Helper function to calculate return score (0-100)
 function calculateReturnScore(etf: any): number {
   const totalReturn1Y = etf.total_return_1y || etf.totalReturn1Y || 0;
   
-  if (totalReturn1Y === 0) return 50; // Default neutral score
+  if (totalReturn1Y === 0) return 10; // Low score for missing data - don't reward lack of performance data
   
   const returnPct = totalReturn1Y * 100; // Convert to percentage
   // Normalize: 0% return = 50, +20% = 100, -20% = 0
