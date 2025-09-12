@@ -186,36 +186,20 @@ const NextDistributionCell = memo(({
 });
 
 const TrendIndicator = memo(({ position }: { position?: number }) => {
-  // Safely extract position value if it's wrapped in an object
-  let positionValue: number | undefined;
-  
-  if (typeof position === 'object' && position !== null) {
-    // Handle case where entire RSI signal object is passed
-    positionValue = (position as any)?.position;
-  } else if (typeof position === 'number') {
-    positionValue = position;
-  } else {
-    positionValue = undefined;
-  }
-  
-  if (positionValue === undefined || positionValue === null) {
+  if (position === undefined || position === null) {
     return (
-      <div className="flex flex-col items-center">
+      <div className="flex justify-center">
         <div className="w-3 h-3 rounded-full bg-muted-foreground" />
-        <span className="text-xs text-muted-foreground mt-1">null</span>
       </div>
     );
   }
   
-  const circleClass = positionValue === 1 ? "bg-success" : 
-                    positionValue === -1 ? "bg-destructive" : 
-                    "bg-warning";
-  const signalText = positionValue === 1 ? "BUY" : positionValue === -1 ? "SELL" : "HOLD";
-  
+  const circleClass = position === 1 ? "bg-emerald-500" : 
+                    position === -1 ? "bg-red-500" : 
+                    "bg-yellow-500";
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex justify-center">
       <div className={`w-3 h-3 rounded-full ${circleClass}`} />
-      <span className="text-xs text-muted-foreground mt-1">{signalText} ({String(positionValue)})</span>
     </div>
   );
 });
