@@ -168,17 +168,62 @@ const Ranking = () => {
       const score = storedScores[etf.ticker];
       const rsiData = rsiSignals[etf.ticker];
       
-      // Determine position from RSI signals: 1=BUY, 0=HOLD, -1=SELL
+      // Calculate DRIP-based position using Ladder-Delta Trend Model
       let position: number | undefined;
-      if (rsiData?.position !== undefined) {
-        position = rsiData.position;
-      } else if (rsiData?.signal) {
-        // Fallback: convert signal string to position number
-        switch (rsiData.signal.toLowerCase()) {
-          case 'buy': position = 1; break;
-          case 'sell': position = -1; break;
-          case 'hold': position = 0; break;
-          default: position = undefined;
+      
+      // Get DRIP data for this ticker
+      const tickerDripData = dripData?.[etf.ticker];
+      if (tickerDripData) {
+        // Extract DRIP percentages (try multiple formats)
+        const getDripPercent = (period: string) => {
+          // Format 1: Direct period properties
+          const percentKey = `drip${period}Percent`;
+          if (typeof tickerDripData[percentKey] === 'number') {
+            return tickerDripData[percentKey];
+          }
+          
+          // Format 2: Nested period object
+          if (tickerDripData[period] && typeof tickerDripData[period].growthPercent === 'number') {
+            return tickerDripData[period].growthPercent;
+          }
+          
+          return 0;
+        };
+        
+        const drip4w = getDripPercent('4w');
+        const drip13w = getDripPercent('13w'); 
+        const drip26w = getDripPercent('26w');
+        const drip52w = getDripPercent('52w');
+        
+        // Convert to per-week returns for Ladder-Delta calculation
+        const p4 = drip4w / 4;
+        const p13 = drip13w / 13;
+        const p26 = drip26w / 26;
+        const p52 = drip52w / 52;
+        
+        // Calculate deltas (recent minus longer period)
+        const d1 = p4 - p13;
+        const d2 = p13 - p26;
+        const d3 = p26 - p52;
+        
+        // Calculate Ladder-Delta Trend signal score
+        const baseScore = 0.60 * p4 + 0.25 * p13 + 0.10 * p26 + 0.05 * p52;
+        const positiveDeltaBonus = 1.00 * Math.max(0, d1) + 0.70 * Math.max(0, d2) + 0.50 * Math.max(0, d3);
+        const negativeDeltaPenalty = 0.50 * (Math.max(0, -d1) + Math.max(0, -d2) + Math.max(0, -d3));
+        
+        const ladderDeltaSignalScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
+        
+        // Buy/Sell conditions from scoring logic
+        const condBuy = (ladderDeltaSignalScore > 0.005) && (d1 > 0) && (d2 > 0) && (d3 > 0);
+        const condSell = (ladderDeltaSignalScore < 0) || (d1 <= 0);
+        
+        // Determine position: 1=Buy, 0=Hold, -1=Sell
+        if (condBuy) {
+          position = 1;
+        } else if (condSell) {
+          position = -1;
+        } else {
+          position = 0;
         }
       }
       
