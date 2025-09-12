@@ -425,8 +425,7 @@ export const OptimizedETFTable = ({
   type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "score" | "signal";
   
   const getInitialSort = (): { key: SortKey; dir: "asc" | "desc" } => {
-    // Always default to score sorting - clear any old localStorage preferences
-    localStorage.removeItem("etf-table-sort");
+    // Always default to score sorting (highest first)
     return { key: "score", dir: "desc" };
   };
   
