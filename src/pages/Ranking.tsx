@@ -168,21 +168,21 @@ const Ranking = () => {
       const score = storedScores[etf.ticker];
       const rsiData = rsiSignals[etf.ticker];
       
-      // Calculate DRIP-based position using Ladder-Delta Trend Model
-      let position: number | undefined;
+      // Calculate combined DRIP + RSI trend score
+      let combinedScore: number = 0;
       
       // Debug for AAPW - show all data regardless of availability
       if (etf.ticker === 'AAPW') {
-        console.log('🎯 AAPW Debug - Starting trend calculation:', {
+        console.log('🎯 AAPW Debug - Starting combined trend calculation:', {
           ticker: etf.ticker,
           hasDripData: !!dripData?.[etf.ticker],
-          dripDataKeys: dripData ? Object.keys(dripData) : [],
-          sampleDripTicker: dripData ? Object.keys(dripData)[0] : null,
-          sampleDripData: dripData ? dripData[Object.keys(dripData)[0]] : null
+          hasRsiData: !!rsiSignals[etf.ticker],
+          rsiSignal: rsiSignals[etf.ticker]
         });
       }
       
-      // Get DRIP data for this ticker
+      // 1. Calculate DRIP position (70% weight)
+      let dripPosition = 0;
       const tickerDripData = dripData?.[etf.ticker];
       if (tickerDripData) {
         // Extract DRIP percentages (try multiple formats)
@@ -228,18 +228,18 @@ const Ranking = () => {
         const condBuy = (ladderDeltaSignalScore > 0.005) && (d1 > 0) && (d2 > 0) && (d3 > 0);
         const condSell = (ladderDeltaSignalScore < 0) || (d1 <= 0);
         
-        // Determine position: 1=Buy, 0=Hold, -1=Sell
+        // Determine DRIP position: 1=Buy, 0=Hold, -1=Sell
         if (condBuy) {
-          position = 1;
+          dripPosition = 1;
         } else if (condSell) {
-          position = -1;
+          dripPosition = -1;
         } else {
-          position = 0;
+          dripPosition = 0;
         }
         
         // Debug logging for AAPW specifically
         if (etf.ticker === 'AAPW') {
-          console.log('🔍 AAPW Ladder-Delta TREND MATH:', {
+          console.log('🔍 AAPW DRIP Component:', {
             ticker: etf.ticker,
             rawDrip: { drip4w, drip13w, drip26w, drip52w },
             perWeekReturns: { p4, p13, p26, p52 },
@@ -251,13 +251,65 @@ const Ranking = () => {
               ladderDeltaSignalScore: ladderDeltaSignalScore.toFixed(6)
             },
             conditions: { condBuy, condSell },
-            finalPosition: position,
-            dripDataStructure: tickerDripData
+            dripPosition
           });
         }
-      } else if (etf.ticker === 'AAPW') {
-        console.log('❌ AAPW No DRIP data available for trend calculation');
-        position = 0; // Default to HOLD when no data
+      }
+      
+      // 2. Calculate RSI position (30% weight)
+      let rsiPosition = 0;
+      const rsiSignalData = rsiSignals[etf.ticker];
+      if (rsiSignalData) {
+        const rsiValue = rsiSignalData.rsi || 50; // Default to neutral if no RSI
+        
+        // Convert RSI to position: <30 = BUY(+1), >70 = SELL(-1), else HOLD(0)
+        if (rsiValue < 30) {
+          rsiPosition = 1; // Oversold = BUY
+        } else if (rsiValue > 70) {
+          rsiPosition = -1; // Overbought = SELL
+        } else {
+          rsiPosition = 0; // Neutral = HOLD
+        }
+        
+        if (etf.ticker === 'AAPW') {
+          console.log('🔍 AAPW RSI Component:', {
+            ticker: etf.ticker,
+            rsiValue,
+            rsiPosition,
+            rsiSignal: rsiSignalData.signal
+          });
+        }
+      }
+      
+      // 3. Calculate combined score: 70% DRIP + 30% RSI
+      combinedScore = 0.7 * dripPosition + 0.3 * rsiPosition;
+      
+      // Convert combined score to position for backward compatibility
+      let position: number;
+      if (combinedScore >= 0.6) {
+        position = 2; // Strong Buy
+      } else if (combinedScore >= 0.2) {
+        position = 1; // Buy
+      } else if (combinedScore >= -0.2) {
+        position = 0; // Hold
+      } else if (combinedScore >= -0.6) {
+        position = -1; // Sell
+      } else {
+        position = -2; // Strong Sell
+      }
+      
+      if (etf.ticker === 'AAPW') {
+        console.log('🔍 AAPW Combined Score:', {
+          ticker: etf.ticker,
+          dripPosition,
+          rsiPosition,
+          combinedScore: combinedScore.toFixed(3),
+          finalPosition: position,
+          interpretation: position === 2 ? 'Strong Buy' :
+                        position === 1 ? 'Buy' :
+                        position === 0 ? 'Hold' :
+                        position === -1 ? 'Sell' : 'Strong Sell'
+        });
       }
       
       return {

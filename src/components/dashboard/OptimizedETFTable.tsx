@@ -194,9 +194,14 @@ const TrendIndicator = memo(({ position }: { position?: number }) => {
     );
   }
   
-  const circleClass = position === 1 ? "bg-emerald-500" : 
-                    position === -1 ? "bg-red-500" : 
-                    "bg-yellow-500";
+  // 5-color scheme based on combined DRIP + RSI score
+  const circleClass = position === 2 ? "bg-emerald-700" :     // Strong Buy - dark green
+                     position === 1 ? "bg-emerald-500" :      // Buy - light green  
+                     position === 0 ? "bg-yellow-500" :       // Hold - yellow
+                     position === -1 ? "bg-red-500" :         // Sell - light red
+                     position === -2 ? "bg-red-700" :         // Strong Sell - dark red
+                     "bg-muted-foreground";                   // Unknown
+  
   return (
     <div className="flex justify-center">
       <div className={`w-3 h-3 rounded-full ${circleClass}`} />
@@ -456,7 +461,7 @@ export const OptimizedETFTable = ({
         case "drip26w": return lookupTables.getDripPercent(etf.ticker, "26w");
         case "drip52w": return lookupTables.getDripPercent(etf.ticker, "52w");
         case "score": return etf.compositeScore ?? 0;
-        case "signal": return etf.position === 1 ? 2 : (etf.position === 0 ? 1 : 0);
+        case "signal": return etf.position === 2 ? 4 : etf.position === 1 ? 3 : etf.position === 0 ? 2 : etf.position === -1 ? 1 : 0;
         case "rank":
         default: return etf.compositeScore ?? 0;
       }
