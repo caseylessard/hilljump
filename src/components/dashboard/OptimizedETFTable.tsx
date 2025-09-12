@@ -194,9 +194,9 @@ const TrendIndicator = memo(({ position }: { position?: number }) => {
     );
   }
   
-  const circleClass = position === 1 ? "bg-emerald-500" : 
-                    position === -1 ? "bg-red-500" : 
-                    "bg-yellow-500";
+  const circleClass = position === 1 ? "bg-success" : 
+                    position === -1 ? "bg-destructive" : 
+                    "bg-warning";
   return (
     <div className="flex justify-center">
       <div className={`w-3 h-3 rounded-full ${circleClass}`} />
@@ -564,15 +564,15 @@ export const OptimizedETFTable = ({
               </button>
               <div className="flex justify-center gap-1 mt-1">
                 <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <div className="w-2 h-2 rounded-full bg-success" />
                   <span className="text-xs text-muted-foreground">B</span>
                 </div>
                 <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                  <div className="w-2 h-2 rounded-full bg-warning" />
                   <span className="text-xs text-muted-foreground">H</span>
                 </div>
                 <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <div className="w-2 h-2 rounded-full bg-destructive" />
                   <span className="text-xs text-muted-foreground">S</span>
                 </div>
               </div>
