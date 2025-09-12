@@ -486,13 +486,8 @@ export const OptimizedETFTable = ({
       return sortDir === "asc" ? an - bn : bn - an;
     };
     
-    // Enrich items with RSI signals position before sorting
-    const enrichedItems = items.map(etf => ({
-      ...etf,
-      position: rsiSignals[etf.ticker] || 0 // Add RSI position from signals
-    }));
     
-    return enrichedItems.sort(cmp);
+    return items.sort(cmp);
   }, [items, sortKey, sortDir, live, distributions, lookupTables, rsiSignals]);
   
   const headerBtnClass = allowSorting ? "flex items-center gap-1" : "flex items-center gap-1 opacity-50 pointer-events-none";
