@@ -188,8 +188,9 @@ const NextDistributionCell = memo(({
 const TrendIndicator = memo(({ position }: { position?: number }) => {
   if (position === undefined || position === null) {
     return (
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center">
         <div className="w-3 h-3 rounded-full bg-muted-foreground" />
+        <span className="text-xs text-muted-foreground mt-1">null</span>
       </div>
     );
   }
@@ -197,9 +198,12 @@ const TrendIndicator = memo(({ position }: { position?: number }) => {
   const circleClass = position === 1 ? "bg-emerald-500" : 
                     position === -1 ? "bg-red-500" : 
                     "bg-yellow-500";
+  const signalText = position === 1 ? "BUY" : position === -1 ? "SELL" : "HOLD";
+  
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center">
       <div className={`w-3 h-3 rounded-full ${circleClass}`} />
+      <span className="text-xs text-muted-foreground mt-1">{signalText} ({position})</span>
     </div>
   );
 });
