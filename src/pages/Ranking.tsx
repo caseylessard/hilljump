@@ -171,6 +171,17 @@ const Ranking = () => {
       // Calculate DRIP-based position using Ladder-Delta Trend Model
       let position: number | undefined;
       
+      // Debug for AAPW - show all data regardless of availability
+      if (etf.ticker === 'AAPW') {
+        console.log('🎯 AAPW Debug - Starting trend calculation:', {
+          ticker: etf.ticker,
+          hasDripData: !!dripData?.[etf.ticker],
+          dripDataKeys: dripData ? Object.keys(dripData) : [],
+          sampleDripTicker: dripData ? Object.keys(dripData)[0] : null,
+          sampleDripData: dripData ? dripData[Object.keys(dripData)[0]] : null
+        });
+      }
+      
       // Get DRIP data for this ticker
       const tickerDripData = dripData?.[etf.ticker];
       if (tickerDripData) {
@@ -225,6 +236,28 @@ const Ranking = () => {
         } else {
           position = 0;
         }
+        
+        // Debug logging for AAPW specifically
+        if (etf.ticker === 'AAPW') {
+          console.log('🔍 AAPW Ladder-Delta TREND MATH:', {
+            ticker: etf.ticker,
+            rawDrip: { drip4w, drip13w, drip26w, drip52w },
+            perWeekReturns: { p4, p13, p26, p52 },
+            deltas: { d1, d2, d3 },
+            signalComponents: { 
+              baseScore: baseScore.toFixed(6), 
+              positiveDeltaBonus: positiveDeltaBonus.toFixed(6), 
+              negativeDeltaPenalty: negativeDeltaPenalty.toFixed(6),
+              ladderDeltaSignalScore: ladderDeltaSignalScore.toFixed(6)
+            },
+            conditions: { condBuy, condSell },
+            finalPosition: position,
+            dripDataStructure: tickerDripData
+          });
+        }
+      } else if (etf.ticker === 'AAPW') {
+        console.log('❌ AAPW No DRIP data available for trend calculation');
+        position = 0; // Default to HOLD when no data
       }
       
       return {
