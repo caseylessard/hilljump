@@ -194,17 +194,32 @@ const TrendIndicator = memo(({ position }: { position?: number }) => {
     );
   }
   
-  // 5-color scheme based on combined DRIP + RSI score
-  const circleClass = position === 2 ? "bg-emerald-700" :     // Strong Buy - dark green
-                     position === 1 ? "bg-emerald-500" :      // Buy - light green  
-                     position === 0 ? "bg-yellow-500" :       // Hold - yellow
-                     position === -1 ? "bg-red-500" :         // Sell - light red
-                     position === -2 ? "bg-red-700" :         // Strong Sell - dark red
-                     "bg-muted-foreground";                   // Unknown
+  // 5-level scheme: filled vs outlined for better readability
+  let circleClass: string;
+  
+  if (position === 2) {
+    // Strong Buy - green filled
+    circleClass = "bg-emerald-500 border-emerald-500";
+  } else if (position === 1) {
+    // Buy - green outline only
+    circleClass = "bg-transparent border-2 border-emerald-500";
+  } else if (position === 0) {
+    // Hold - yellow filled  
+    circleClass = "bg-yellow-500 border-yellow-500";
+  } else if (position === -1) {
+    // Sell - red outline only
+    circleClass = "bg-transparent border-2 border-red-500";
+  } else if (position === -2) {
+    // Strong Sell - red filled
+    circleClass = "bg-red-500 border-red-500";
+  } else {
+    // Unknown
+    circleClass = "bg-muted-foreground border-muted-foreground";
+  }
   
   return (
     <div className="flex justify-center">
-      <div className={`w-3 h-3 rounded-full ${circleClass}`} />
+      <div className={`w-3 h-3 rounded-full border ${circleClass}`} />
     </div>
   );
 });
