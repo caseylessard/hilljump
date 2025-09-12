@@ -28,15 +28,15 @@ export type RankingPrefs = {
 
 export const presets: Record<string, RankingPrefs> = {
   balanced: {
-    wYield: 10,              // Reduced from 25
-    wDivStability: 15,       // Reduced from 20
+    wYield: 25,
+    wDivStability: 20,
     wRisk: 20,
     wTotalReturn12m: 15,
-    wMomentum13w: 20,        // Increased from 8 - DRIP is now primary
-    wMomentum52w: 15,        // Increased from 2 - Long-term DRIP momentum
-    wLiquidity: 3,           // Reduced from 5
-    wFees: 2,                // Reduced from 3
-    wSizeAge: 0,             // Reduced from 2
+    wMomentum13w: 8,
+    wMomentum52w: 2,
+    wLiquidity: 5,
+    wFees: 3,
+    wSizeAge: 2,
     capHomeBias: 6,
     capCurrency: 2,
     capCadence: 2,
@@ -50,15 +50,15 @@ export const presets: Record<string, RankingPrefs> = {
   },
 
   income_first: {
-    wYield: 8,               // Drastically reduced from 35
-    wDivStability: 15,       // Reduced from 25
-    wRisk: 15,               // Reduced from 20
-    wTotalReturn12m: 10,     // Increased from 5
-    wMomentum13w: 30,        // Massively increased from 3 - DRIP is king
-    wMomentum52w: 20,        // Massively increased from 2 - Long-term DRIP
-    wLiquidity: 2,           // Reduced from 5
-    wFees: 0,                // Reduced from 3
-    wSizeAge: 0,             // Reduced from 2
+    wYield: 35,
+    wDivStability: 25,
+    wRisk: 20,
+    wTotalReturn12m: 5,
+    wMomentum13w: 3,
+    wMomentum52w: 2,
+    wLiquidity: 5,
+    wFees: 3,
+    wSizeAge: 2,
     capHomeBias: 6,
     capCurrency: 2,
     capCadence: 2,
@@ -72,14 +72,14 @@ export const presets: Record<string, RankingPrefs> = {
   },
 
   total_return: {
-    wYield: 5,               // Reduced from 15
-    wDivStability: 5,        // Reduced from 10
-    wRisk: 15,               // Reduced from 20
-    wTotalReturn12m: 35,     // Increased from 30
-    wMomentum13w: 25,        // Increased from 10 - DRIP momentum critical
-    wMomentum52w: 15,        // Increased from 10 - Long-term DRIP
-    wLiquidity: 0,           // Reduced from 3
-    wFees: 0,                // Reduced from 2
+    wYield: 15,
+    wDivStability: 10,
+    wRisk: 20,
+    wTotalReturn12m: 30,
+    wMomentum13w: 10,
+    wMomentum52w: 10,
+    wLiquidity: 3,
+    wFees: 2,
     wSizeAge: 0,
     capHomeBias: 6,
     capCurrency: 2,

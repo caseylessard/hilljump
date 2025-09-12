@@ -422,15 +422,15 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
               </button>
               <div className="flex justify-center gap-1 mt-1">
                 <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-full bg-success" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span className="text-xs text-muted-foreground">B</span>
                 </div>
                 <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-full bg-warning" />
+                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
                   <span className="text-xs text-muted-foreground">H</span>
                 </div>
                 <div className="flex items-center gap-0.5">
-                  <div className="w-2 h-2 rounded-full bg-destructive" />
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
                   <span className="text-xs text-muted-foreground">S</span>
                 </div>
               </div>
@@ -527,9 +527,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                          }
                          
                          // BUY = green, SELL = red, HOLD = yellow
-                         const circleClass = position === 1 ? "bg-success" : 
-                                           position === -1 ? "bg-destructive" : 
-                                           "bg-warning";
+                         const circleClass = position === 1 ? "bg-emerald-500" : 
+                                           position === -1 ? "bg-red-500" : 
+                                           "bg-yellow-500";
                          return (
                             <div className="flex justify-center">
                               <div className={`w-3 h-3 rounded-full ${circleClass}`} />

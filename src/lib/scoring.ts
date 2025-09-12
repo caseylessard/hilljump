@@ -132,9 +132,9 @@ export function scoreETFsWithPrefs(
     // Simplified EMA smoothing (using current score as EMA since we don't have historical data)
     const scoreEma5 = ladderDeltaSignalScore;
     
-    // Buy/Sell conditions - simplified and more practical
-    const condBuy = (scoreEma5 > 0.002) && (d1 > -0.001) && (d2 > -0.002); // More lenient
-    const condSell = (scoreEma5 < -0.001) || (d1 < -0.002); // Less aggressive
+    // Buy/Sell conditions adapted from Python logic
+    const condBuy = (scoreEma5 > 0.005) && (d1 > 0) && (d2 > 0) && (d3 > 0);
+    const condSell = (scoreEma5 < 0) || (d1 <= 0);
     
     // Simplified position logic (without full hysteresis due to lack of historical state)
     // 1 = Buy, 0 = Hold, -1 = Sell
