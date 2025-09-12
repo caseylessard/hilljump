@@ -31,7 +31,8 @@ export const buildAIPortfolio = async (
     maxWeight: number;
     capital: number;
     roundShares: boolean;
-  }
+  },
+  dripData?: Record<string, any>
 ): Promise<AIPortfolioETF[]> => {
   console.log(`🎯 Building AI portfolio with ${etfs.length} ETFs, source: ${options.scoreSource}, weighting: ${options.weighting}`);
 
@@ -50,7 +51,7 @@ export const buildAIPortfolio = async (
     }
 
     // Calculate trend score (simplified momentum based on available data)
-    const trendScore = calculateTrendScore(etf, priceData);
+    const trendScore = calculateTrendScore(etf, priceData, dripData);
     
     // Calculate return score (1Y total return normalized to 0-100)
     const ret1yScore = calculateReturnScore(etf);
@@ -142,9 +143,23 @@ export const buildAIPortfolio = async (
   return portfolioETFs;
 };
 
-// Helper function to calculate trend score (0-100)
-function calculateTrendScore(etf: any, priceData: any): number {
-  // Use DRIP data if available, otherwise use total return
+// Helper function to calculate trend score (0-100) - now uses real DRIP data
+function calculateTrendScore(etf: any, priceData: any, dripData?: Record<string, any>): number {
+  // First priority: Use cached DRIP data if available
+  const cachedDrip = dripData?.[etf.ticker];
+  if (cachedDrip) {
+    const drip52w = cachedDrip.drip52wPercent || 0;
+    const drip13w = cachedDrip.drip13wPercent || 0;
+    const drip4w = cachedDrip.drip4wPercent || 0;
+    
+    if (drip52w !== 0 || drip13w !== 0 || drip4w !== 0) {
+      // Weight recent performance more heavily (matches main scoring system)
+      const dripScore = (drip52w * 0.2) + (drip13w * 0.3) + (drip4w * 0.5);
+      return Math.max(0, Math.min(100, 50 + dripScore)); // Center around 50, bounded 0-100
+    }
+  }
+  
+  // Second priority: Use DRIP data from ETF object if available
   const drip52w = etf.drip_52w || 0;
   const drip13w = etf.drip_13w || 0;
   const totalReturn1Y = etf.total_return_1y || etf.totalReturn1Y || 0;

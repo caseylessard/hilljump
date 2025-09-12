@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { useBulkETFData } from "@/hooks/useBulkETFData";
-import { useCachedPrices } from "@/hooks/useCachedETFData";
+import { useCachedPrices, useCachedDRIP } from "@/hooks/useCachedETFData";
 import { buildAIPortfolio, type AIPortfolioETF, type WeightingMethod, type ScoreSource } from "@/lib/aiPortfolio";
 import Navigation from "@/components/Navigation";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -83,6 +83,9 @@ const Portfolio = () => {
   }, [etfData]);
   
   const { data: prices = {} } = useCachedPrices(etfs.map(e => e.ticker));
+  
+  // Get DRIP data - this is the key missing piece!
+  const { data: dripData = {} } = useCachedDRIP(etfs.map(e => e.ticker));
 
   // SEO setup
   useEffect(() => {
@@ -130,6 +133,7 @@ const Portfolio = () => {
         
         console.log(`🔍 Filtered ${etfs.length} ETFs down to ${qualityETFs.length} quality ETFs`);
         
+        // Pass DRIP data to the AI portfolio builder
         const result = await buildAIPortfolio(qualityETFs, prices, {
           topK: preferences.topK,
           minTradingDays: preferences.minTradingDays,
@@ -138,7 +142,7 @@ const Portfolio = () => {
           maxWeight: preferences.maxWeight,
           capital: portfolioSize,
           roundShares: true
-        });
+        }, dripData);
         
         if (!isCancelled) {
           setResolvedPortfolio(result);
@@ -160,7 +164,7 @@ const Portfolio = () => {
     return () => {
       isCancelled = true;
     };
-  }, [etfs, prices, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minTradingDays, portfolioSize]);
+  }, [etfs, prices, dripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minTradingDays, portfolioSize]);
 
   // Portfolio allocations are now calculated within the AI portfolio builder
   const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
