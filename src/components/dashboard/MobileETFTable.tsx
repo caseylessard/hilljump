@@ -236,7 +236,7 @@ export const MobileETFTable = ({
         const rank = frozenRankings.get(etf.ticker) || idx + 1;
         const manager = getFundManager(etf);
         const logo = getManagerLogo(etf, manager);
-        const price = cachedPrices[etf.ticker] || etf.current_price || 0;
+        const price = Number(cachedPrices[etf.ticker] || etf.current_price || 0);
 
         return (
           <Card 
