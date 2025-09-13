@@ -309,17 +309,19 @@ const Ranking = () => {
   // Get current ranking based on active tab (default to tax-free, taxed for Canadian users and non-authenticated users)
   const currentRanked = (profile?.country === 'CA' || !profile) && activeTab === 'taxed' ? rankedTaxed : rankedTaxFree;
   
-  // Store original rankings with fixed positions based on DRIP score - separate for each scenario
-  const [frozenRankingsTaxFree, setFrozenRankingsTaxFree] = useState<Map<string, number>>(new Map());
-  const [frozenRankingsTaxed, setFrozenRankingsTaxed] = useState<Map<string, number>>(new Map());
+  // Store original rankings with fixed positions based on DRIP score
+  const [frozenRankings, setFrozenRankings] = useState<Map<string, number>>(new Map());
   
-  // Update frozen rankings for tax-free scenario
+  // Update frozen rankings when unfiltered rankings change - sort by actual DRIP score
   useEffect(() => {
-    if (rankedTaxFree.length > 0 && frozenRankingsTaxFree.size === 0) {
-      const scoreBasedRanking = [...rankedTaxFree].sort((a, b) => {
+    if (currentRanked.length > 0) {
+      // Create a score-sorted version for frozen rankings
+      const scoreBasedRanking = [...currentRanked].sort((a, b) => {
         const getDripSum = (etf: ScoredETF): number => {
+          const dripData = ((profile?.country === 'CA' || !profile) && activeTab === 'taxed') ? dripDataTaxed : dripDataTaxFree;
+          
           const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
-            const tickerData = dripDataTaxFree?.[ticker];
+            const tickerData = dripData?.[ticker];
             if (tickerData) {
               const percentKey = `drip${period}Percent`;
               if (typeof tickerData[percentKey] === 'number') {
@@ -342,45 +344,9 @@ const Ranking = () => {
       scoreBasedRanking.forEach((etf, index) => {
         newFrozenRankings.set(etf.ticker, index + 1);
       });
-      setFrozenRankingsTaxFree(newFrozenRankings);
+      setFrozenRankings(newFrozenRankings);
     }
-  }, [rankedTaxFree, dripDataTaxFree]);
-
-  // Update frozen rankings for taxed scenario
-  useEffect(() => {
-    if (rankedTaxed.length > 0 && frozenRankingsTaxed.size === 0) {
-      const scoreBasedRanking = [...rankedTaxed].sort((a, b) => {
-        const getDripSum = (etf: ScoredETF): number => {
-          const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
-            const tickerData = dripDataTaxed?.[ticker];
-            if (tickerData) {
-              const percentKey = `drip${period}Percent`;
-              if (typeof tickerData[percentKey] === 'number') {
-                return tickerData[percentKey];
-              }
-            }
-            return 0;
-          };
-          
-          return getDripPercent(etf.ticker, "4w") + 
-                 getDripPercent(etf.ticker, "13w") + 
-                 getDripPercent(etf.ticker, "26w") + 
-                 getDripPercent(etf.ticker, "52w");
-        };
-        
-        return getDripSum(b) - getDripSum(a); // Highest score first
-      });
-      
-      const newFrozenRankings = new Map<string, number>();
-      scoreBasedRanking.forEach((etf, index) => {
-        newFrozenRankings.set(etf.ticker, index + 1);
-      });
-      setFrozenRankingsTaxed(newFrozenRankings);
-    }
-  }, [rankedTaxed, dripDataTaxed]);
-
-  // Get current frozen rankings based on active tab
-  const frozenRankings = (profile?.country === 'CA' || !profile) && activeTab === 'taxed' ? frozenRankingsTaxed : frozenRankingsTaxFree;
+  }, [currentRanked, searchQuery, activeTab, profile?.country, dripDataTaxFree, dripDataTaxed]);
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (dummy prices only)
