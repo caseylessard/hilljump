@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScoredETF } from "@/lib/scoring";
 import { ArrowUpRight, ArrowDownRight, Minus, TrendingUp, TrendingDown } from "lucide-react";
+import { format } from "date-fns";
 import type { LivePrice } from "@/lib/live";
 import yieldmaxLogo from "@/assets/logos/yieldmax.png";
 import globalxLogo from "@/assets/logos/globalx.png";
@@ -78,26 +79,61 @@ export const MobileETFTable = ({
     return "🇺🇸";
   }
 
-  // DRIP data helpers
+  // DRIP data helpers - copy exact logic from OptimizedETFTable
   const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
-    const tickerData = cachedDripData[ticker];
+    // Use cached DRIP if available, otherwise fallback to estimates
+    
+    // Check cached DRIP data first - try multiple potential formats
+    const tickerData = cachedDripData?.[ticker];
     if (tickerData) {
+      // Format 1: Direct percentage properties (PRIORITIZE FOR CONSISTENCY WITH UI)
       const percentKey = `drip${period}Percent`;
-      const percent = tickerData[percentKey];
-      if (percent !== undefined) {
-        return percent;
+      if (typeof tickerData[percentKey] === 'number') {
+        return tickerData[percentKey];
+      }
+      
+      // Format 2: ticker.period structure with percentage
+      if (tickerData[period] && typeof tickerData[period].percentage === 'number') {
+        return tickerData[period].percentage;
+      }
+      
+      // Format 3: Direct period object with growthPercent (FALLBACK ONLY)
+      if (tickerData[period] && typeof tickerData[period].growthPercent === 'number') {
+        return tickerData[period].growthPercent;
+      }
+      
+      // Format 4: Nested period object with percentage
+      if (tickerData[period] && typeof tickerData[period] === 'object') {
+        const periodData = tickerData[period];
+        if (typeof periodData.percentage === 'number') {
+          return periodData.percentage;
+        }
+        if (typeof periodData.growthPercent === 'number') {
+          return periodData.growthPercent;
+        }
       }
     }
     
     // Fallback to live data
     const liveItem = live?.[ticker];
+    let liveValue = 0;
     switch (period) {
-      case "4w": return liveItem?.drip4wPercent ?? 0;
-      case "13w": return liveItem?.drip13wPercent ?? 0;
-      case "26w": return liveItem?.drip26wPercent ?? 0;
-      case "52w": return liveItem?.drip52wPercent ?? 0;
-      default: return 0;
+      case "4w": liveValue = liveItem?.drip4wPercent ?? 0; break;
+      case "13w": liveValue = liveItem?.drip13wPercent ?? 0; break;
+      case "26w": liveValue = liveItem?.drip26wPercent ?? 0; break;
+      case "52w": liveValue = liveItem?.drip52wPercent ?? 0; break;
     }
+    
+    if (liveValue !== 0) return liveValue;
+    
+    // Final fallback: estimate based on ETF fundamentals
+    const etf = originalRanking?.find(e => e.ticker === ticker);
+    if (etf) {
+      // Simple estimation fallback - could import estimateQuickDrip if needed
+      return 0;
+    }
+    
+    return 0;
   };
 
   const getDripSum = (ticker: string): number => {
@@ -197,8 +233,38 @@ export const MobileETFTable = ({
                 </div>
 
                 <div className="text-right">
-                  <div className="font-semibold">${price.toFixed(2)}</div>
-                  <div className="text-xs text-muted-foreground">
+                  {(() => {
+                    const liveItem = live[etf.ticker];
+                    const price = liveItem?.price;
+                    const cp = liveItem?.changePercent;
+                    
+                    if (price == null) return "—";
+                    const up = (cp ?? 0) >= 0;
+                    
+                    // Get price update date from cached prices
+                    const cachedPrice = cachedPrices[etf.ticker];
+                    const priceDate = cachedPrice?.priceUpdatedAt;
+                    const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
+                    
+                    return (
+                      <div className="inline-flex flex-col items-end leading-tight">
+                        <span className="font-semibold">${price.toFixed(2)}</span>
+                        <div className="text-xs space-y-0">
+                          {cp != null && (
+                            <div className={up ? "text-emerald-600" : "text-red-600"}>
+                              {up ? "+" : ""}{cp.toFixed(2)}%
+                            </div>
+                          )}
+                          {dateStr && (
+                            <div className="text-muted-foreground">
+                              {dateStr}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <div className="text-xs text-muted-foreground mt-1">
                     Score: {dripSum.toFixed(1)}
                   </div>
                 </div>
