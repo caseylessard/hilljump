@@ -187,7 +187,7 @@ export const MobileETFTable = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-3">
       {items.map((etf, index) => {
         const rank = frozenRankings.get(etf.ticker) || index + 1;
         const manager = getFundManager(etf);
@@ -200,32 +200,32 @@ export const MobileETFTable = ({
         return (
           <Card 
             key={etf.ticker} 
-            className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+            className="p-4 sm:p-6 lg:p-4 cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => onSelectETF?.(etf, rank)}
           >
-            <CardContent className="p-0 space-y-3">
+            <CardContent className="p-0 space-y-3 sm:space-y-4 lg:space-y-3">
               {/* Header row */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 sm:gap-4 lg:gap-3">
                   <div className="flex flex-col items-center">
-                    <span className="text-lg font-bold text-primary">#{rank}</span>
+                    <span className="text-lg sm:text-xl lg:text-lg font-bold text-primary">#{rank}</span>
                     <RankingChangeIndicator ticker={etf.ticker} currentRank={index + 1} />
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 sm:gap-3 lg:gap-2">
                     {logoUrl && (
                       <img 
                         src={logoUrl} 
                         alt={manager} 
-                        className="w-6 h-6 rounded object-contain bg-white"
+                        className="w-6 h-6 sm:w-8 sm:h-8 lg:w-6 lg:h-6 rounded object-contain bg-white"
                       />
                     )}
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg">{displayTicker(etf.ticker)}</span>
-                        <span className="text-sm">{countryFlag(etf)}</span>
+                        <span className="font-bold text-lg sm:text-xl lg:text-lg">{displayTicker(etf.ticker)}</span>
+                        <span className="text-sm sm:text-base lg:text-sm">{countryFlag(etf)}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground truncate max-w-32">
+                      <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
                         {etf.strategyLabel || manager}
                       </div>
                     </div>
@@ -299,13 +299,13 @@ export const MobileETFTable = ({
               </div>
 
               {/* DRIP performance grid */}
-              <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="grid grid-cols-4 gap-2 sm:gap-4 lg:gap-2 text-center">
                 {(['4w', '13w', '26w', '52w'] as const).map((period) => {
                   const percent = getDripPercent(etf.ticker, period);
                   const isPositive = percent >= 0;
                   
                   return (
-                    <div key={period} className="text-xs">
+                    <div key={period} className="text-xs sm:text-sm lg:text-xs">
                       <div className="text-muted-foreground mb-1">{period}</div>
                       <div className={`font-medium ${
                         isPositive ? 'text-emerald-600' : 'text-red-600'

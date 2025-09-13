@@ -786,7 +786,7 @@ const Ranking = () => {
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 {/* Desktop: Filter buttons and Search */}
-                <div className="hidden sm:flex items-center justify-between w-full gap-4">
+                <div className="hidden lg:flex items-center justify-between w-full gap-4">
                   <div className="flex items-center gap-1 border rounded-lg p-1">
                     <Button
                       variant={filter === "All ETFs" ? "secondary" : "ghost"}
@@ -845,6 +845,66 @@ const Ranking = () => {
                   </div>
                 </div>
                 
+                {/* Tablet: Stacked layout */}
+                <div className="hidden sm:flex lg:hidden flex-col gap-3 w-full">
+                  <div className="flex items-center justify-center gap-1 border rounded-lg p-1 w-fit mx-auto">
+                    <Button
+                      variant={filter === "All ETFs" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("All ETFs")}
+                      className="h-8"
+                    >
+                      All ETFs
+                    </Button>
+                    <Button
+                      variant={filter === "US Funds" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("US Funds")}
+                      className="h-8"
+                    >
+                      US Funds
+                    </Button>
+                    <Button
+                      variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("Canadian Funds")}
+                      className="h-8"
+                    >
+                      Canadian Funds
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-2">
+                    {(isSubscribed || isAdmin) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowDialog(true)}
+                      >
+                        Scoring
+                      </Button>
+                    )}
+
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by ticker or underlying..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 pr-8 w-72"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
                 {/* Mobile: Dropdown and Search */}
                 <div className="flex sm:hidden flex-col gap-2 w-full">
                   <Select value={filter} onValueChange={setFilter}>
@@ -878,7 +938,8 @@ const Ranking = () => {
                 </div>
               </div>
 
-          <div className="hidden sm:block">
+          {/* Desktop: Full table */}
+          <div className="hidden lg:block">
             <OptimizedETFTable
               items={filtered} 
               live={cachedPrices}
@@ -890,6 +951,23 @@ const Ranking = () => {
               allowSorting={isSubscribed || isAdmin}
               cachedPrices={cachedPrices}
               frozenRankings={frozenRankings}
+            />
+          </div>
+          
+          {/* Tablet: Mobile cards with better spacing */}
+          <div className="hidden sm:block lg:hidden">
+            <MobileETFTable
+              items={filtered}
+              distributions={distributions}
+              cachedDripData={dripDataTaxFree || {}}
+              originalRanking={currentRanked}
+              cachedPrices={cachedPrices}
+              frozenRankings={frozenRankings}
+              persistentRanking={persistentRanking}
+              onSelectETF={(etf, rank) => {
+                // Handle ETF selection for mobile detail view if needed
+                console.log('Selected ETF:', etf, 'Rank:', rank);
+              }}
             />
           </div>
           <div className="block sm:hidden">
