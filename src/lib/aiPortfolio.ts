@@ -1,4 +1,7 @@
 // AI Portfolio builder stub
+import { scoreETFsWithPrefs } from './scoring';
+import { presets } from './rankingPresets';
+
 export interface AIPortfolioETF {
   ticker: string;
   name: string;
@@ -41,81 +44,46 @@ export const buildAIPortfolio = async (
     return [];
   }
 
-  // Calculate scores for each ETF based on scoreSource
-  const scoredETFs = etfs.map(etf => {
-    const priceData = prices[etf.ticker];
-    const currentPrice = priceData?.price || etf.current_price || etf.lastPrice || 0;
-    
-    if (currentPrice <= 0) {
-      return null; // Skip ETFs without valid prices
-    }
+  // Use the real Ladder-Delta Trend scoring system
+  const scoredETFs = scoreETFsWithPrefs(
+    etfs,
+    presets.total_return, // Use total return preset for AI portfolio
+    prices, // live prices
+    dripData // DRIP data
+  );
 
-    // Calculate trend score (simplified momentum based on available data)
-    const trendScore = calculateTrendScore(etf, priceData, dripData);
-    
-    // Calculate return score (1Y total return normalized to 0-100)
-    const ret1yScore = calculateReturnScore(etf, dripData);
-    
-    // Calculate composite score based on scoreSource
-    let compositeScore = 0;
-    switch (options.scoreSource) {
-      case 'trend':
-        compositeScore = trendScore;
-        break;
-      case 'ret1y':
-        compositeScore = ret1yScore;
-        break;
-      case 'blend':
-      default:
-        compositeScore = (trendScore * 0.7) + (ret1yScore * 0.3);
-        break;
-    }
-
-    // Add penalties for risky/poor quality ETFs
-    if (etf.volatility_1y && etf.volatility_1y > 30) {
-      compositeScore *= 0.9; // Penalize high volatility
-    }
-    if (etf.expense_ratio && etf.expense_ratio > 1.0) {
-      compositeScore *= 0.95; // Penalize high fees
-    }
-    if (!etf.aum || etf.aum < 50000000) { // Less than $50M AUM
-      compositeScore *= 0.85; // Penalize small funds
-    }
-
-    return {
-      ...etf,
-      currentPrice,
-      trendScore,
-      ret1yScore,
-      compositeScore,
-      volatility: etf.volatility_1y || 20, // Default to 20% if missing
-    };
-  }).filter(Boolean); // Remove null entries
+  console.log(`📊 Scored ${scoredETFs.length} ETFs using Ladder-Delta system`);
 
   if (scoredETFs.length === 0) {
-    console.warn('No valid scored ETFs after filtering');
+    console.warn('No valid scored ETFs after Ladder-Delta scoring');
     return [];
   }
 
-  // Sort by composite score (highest first) and take top K
-  const sortedETFs = scoredETFs.sort((a, b) => b.compositeScore - a.compositeScore);
-  const selectedETFs = sortedETFs.slice(0, options.topK);
+  // Sort by composite score and take top K
+  const topETFs = scoredETFs
+    .sort((a, b) => b.compositeScore - a.compositeScore)
+    .slice(0, options.topK);
 
-  console.log(`📊 Selected top ${selectedETFs.length} ETFs from ${scoredETFs.length} candidates`);
+  console.log(`📊 Selected top ${topETFs.length} ETFs from ${scoredETFs.length} candidates`);
 
   // Calculate weights based on weighting method
-  const weightedETFs = calculateWeights(selectedETFs, options.weighting, options.maxWeight);
+  const weightedETFs = calculateWeights(topETFs, options.weighting, options.maxWeight);
 
   // Calculate allocations and shares
   const portfolioETFs: AIPortfolioETF[] = weightedETFs.map(etf => {
+    const currentPrice = prices[etf.ticker]?.price || etf.current_price || 0;
     const allocationDollar = etf.weight * options.capital;
     const shares = options.roundShares 
-      ? Math.floor(allocationDollar / etf.currentPrice)
-      : allocationDollar / etf.currentPrice;
+      ? Math.floor(allocationDollar / currentPrice)
+      : allocationDollar / currentPrice;
     
-    const allocRounded = shares * etf.currentPrice;
+    const allocRounded = shares * currentPrice;
 
-    // Determine badge based on performance
+    // Convert scoring system scores to 0-100 scale for display
+    const trendScore = Math.round((etf.dripScore || 0) * 100); // DRIP score represents trend
+    const ret1yScore = Math.round((etf.returnScore || 0) * 100); // Return score
+
+    // Determine badge based on composite score
     const { badge, badgeLabel, badgeColor } = determineBadge(etf);
 
     return {
@@ -123,9 +91,9 @@ export const buildAIPortfolio = async (
       name: etf.name || etf.ticker,
       weight: etf.weight,
       shares: Math.round(shares * 100) / 100, // Round to 2 decimals
-      lastPrice: etf.currentPrice,
-      trendScore: etf.trendScore,
-      ret1yScore: etf.ret1yScore,
+      lastPrice: currentPrice,
+      trendScore,
+      ret1yScore,
       allocRounded,
       allocationDollar,
       badge,

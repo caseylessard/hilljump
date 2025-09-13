@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { useBulkETFData } from "@/hooks/useBulkETFData";
 import { useCachedPrices, useCachedDRIP } from "@/hooks/useCachedETFData";
+import { scoreETFsWithPrefs } from "@/lib/scoring";
 import { buildAIPortfolio, type AIPortfolioETF, type WeightingMethod, type ScoreSource } from "@/lib/aiPortfolio";
 import Navigation from "@/components/Navigation";
 import { RefreshButton } from "@/components/RefreshButton";
