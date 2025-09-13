@@ -178,19 +178,30 @@ serve(async (req) => {
 
 // Scoring helper functions
 function calculateReturnScore(etf: any): number {
-  if (!etf.total_return_1y || etf.total_return_1y <= 0) return 0;
-  return Math.min(100, Math.max(0, etf.total_return_1y * 2)); // Scale 50% return to 100 points
+  if (!etf.total_return_1y || isNaN(etf.total_return_1y)) return 30; // Default neutral score
+  
+  // Normalize returns: -50% = 0 points, 0% = 30 points, 50% = 100 points
+  const returnPct = etf.total_return_1y * 100; // Convert to percentage
+  const normalized = ((returnPct + 50) / 100) * 100; // Scale from -50% to +50% range
+  return Math.min(100, Math.max(0, normalized));
 }
 
 function calculateYieldScore(etf: any): number {
-  if (!etf.yield_ttm || etf.yield_ttm <= 0) return 0;
-  return Math.min(100, Math.max(0, etf.yield_ttm * 10)); // Scale 10% yield to 100 points
+  if (!etf.yield_ttm || isNaN(etf.yield_ttm)) return 30; // Default neutral score
+  
+  // Normalize yields: 0% = 0 points, 5% = 50 points, 15%+ = 100 points
+  const yieldPct = etf.yield_ttm * 100; // Convert to percentage
+  const normalized = Math.min(100, (yieldPct / 15) * 100);
+  return Math.max(0, normalized);
 }
 
 function calculateRiskScore(etf: any): number {
-  if (!etf.volatility_1y || etf.volatility_1y <= 0) return 100;
-  // Lower volatility = higher score
-  return Math.max(0, 100 - (etf.volatility_1y * 5));
+  if (!etf.volatility_1y || isNaN(etf.volatility_1y)) return 50; // Default neutral score
+  
+  // Normalize volatility: 5% vol = 100 points, 25% vol = 0 points
+  const volPct = etf.volatility_1y * 100; // Convert to percentage  
+  const normalized = Math.max(0, 100 - ((volPct - 5) / 20) * 100);
+  return Math.min(100, Math.max(0, normalized));
 }
 
 function calculateDripScore(dripData: any): number {
