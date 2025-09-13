@@ -69,7 +69,7 @@ const Home = () => {
         {/* Hero Section */}
         <section className="relative overflow-hidden py-20">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5" />
-          <div className="container relative">
+          <div className="w-full max-w-none px-4 relative">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-8">
                 <div className="space-y-4">
@@ -116,7 +116,7 @@ const Home = () => {
 
         {/* Features Section */}
         <section className="py-20 bg-muted/30">
-          <div className="container">
+          <div className="w-full max-w-none px-4">
             <div className="text-center space-y-4 mb-16">
               <h2 className="text-3xl md:text-4xl font-bold">
                 {contentLoading ? 'Loading...' : content.features_title}
@@ -142,7 +142,7 @@ const Home = () => {
 
         {/* Quick Actions Section */}
         <section className="py-20">
-          <div className="container">
+          <div className="w-full max-w-none px-4">
             <div className="grid md:grid-cols-3 gap-8">
               <Card className="p-6">
                 <h3 className="text-xl font-semibold mb-3">Income Rankings</h3>
