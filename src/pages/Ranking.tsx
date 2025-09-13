@@ -749,8 +749,8 @@ const Ranking = () => {
                   </div>
                 </div>
 
-                {/* Desktop + Tablet: Full table */}
-                <div className="hidden md:block">
+                {/* Desktop: Full table */}
+                <div className="hidden lg:block">
                   <OptimizedETFTable
                     items={filtered} 
                     live={cachedPrices}
@@ -763,6 +763,22 @@ const Ranking = () => {
                     cachedPrices={cachedPrices}
                     frozenRankings={frozenRankings}
                     taxedScoring={true}
+                  />
+                </div>
+                
+                {/* Tablet: Enhanced mobile cards */}
+                <div className="hidden md:block lg:hidden">
+                  <MobileETFTable
+                    items={filtered}
+                    distributions={distributions}
+                    cachedDripData={dripDataTaxed || {}}
+                    originalRanking={currentRanked}
+                    cachedPrices={cachedPrices}
+                    frozenRankings={frozenRankings}
+                    persistentRanking={persistentRanking}
+                    onSelectETF={(etf, rank) => {
+                      console.log('Selected ETF:', etf, 'Rank:', rank);
+                    }}
                   />
                 </div>
                 
@@ -941,8 +957,8 @@ const Ranking = () => {
                 </div>
               </div>
 
-          {/* Desktop + Tablet: Full table */}
-          <div className="hidden md:block">
+          {/* Desktop: Full table */}
+          <div className="hidden lg:block">
             <OptimizedETFTable
               items={filtered} 
               live={cachedPrices}
@@ -954,6 +970,22 @@ const Ranking = () => {
               allowSorting={isSubscribed || isAdmin}
               cachedPrices={cachedPrices}
               frozenRankings={frozenRankings}
+            />
+          </div>
+          
+          {/* Tablet: Enhanced mobile cards */}
+          <div className="hidden md:block lg:hidden">
+            <MobileETFTable
+              items={filtered}
+              distributions={distributions}
+              cachedDripData={dripDataTaxFree || {}}
+              originalRanking={currentRanked}
+              cachedPrices={cachedPrices}
+              frozenRankings={frozenRankings}
+              persistentRanking={persistentRanking}
+              onSelectETF={(etf, rank) => {
+                console.log('Selected ETF:', etf, 'Rank:', rank);
+              }}
             />
           </div>
           
