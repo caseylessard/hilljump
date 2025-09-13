@@ -50,8 +50,8 @@ const Portfolio = () => {
   const { data: etfData = {}, isLoading: etfsLoading } = useBulkETFData(allTickersData);
   
   // Get cached prices and DRIP data (same as Rankings page)
-  const { data: cachedPrices = {} } = useCachedPrices(allTickersData);
-  const { data: cachedDripData = {} } = useCachedDRIP(allTickersData);
+  const { data: cachedPrices = {}, isLoading: pricesLoading } = useCachedPrices(allTickersData);
+  const { data: cachedDripData = {}, isLoading: dripLoading } = useCachedDRIP(allTickersData);
   
   // Get stored scores using same system as Rankings page
   const { data: storedScores = {} } = useCachedStoredScores(
@@ -130,7 +130,7 @@ const Portfolio = () => {
     let isCancelled = false;
     
     const buildPortfolio = async () => {
-      if (etfs.length === 0 || Object.keys(cachedPrices).length === 0) return;
+      if (etfs.length === 0 || !cachedPrices || Object.keys(cachedPrices).length === 0) return;
       
       setPortfolioLoading(true);
       try {
@@ -155,7 +155,7 @@ const Portfolio = () => {
         console.log(`🔍 Filtered ${etfs.length} ETFs down to ${qualityETFs.length} quality ETFs`);
         
         // Pass DRIP data to the AI portfolio builder
-        const result = await buildAIPortfolio(qualityETFs, cachedPrices, {
+        const result = await buildAIPortfolio(qualityETFs, cachedPrices || {}, {
           topK: preferences.topK,
           minTradingDays: preferences.minTradingDays,
           scoreSource: preferences.scoreSource,
@@ -163,7 +163,7 @@ const Portfolio = () => {
           maxWeight: preferences.maxWeight,
           capital: portfolioSize,
           roundShares: true
-        }, cachedDripData);
+        }, cachedDripData || {});
         
         if (!isCancelled) {
           setResolvedPortfolio(result);
@@ -369,7 +369,7 @@ const Portfolio = () => {
               )}
             </CardHeader>
             <CardContent>
-              {etfsLoading || portfolioLoading ? (
+              {etfsLoading || portfolioLoading || pricesLoading || dripLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p>Building AI portfolio...</p>
