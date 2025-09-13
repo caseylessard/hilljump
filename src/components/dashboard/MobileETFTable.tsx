@@ -231,7 +231,7 @@ export const MobileETFTable = ({
   const dividendPredictions = {}; // TODO: Add this if needed
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 w-full">
       {items.map((etf, idx) => {
         const rank = frozenRankings.get(etf.ticker) || idx + 1;
         const manager = getFundManager(etf);
@@ -241,72 +241,80 @@ export const MobileETFTable = ({
         return (
           <Card 
             key={etf.ticker} 
-            className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+            className="p-3 sm:p-4 cursor-pointer hover:shadow-md transition-shadow w-full max-w-full"
             onClick={() => onItemClick(etf, rank)}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2 sm:gap-3 w-full min-w-0">
               {/* Rank and Flag */}
-              <div className="flex flex-col items-center shrink-0 min-w-[40px]">
-                <span className="text-lg font-bold text-muted-foreground">#{rank}</span>
-                <span className="text-lg">{countryFlag(etf)}</span>
+              <div className="flex flex-col items-center shrink-0 min-w-[32px] sm:min-w-[40px]">
+                <span className="text-sm sm:text-lg font-bold text-muted-foreground">#{rank}</span>
+                <span className="text-sm sm:text-lg">{countryFlag(etf)}</span>
               </div>
               
               {/* Main Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-bold text-lg">{etf.ticker}</span>
-                  <TrendIndicator position={etf.position} />
-                  <RankingChangeIndicator ticker={etf.ticker} changes={rankingChanges} />
-                  <PersistentRankingChangeIndicator 
-                    ticker={etf.ticker} 
-                    currentRank={rank} 
-                    persistentRanking={persistentRanking} 
-                  />
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-1 sm:gap-2 mb-2 flex-wrap">
+                  <span className="font-bold text-base sm:text-lg truncate">{etf.ticker}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <TrendIndicator position={etf.position} />
+                    <RankingChangeIndicator ticker={etf.ticker} changes={rankingChanges} />
+                    <PersistentRankingChangeIndicator 
+                      ticker={etf.ticker} 
+                      currentRank={rank} 
+                      persistentRanking={persistentRanking} 
+                    />
+                  </div>
                 </div>
                 
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 min-w-0">
                   {logo && (
-                    <Avatar className="h-6 w-6">
+                    <Avatar className="h-5 w-5 sm:h-6 sm:w-6 shrink-0">
                       <img src={logo} alt={manager} className="object-contain" />
                       <AvatarFallback className="text-xs">{manager.slice(0, 2)}</AvatarFallback>
                     </Avatar>
                   )}
-                  <span className="text-sm font-medium truncate">{manager}</span>
+                  <span className="text-xs sm:text-sm font-medium truncate min-w-0">{manager}</span>
                 </div>
                 
-                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-3 line-clamp-2">
                   {getEtfDescription(etf)}
                 </p>
                 
-                {/* Key Metrics Grid */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Price:</span>
-                    <span className="font-medium">${price.toFixed(2)}</span>
+                {/* Key Metrics Grid - made more responsive */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm w-full">
+                  <div className="flex justify-between items-center min-w-0">
+                    <span className="text-muted-foreground shrink-0">Price:</span>
+                    <span className="font-medium truncate ml-1">${price.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">4W:</span>
-                    <DRIPCell 
-                      ticker={etf.ticker} 
-                      period="4w" 
-                      dripData={cachedDripData} 
-                      live={live}
-                      etfData={etf}
-                    />
+                  <div className="flex justify-between items-center min-w-0">
+                    <span className="text-muted-foreground shrink-0">4W:</span>
+                    <div className="ml-1 min-w-0">
+                      <DRIPCell 
+                        ticker={etf.ticker} 
+                        period="4w" 
+                        dripData={cachedDripData} 
+                        live={live}
+                        etfData={etf}
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">13W:</span>
-                    <DRIPCell 
-                      ticker={etf.ticker} 
-                      period="13w" 
-                      dripData={cachedDripData} 
-                      live={live}
-                      etfData={etf}
-                    />
+                  <div className="flex justify-between items-center min-w-0">
+                    <span className="text-muted-foreground shrink-0">13W:</span>
+                    <div className="ml-1 min-w-0">
+                      <DRIPCell 
+                        ticker={etf.ticker} 
+                        period="13w" 
+                        dripData={cachedDripData} 
+                        live={live}
+                        etfData={etf}
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Next:</span>
-                    <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
+                  <div className="flex justify-between items-center min-w-0">
+                    <span className="text-muted-foreground shrink-0">Next:</span>
+                    <div className="ml-1 min-w-0">
+                      <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
+                    </div>
                   </div>
                 </div>
               </div>
