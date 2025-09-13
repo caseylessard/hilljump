@@ -106,13 +106,57 @@ const Ranking = () => {
     rate: 0 
   });
   
-  // Taxed DRIP data (15% on US funds only)
-  const { data: dripDataTaxed, isLoading: dripLoadingTaxed } = useCachedDRIP(tickers, { 
-    country: taxCountry, 
-    enabled: true, 
-    rate: 0.15 
-  });
+  // For the taxed scenario, we'll calculate it separately with custom logic
+  const [dripDataTaxed, setDripDataTaxed] = useState<any>({});
+  const [dripLoadingTaxed, setDripLoadingTaxed] = useState(false);
   
+  // Calculate taxed DRIP data when tab switches to taxed
+  useEffect(() => {
+    if (activeTab === 'taxed' && dripDataTaxFree && Object.keys(dripDataTaxed).length === 0) {
+      setDripLoadingTaxed(true);
+      console.log('🏦 Calculating 15% tax impact on US funds...');
+      
+      const taxedData: any = {};
+      
+      // Process each ticker's tax-free data and apply 15% tax to US funds only
+      Object.entries(dripDataTaxFree).forEach(([ticker, data]: [string, any]) => {
+        // Check if this is a US fund (doesn't end with .TO)
+        const isUSFund = !ticker.endsWith('.TO');
+        
+        if (isUSFund && data) {
+          // Apply 15% tax reduction to US fund dividends
+          const taxMultiplier = 0.85; // 85% after 15% tax
+          
+          taxedData[ticker] = {
+            ...data,
+            // Reduce DRIP returns by approximately 15% tax impact on dividends
+            drip4wPercent: data.drip4wPercent ? data.drip4wPercent * taxMultiplier : 0,
+            drip4wDollar: data.drip4wDollar ? data.drip4wDollar * taxMultiplier : 0,
+            drip13wPercent: data.drip13wPercent ? data.drip13wPercent * taxMultiplier : 0,
+            drip13wDollar: data.drip13wDollar ? data.drip13wDollar * taxMultiplier : 0,
+            drip26wPercent: data.drip26wPercent ? data.drip26wPercent * taxMultiplier : 0,
+            drip26wDollar: data.drip26wDollar ? data.drip26wDollar * taxMultiplier : 0,
+            drip52wPercent: data.drip52wPercent ? data.drip52wPercent * taxMultiplier : 0,
+            drip52wDollar: data.drip52wDollar ? data.drip52wDollar * taxMultiplier : 0,
+            taxApplied: '15% on US dividends'
+          };
+        } else {
+          // Canadian funds (.TO) keep original data - no withholding tax
+          taxedData[ticker] = {
+            ...data,
+            taxApplied: 'No tax on Canadian funds'
+          };
+        }
+      });
+      
+      console.log(`🏦 Applied 15% tax to ${Object.keys(taxedData).filter(t => !t.endsWith('.TO')).length} US funds`);
+      console.log(`🍁 No tax applied to ${Object.keys(taxedData).filter(t => t.endsWith('.TO')).length} Canadian funds`);
+      
+      setDripDataTaxed(taxedData);
+      setDripLoadingTaxed(false);
+    }
+  }, [activeTab, dripDataTaxFree, dripDataTaxed]);
+
   // Debug DRIP data being passed to table
   useEffect(() => {
     const currentDripData = activeTab === 'taxfree' ? dripDataTaxFree : dripDataTaxed;
@@ -125,12 +169,6 @@ const Ranking = () => {
       });
     }
   }, [dripDataTaxFree, dripDataTaxed, activeTab]);
-
-  // Debug DRIP data loading
-  useEffect(() => {
-    console.log('💰 Tax-free DRIP data:', dripDataTaxFree ? Object.keys(dripDataTaxFree).length : 0, 'tickers');
-    console.log('💰 Taxed DRIP data:', dripDataTaxed ? Object.keys(dripDataTaxed).length : 0, 'tickers');
-  }, [dripDataTaxFree, dripDataTaxed]);
   
   // Get RSI signals for trend indicators
   const { data: rsiSignals = {}, isLoading: rsiLoading } = useBulkRSISignals(tickers.slice(0, 50)); // Limit to prevent timeout
