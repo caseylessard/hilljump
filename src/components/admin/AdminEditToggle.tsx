@@ -21,7 +21,7 @@ export const AdminEditToggle = () => {
         <Button
           variant="outline"
           size="sm"
-          className="fixed top-16 right-4 z-50 bg-background/80 backdrop-blur-sm border-primary/50 hover:bg-primary/10"
+          className="fixed top-24 right-4 z-50 bg-background/80 backdrop-blur-sm border-primary/50 hover:bg-primary/10"
         >
           <Edit2 className="h-4 w-4 mr-2" />
           Edit Page
