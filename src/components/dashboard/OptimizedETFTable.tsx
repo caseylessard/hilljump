@@ -626,7 +626,7 @@ export const OptimizedETFTable = ({
             const rank = frozenRankings.get(etf.ticker) || idx + 1;
             const manager = helperFunctions.getFundManager(etf);
             const logo = helperFunctions.getManagerLogo(etf, manager);
-            const price = cachedPrices[etf.ticker] || etf.current_price || 0;
+            const price = Number(cachedPrices[etf.ticker] || etf.current_price || 0);
 
             return (
               <Card 
@@ -909,9 +909,10 @@ export const OptimizedETFTable = ({
                  </TableCell>
               </TableRow>
             );
-            )}
+            })}
           </TableBody>
         </Table>
+        </Card>
       )}
       
       {/* Modal */}
@@ -1025,6 +1026,6 @@ export const OptimizedETFTable = ({
           )}
         </DialogContent>
       </Dialog>
-    </Card>
+    </>
   );
 };
