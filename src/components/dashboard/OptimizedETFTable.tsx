@@ -91,6 +91,21 @@ const DRIPCell = memo(({
 }) => {
   const tickerData = dripData[ticker];
   
+  // Debug logging for first few tickers
+  if (['WNTR', 'BRKC', 'AAPW'].includes(ticker)) {
+    console.log(`🔍 DRIPCell Debug - ${ticker}:`, {
+      hasTickerData: !!tickerData,
+      tickerData: tickerData,
+      period,
+      dripDataKeys: Object.keys(dripData),
+      hasDripData: Object.keys(dripData).length > 0,
+      percentKey: `drip${period}Percent`,
+      dollarKey: `drip${period}Dollar`,
+      percentValue: tickerData?.[`drip${period}Percent`],
+      dollarValue: tickerData?.[`drip${period}Dollar`]
+    });
+  }
+  
   // Check if we should show an estimate
   const shouldEstimate = shouldShowEstimate(tickerData, period);
   
@@ -146,8 +161,21 @@ const DRIPCell = memo(({
   const percentKey = `drip${period}Percent`;
   const dollarKey = `drip${period}Dollar`;
   
-  const percent = tickerData[percentKey];
-  const dollar = tickerData[dollarKey];
+  const percent = tickerData?.[percentKey];
+  const dollar = tickerData?.[dollarKey];
+  
+  // More detailed debugging for data access
+  if (['WNTR', 'BRKC', 'AAPW'].includes(ticker) && period === '4w') {
+    console.log(`🔍 ${ticker} DRIP Access Debug:`, {
+      tickerData,
+      percentKey,
+      dollarKey,
+      percent,
+      dollar,
+      percentExists: percentKey in (tickerData || {}),
+      dollarExists: dollarKey in (tickerData || {})
+    });
+  }
   
   if (percent === undefined || percent === null) return <span>—</span>;
   
@@ -235,6 +263,14 @@ export const OptimizedETFTable = ({
   persistentRanking = [],
   cachedPrices = {}
 }: Props) => {
+  // Debug DRIP data being passed to table
+  console.log('🎯 OptimizedETFTable Debug:', {
+    itemsCount: items.length,
+    cachedDripDataKeys: Object.keys(cachedDripData),
+    cachedDripDataCount: Object.keys(cachedDripData).length,
+    sampleTicker: items[0]?.ticker,
+    sampleDripData: items[0] ? cachedDripData[items[0].ticker] : null
+  });
   // Performance monitoring
   const performanceMonitor = usePerformanceMonitor(true);
   const [open, setOpen] = useState(false);

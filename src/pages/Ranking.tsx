@@ -118,6 +118,18 @@ const Ranking = () => {
     rate: taxRate / 100 
   });
   
+  // Debug DRIP data being passed to table
+  useEffect(() => {
+    if (dripData) {
+      console.log('🎯 Ranking Debug - Passing to table:', {
+        dripDataExists: !!dripData,
+        dripDataKeys: Object.keys(dripData).slice(0, 5),
+        sampleDripEntry: Object.keys(dripData).length > 0 ? 
+          { [Object.keys(dripData)[0]]: dripData[Object.keys(dripData)[0]] } : null
+      });
+    }
+  }, [dripData]);
+
   // Debug DRIP data loading
   useEffect(() => {
     if (dripData) {
@@ -692,7 +704,7 @@ const Ranking = () => {
             </div>
           </div>
 
-           <OptimizedETFTable 
+           <OptimizedETFTable
              items={filtered} 
              live={cachedPrices}
              distributions={distributions}
