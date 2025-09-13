@@ -403,13 +403,36 @@ export const refreshDRIPData = async (tickers: string[], taxPreferences?: any): 
 
     if (error) throw error;
     
-    const dripData = data?.dripData || {};
+    const rawDripData = data?.dripData || {};
     
-    // Update cache with fresh data
+    // Normalize the data format to match cached data structure
+    const normalizedDripData: Record<string, any> = {};
+    
+    Object.entries(rawDripData).forEach(([ticker, tickerData]: [string, any]) => {
+      normalizedDripData[ticker] = {
+        // Keep the raw format for compatibility
+        ...tickerData,
+        // Ensure percentage values are directly accessible
+        drip4wPercent: tickerData.drip4wPercent || 0,
+        drip4wDollar: tickerData.drip4wDollar || 0,
+        drip13wPercent: tickerData.drip13wPercent || 0,
+        drip13wDollar: tickerData.drip13wDollar || 0,
+        drip26wPercent: tickerData.drip26wPercent || 0,
+        drip26wDollar: tickerData.drip26wDollar || 0,
+        drip52wPercent: tickerData.drip52wPercent || 0,
+        drip52wDollar: tickerData.drip52wDollar || 0,
+        lastUpdated: new Date().toISOString()
+      };
+    });
+    
+    console.log('🔄 Normalized fresh DRIP data:', Object.keys(normalizedDripData).length, 'tickers');
+    console.log('🔍 Sample normalized data:', Object.values(normalizedDripData)[0]);
+    
+    // Update cache with normalized data
     const cacheKey = `global-drip-${tickers.sort().join(',')}-${JSON.stringify(taxPreferences)}`;
-    setGlobalCache(cacheKey, dripData);
+    setGlobalCache(cacheKey, normalizedDripData);
     
-    return dripData;
+    return normalizedDripData;
   } catch (error) {
     console.error('❌ DRIP refresh failed:', error);
     return {};
