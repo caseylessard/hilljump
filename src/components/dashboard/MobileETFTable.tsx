@@ -18,6 +18,8 @@ type Props = {
   cachedDripData?: Record<string, any>;
   originalRanking?: ScoredETF[];
   cachedPrices?: Record<string, any>;
+  frozenRankings?: Map<string, number>;
+  persistentRanking?: Array<{ticker: string, rank: number, score: number, updatedAt: number}>;
   onSelectETF?: (etf: ScoredETF, rank: number) => void;
 };
 
@@ -28,6 +30,8 @@ export const MobileETFTable = ({
   cachedDripData = {}, 
   originalRanking = [],
   cachedPrices = {},
+  frozenRankings = new Map(),
+  persistentRanking = [],
   onSelectETF 
 }: Props) => {
   // Create original ranking lookup for persistent rank numbers
@@ -149,7 +153,7 @@ export const MobileETFTable = ({
   return (
     <div className="space-y-3">
       {items.map((etf, index) => {
-        const rank = originalRankMap.get(etf.ticker) || index + 1;
+        const rank = frozenRankings.get(etf.ticker) || index + 1;
         const manager = getFundManager(etf);
         const logoUrl = getManagerLogo(etf, manager);
         const price = Number(cachedPrices[etf.ticker] || etf.current_price || 0);
