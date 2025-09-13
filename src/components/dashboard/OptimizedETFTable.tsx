@@ -386,23 +386,28 @@ export const OptimizedETFTable = ({
         return dripSumCache.get(cacheKey)!;
       }
       
+      // Get individual DRIP percentages using the same logic as the individual columns
+      const drip4w = getDripPercent(ticker, "4w");
+      const drip13w = getDripPercent(ticker, "13w");
+      const drip26w = getDripPercent(ticker, "26w");
+      const drip52w = getDripPercent(ticker, "52w");
+      
       // Debug MSTY specifically
       if (ticker === 'MSTY') {
-        console.log('🔍 MSTY DRIP Debug:', {
+        console.log('🔍 MSTY Score Calculation:', {
           ticker,
           taxedScoring,
-          cachedData: cachedDripData[ticker],
-          drip4w: getDripPercent(ticker, "4w"),
-          drip13w: getDripPercent(ticker, "13w"),
-          drip26w: getDripPercent(ticker, "26w"),
-          drip52w: getDripPercent(ticker, "52w")
+          drip4w,
+          drip13w,
+          drip26w,
+          drip52w,
+          sum: drip4w + drip13w + drip26w + drip52w,
+          cachedDataKeys: Object.keys(cachedDripData),
+          mstyData: cachedDripData[ticker]
         });
       }
       
-      const sum = getDripPercent(ticker, "4w") + 
-                  getDripPercent(ticker, "13w") + 
-                  getDripPercent(ticker, "26w") + 
-                  getDripPercent(ticker, "52w");
+      const sum = drip4w + drip13w + drip26w + drip52w;
       
       dripSumCache.set(cacheKey, sum);
       return sum;
