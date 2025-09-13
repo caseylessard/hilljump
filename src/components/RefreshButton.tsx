@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import { warmGlobalCache } from "@/lib/globalCache";
+import { warmGlobalCache, clearAllCache, clearHomepageCache } from "@/lib/globalCache";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -23,8 +23,10 @@ export const RefreshButton = ({ onRefreshStart, onRefreshComplete }: RefreshButt
     try {
       toast.info("Refreshing data...");
       
-      // Clear React Query cache and force refresh global cache
+      // Clear all caches and force refresh
       queryClient.clear();
+      clearAllCache();
+      clearHomepageCache();
       await warmGlobalCache(true);
       
       toast.success("Data refreshed successfully!");

@@ -27,8 +27,10 @@ export const useHomepageContent = () => {
     loadContent();
   }, []);
 
-  const loadContent = async () => {
+  const loadContent = async (forceRefresh = false) => {
     try {
+      console.log(`🔄 Loading homepage content ${forceRefresh ? '(forced refresh)' : ''}`);
+      
       const { data, error } = await supabase
         .from('homepage_content')
         .select('content_key, content_value');
@@ -44,6 +46,7 @@ export const useHomepageContent = () => {
         contentMap[item.content_key] = item.content_value;
       });
       
+      console.log('✅ Homepage content loaded:', Object.keys(contentMap));
       setContent(contentMap);
     } catch (error) {
       console.error('Error loading homepage content:', error);
@@ -52,5 +55,7 @@ export const useHomepageContent = () => {
     }
   };
 
-  return { content, loading, refresh: loadContent };
+  const forceRefresh = () => loadContent(true);
+
+  return { content, loading, refresh: loadContent, forceRefresh };
 };

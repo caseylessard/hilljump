@@ -10,11 +10,12 @@ import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedYields
 import { initializeCache } from "@/lib/cacheUtils";
 import { useHomepageContent } from "@/hooks/useHomepageContent";
 import { useSEOSettings } from "@/hooks/useSEOSettings";
+import { clearHomepageCache } from "@/lib/globalCache";
 import { AdminEditToggle } from "@/components/admin/AdminEditToggle";
 
 const Home = () => {
   // Load dynamic content and SEO settings
-  const { content, loading: contentLoading } = useHomepageContent();
+  const { content, loading: contentLoading, forceRefresh } = useHomepageContent();
   const { settings: seoSettings, loading: seoLoading } = useSEOSettings();
   
   // Preload data silently in background - disabled, data comes from cache
@@ -29,7 +30,12 @@ const Home = () => {
   useEffect(() => {
     // Initialize cache system
     initializeCache();
-  }, []);
+    
+    // Force clear homepage cache and refresh content for deployed site
+    console.log('🔄 Clearing homepage cache and forcing refresh...');
+    clearHomepageCache();
+    forceRefresh();
+  }, [forceRefresh]);
 
   const features = [
     {
@@ -99,7 +105,7 @@ const Home = () => {
               
               <Card className="overflow-hidden">
                 <img 
-                  src={content.hero_image_url} 
+                  src={`${content.hero_image_url}?v=${Date.now()}`} 
                   alt="Investment platform visualization showing market data and analysis tools" 
                   className="w-full h-80 object-cover"
                 />

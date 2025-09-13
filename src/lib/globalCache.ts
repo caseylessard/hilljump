@@ -48,6 +48,23 @@ export const clearExpiredCache = (): void => {
   }
 };
 
+// Force clear all cache
+export const clearAllCache = (): void => {
+  globalCache.clear();
+  console.log('🗑️ Cleared all global cache');
+};
+
+// Force clear homepage content cache specifically
+export const clearHomepageCache = (): void => {
+  const homepageKeys = Array.from(globalCache.keys()).filter(key => 
+    key.includes('homepage') || key.includes('content') || key.includes('seo')
+  );
+  homepageKeys.forEach(key => {
+    globalCache.delete(key);
+    console.log(`🗑️ Cleared homepage cache: ${key}`);
+  });
+};
+
 // Main data fetchers with global caching
 export const getCachedGlobalETFs = async (): Promise<any[]> => {
   const cacheKey = 'global-etfs';
