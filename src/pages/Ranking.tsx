@@ -569,9 +569,9 @@ const Ranking = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <main className="w-full max-w-full overflow-hidden">
-        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 w-full max-w-full">
-          <section className="w-full">
+      <main className="w-full min-w-0">
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 w-full min-w-0">
+          <section className="w-full min-w-0">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="w-full sm:w-auto min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-bold text-primary">ETF Rankings</h1>
