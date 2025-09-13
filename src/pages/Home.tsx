@@ -3,14 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Navigation from "@/components/Navigation";
-import hero from "/lovable-uploads/4dff6720-7418-49b2-a73f-7417a6feb921.png";
 import { TrendingUp, Shield, Zap, BarChart3 } from "lucide-react";
 
 // Import data preloading hooks
 import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedYields } from "@/hooks/useCachedETFData";
 import { initializeCache } from "@/lib/cacheUtils";
+import { useHomepageContent } from "@/hooks/useHomepageContent";
+import { useSEOSettings } from "@/hooks/useSEOSettings";
+import { AdminEditToggle } from "@/components/admin/AdminEditToggle";
 
 const Home = () => {
+  // Load dynamic content and SEO settings
+  const { content, loading: contentLoading } = useHomepageContent();
+  const { settings: seoSettings, loading: seoLoading } = useSEOSettings();
+  
   // Preload data silently in background - disabled, data comes from cache
   // const { data: etfs = [] } = useCachedETFs();
   // const tickers = (etfs as any[]).map(e => e.ticker);
@@ -23,18 +29,6 @@ const Home = () => {
   useEffect(() => {
     // Initialize cache system
     initializeCache();
-
-    // SEO
-    document.title = "HillJump — Smart ETF Analysis & Income Investing";
-    const meta =
-      (document.querySelector('meta[name="description"]') as HTMLMetaElement) ||
-      (() => { 
-        const m = document.createElement('meta'); 
-        m.setAttribute('name', 'description'); 
-        document.head.appendChild(m); 
-        return m as HTMLMetaElement; 
-      })();
-    meta.setAttribute('content', 'HillJump provides advanced ETF analysis tools, income-focused rankings, portfolio tracking, and market insights for smarter investing decisions.');
   }, []);
 
   const features = [
@@ -63,6 +57,7 @@ const Home = () => {
   return (
     <div>
       <Navigation />
+      <AdminEditToggle />
       
       <main>
         {/* Hero Section */}
@@ -73,15 +68,22 @@ const Home = () => {
               <div className="space-y-8">
                 <div className="space-y-4">
                   <Badge variant="secondary" className="mb-4">
-                    Welcome to HillJump
+                    {contentLoading ? 'Loading...' : content.hero_badge_text}
                   </Badge>
                   <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-                    Smart ETF Analysis for 
-                    <span className="text-primary"> Income Investors</span>
+                    {contentLoading ? (
+                      'Loading...'
+                    ) : content.hero_title.includes('Income Investors') ? (
+                      <>
+                        {content.hero_title.split('Income Investors')[0]}
+                        <span className="text-primary">Income Investors</span>
+                      </>
+                    ) : (
+                      content.hero_title
+                    )}
                   </h1>
                   <p className="text-xl text-muted-foreground leading-relaxed">
-                    Make informed investment decisions with our comprehensive ETF rankings, 
-                    real-time market data, and advanced portfolio analysis tools.
+                    {contentLoading ? 'Loading content...' : content.hero_description}
                   </p>
                 </div>
                 
@@ -97,8 +99,8 @@ const Home = () => {
               
               <Card className="overflow-hidden">
                 <img 
-                  src={hero} 
-                  alt="Pixelated Wall Street bull representing market strength and financial growth" 
+                  src={content.hero_image_url} 
+                  alt="Investment platform visualization showing market data and analysis tools" 
                   className="w-full h-80 object-cover"
                 />
               </Card>
@@ -111,11 +113,10 @@ const Home = () => {
           <div className="container">
             <div className="text-center space-y-4 mb-16">
               <h2 className="text-3xl md:text-4xl font-bold">
-                Everything You Need for Smart Investing
+                {contentLoading ? 'Loading...' : content.features_title}
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Our platform combines cutting-edge analysis with intuitive tools 
-                to help you build a winning income portfolio.
+                {contentLoading ? 'Loading content...' : content.features_description}
               </p>
             </div>
             
