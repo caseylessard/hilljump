@@ -436,7 +436,7 @@ const Profile = () => {
     <div>
       <Navigation />
 
-      <main className="w-full max-w-none py-4 px-4 sm:py-8 sm:px-6 grid gap-4 sm:gap-6">
+      <main className="container py-4 px-4 sm:py-8 sm:px-6 grid gap-4 sm:gap-6">
         <h1 className="text-2xl sm:text-3xl font-bold">Profile</h1>
         
         {!userId ? (
