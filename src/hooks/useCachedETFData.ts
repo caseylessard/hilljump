@@ -187,10 +187,17 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
     queryKey: ["cached-drip", tickers.sort().join(','), JSON.stringify(taxPreferences)],
     queryFn: async () => {
       if (tickers.length === 0) return {};
+      
+      // Force fresh calculation when tax preferences are provided and enabled
+      if (taxPreferences?.enabled) {
+        console.log('🔄 Tax preferences enabled, forcing fresh DRIP calculation...');
+        return refreshDRIPData(tickers, taxPreferences);
+      }
+      
       return getCachedGlobalDRIP(tickers, taxPreferences);
     },
     enabled: tickers.length > 0,
-    staleTime: 60 * 60 * 1000, // 1 hour - prefer cached data
+    staleTime: taxPreferences?.enabled ? 0 : 60 * 60 * 1000, // Fresh data when tax enabled, otherwise 1 hour cache
     gcTime: 24 * 60 * 60 * 1000, // Keep in memory for 1 day
     placeholderData: (previousData) => previousData, // Show stale data while loading
     refetchOnMount: false, // Don't auto-refetch on mount
