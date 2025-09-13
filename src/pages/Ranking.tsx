@@ -7,6 +7,7 @@ import { Search, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ETFTable } from '@/components/dashboard/ETFTable';
 import { OptimizedETFTable } from '@/components/dashboard/OptimizedETFTable';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import { ScoringControls } from '@/components/dashboard/ScoringControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -88,6 +89,7 @@ const Ranking = () => {
   const { toast } = useToast();
   const { profile } = useUserProfile();
   const { data: etfs = [], isLoading, error } = useCachedETFs();
+  const isMobile = useIsMobile();
 
   // Get tax country from profile, fallback to Canada for non-authenticated users
   const taxCountry = profile?.country === 'US' ? 'US' : 'CA';
@@ -509,7 +511,7 @@ const Ranking = () => {
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
-          <SelectContent className="z-50 bg-background shadow-lg">
+          <SelectContent>
             <SelectItem value="All ETFs">All ETFs</SelectItem>
             <SelectItem value="US Funds">US Funds</SelectItem>
             <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
@@ -531,7 +533,7 @@ const Ranking = () => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by ticker or underlying..."
+            placeholder={isMobile ? "Search..." : "Search by ticker or underlying..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`pl-10 pr-8 ${!isMobile ? 'w-64' : ''}`}
@@ -566,17 +568,17 @@ const Ranking = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <main className="container mx-auto px-4 py-8 space-y-6">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
         <section>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-primary">ETF Rankings</h1>
-              <p className="text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl font-bold text-primary">ETF Rankings</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
                 High-yield dividend ETFs ranked by risk-aware total return
               </p>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
               <UserBadge />
               <RefreshDataButton type="both" />
             </div>
@@ -586,8 +588,12 @@ const Ranking = () => {
           {(profile?.country === 'CA' || !profile) ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="taxfree">Tax-Free Account</TabsTrigger>
-                <TabsTrigger value="taxed">Taxable Account</TabsTrigger>
+                <TabsTrigger value="taxfree" className="text-xs sm:text-sm px-2 sm:px-3">
+                  {isMobile ? "Tax-Free" : "Tax-Free Account"}
+                </TabsTrigger>
+                <TabsTrigger value="taxed" className="text-xs sm:text-sm px-2 sm:px-3">
+                  {isMobile ? "Taxable" : "Taxable Account"}
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="taxfree" className="space-y-4">
@@ -677,9 +683,9 @@ const Ranking = () => {
         </section>
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[425px] w-[95vw] max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Scoring Settings</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">Scoring Settings</DialogTitle>
             </DialogHeader>
             {(isSubscribed || isAdmin) ? (
               <ScoringControls onChange={setWeights} />
