@@ -749,19 +749,36 @@ const Ranking = () => {
                   </div>
                 </div>
 
-                <OptimizedETFTable
-                  items={filtered} 
-                  live={cachedPrices}
-                  distributions={distributions}
-                  cachedDripData={dripDataTaxed || {}}
-                  rsiSignals={rsiSignals || {}}
-                  originalRanking={currentRanked}
-                  persistentRanking={persistentRanking}
-                  allowSorting={isSubscribed || isAdmin}
-                  cachedPrices={cachedPrices}
-                  frozenRankings={frozenRankings}
-                  taxedScoring={true}
-                />
+                <div className="hidden sm:block">
+                  <OptimizedETFTable
+                    items={filtered} 
+                    live={cachedPrices}
+                    distributions={distributions}
+                    cachedDripData={dripDataTaxed || {}}
+                    rsiSignals={rsiSignals || {}}
+                    originalRanking={currentRanked}
+                    persistentRanking={persistentRanking}
+                    allowSorting={isSubscribed || isAdmin}
+                    cachedPrices={cachedPrices}
+                    frozenRankings={frozenRankings}
+                    taxedScoring={true}
+                  />
+                </div>
+                <div className="block sm:hidden">
+                  <MobileETFTable
+                    items={filtered}
+                    distributions={distributions}
+                    cachedDripData={dripDataTaxed || {}}
+                    originalRanking={currentRanked}
+                    cachedPrices={cachedPrices}
+                    frozenRankings={frozenRankings}
+                    persistentRanking={persistentRanking}
+                    onSelectETF={(etf, rank) => {
+                      // Handle ETF selection for mobile detail view if needed
+                      console.log('Selected ETF:', etf, 'Rank:', rank);
+                    }}
+                  />
+                </div>
               </TabsContent>
             </Tabs>
           ) : (
