@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import Ranking from "./pages/Ranking";
 import Home from "./pages/Home";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -18,13 +19,11 @@ import Breakout from "./pages/Breakout";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
+const AppContent = () => {
+  useAnalytics(); // Auto-track page views
+  
+  return (
+    <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/ranking" element={<Ranking />} />
           <Route path="/portfolio" element={<Portfolio />} />
@@ -38,6 +37,16 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AppContent />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
