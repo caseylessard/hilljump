@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { useBulkETFData } from "@/hooks/useBulkETFData";
+import { useBulkETFData, useBulkRSISignals } from "@/hooks/useBulkETFData";
 import { useCachedPrices, useCachedDRIP, useCachedStoredScores } from "@/hooks/useCachedETFData";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { scoreETFsWithPrefs } from "@/lib/scoring";
@@ -60,6 +60,9 @@ const Portfolio = () => {
     profile?.country || 'CA'
   );
   
+  // Get RSI signals for trend calculations (same as Rankings page)  
+  const { data: rsiSignals = {} } = useBulkRSISignals(allTickersData.slice(0, 50)); // Limit to prevent timeout
+  
   // Convert to ETF format compatible with AI portfolio - using real ranking scores
   const etfs = useMemo(() => {
     return Object.values(etfData).filter((etf: any) => {
@@ -83,6 +86,78 @@ const Portfolio = () => {
     }).map((etf: any) => {
       // Get the stored score for this ETF (same as Rankings page)
       const score = storedScores[etf.ticker];
+      const rsiData = rsiSignals[etf.ticker];
+      
+      // Calculate trend score using same logic as Rankings page
+      let combinedScore = 0;
+      let dripPosition = 0;
+      const tickerDripData = cachedDripData?.[etf.ticker];
+      
+      if (tickerDripData) {
+        // Extract DRIP percentages (same logic as Rankings)
+        const getDripPercent = (period: string) => {
+          const percentKey = `drip${period}Percent`;
+          if (typeof tickerDripData[percentKey] === 'number') {
+            return tickerDripData[percentKey];
+          }
+          if (tickerDripData[period] && typeof tickerDripData[period].growthPercent === 'number') {
+            return tickerDripData[period].growthPercent;
+          }
+          return 0;
+        };
+        
+        const drip4w = getDripPercent('4w');
+        const drip13w = getDripPercent('13w'); 
+        const drip26w = getDripPercent('26w');
+        const drip52w = getDripPercent('52w');
+        
+        // Convert to per-week returns for Ladder-Delta calculation
+        const p4 = drip4w / 4;
+        const p13 = drip13w / 13;
+        const p26 = drip26w / 26;
+        const p52 = drip52w / 52;
+        
+        // Calculate deltas (recent minus longer period)
+        const d1 = p4 - p13;
+        const d2 = p13 - p26;
+        const d3 = p26 - p52;
+        
+        // Calculate Ladder-Delta Trend signal score
+        const baseScore = 0.60 * p4 + 0.25 * p13 + 0.10 * p26 + 0.05 * p52;
+        const positiveDeltaBonus = 1.00 * Math.max(0, d1) + 0.70 * Math.max(0, d2) + 0.50 * Math.max(0, d3);
+        const negativeDeltaPenalty = 0.50 * (Math.max(0, -d1) + Math.max(0, -d2) + Math.max(0, -d3));
+        
+        const ladderDeltaSignalScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
+        
+        // Buy/Sell conditions from scoring logic
+        const condBuy = (ladderDeltaSignalScore > 0.005) && (d1 > 0) && (d2 > 0) && (d3 > 0);
+        const condSell = (ladderDeltaSignalScore < 0) || (d1 <= 0);
+        
+        // Determine DRIP position: 1=Buy, 0=Hold, -1=Sell
+        if (condBuy) {
+          dripPosition = 1;
+        } else if (condSell) {
+          dripPosition = -1;
+        } else {
+          dripPosition = 0;
+        }
+      }
+      
+      // Calculate RSI position (30% weight)
+      let rsiPosition = 0;
+      if (rsiData) {
+        const rsiValue = rsiData.rsi || 50;
+        if (rsiValue < 30) {
+          rsiPosition = 1; // Oversold = BUY
+        } else if (rsiValue > 70) {
+          rsiPosition = -1; // Overbought = SELL
+        } else {
+          rsiPosition = 0; // Neutral = HOLD
+        }
+      }
+      
+      // Calculate combined score: 70% DRIP + 30% RSI
+      combinedScore = 0.7 * dripPosition + 0.3 * rsiPosition;
       
       return {
         ...etf,
@@ -99,14 +174,18 @@ const Portfolio = () => {
         polygonSupported: etf.polygon_supported,
         twelveSymbol: etf.twelve_symbol,
         eodhSymbol: etf.eodhd_symbol,
-        // Add ranking score data
+        // Add ranking score data with real calculations
         compositeScore: score?.composite_score || 0,
         returnScore: score?.return_score || 0,
         yieldScore: score?.yield_score || 0,
-        riskScore: score?.risk_score || 0
+        riskScore: score?.risk_score || 0,
+        // Real trend and return scores from calculations
+        trendScore: combinedScore * 100, // Convert to 0-100 scale for display
+        ret1yScore: score?.return_score || 0, // Use real return score
+        position: combinedScore >= 0.6 ? 2 : combinedScore >= 0.2 ? 1 : combinedScore >= -0.2 ? 0 : combinedScore >= -0.6 ? -1 : -2
       };
     });
-  }, [etfData, storedScores]);
+  }, [etfData, storedScores, cachedDripData, rsiSignals]);
 
   // SEO setup
   useEffect(() => {
