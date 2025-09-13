@@ -188,9 +188,10 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      // Force fresh calculation when tax preferences are provided and enabled
-      if (taxPreferences?.enabled) {
-        console.log('🔄 Tax preferences enabled, forcing fresh DRIP calculation...');
+      // Always force fresh calculation when tax preferences are provided
+      // This ensures both enabling and disabling tax triggers recalculation
+      if (taxPreferences) {
+        console.log('🔄 Tax preferences provided, forcing fresh DRIP calculation...', taxPreferences);
         return refreshDRIPData(tickers, taxPreferences);
       }
       

@@ -387,7 +387,7 @@ export const getCachedGlobalDRIP = async (tickers: string[], taxPreferences?: { 
 };
 
 export const refreshDRIPData = async (tickers: string[], taxPreferences?: any): Promise<Record<string, any>> => {
-  console.log('🔄 Refreshing DRIP data with fresh calculations...');
+  console.log('🔄 Refreshing DRIP data with fresh calculations...', taxPreferences);
   
   try {
     const { data, error } = await supabase.functions.invoke('calculate-drip', {
@@ -395,8 +395,8 @@ export const refreshDRIPData = async (tickers: string[], taxPreferences?: any): 
         tickers,
         taxPrefs: {
           country: taxPreferences?.country || 'US',
-          withholdingTax: taxPreferences?.enabled || false,
-          taxRate: (taxPreferences?.rate || 0.15) * 100  // Convert decimal to percentage for edge function
+          enabled: taxPreferences?.enabled || false,
+          rate: taxPreferences?.rate || 0.15  // Keep as decimal - edge function expects decimal
         }
       }
     });
@@ -404,6 +404,12 @@ export const refreshDRIPData = async (tickers: string[], taxPreferences?: any): 
     if (error) throw error;
     
     const rawDripData = data?.dripData || {};
+    console.log('🔍 Raw DRIP response:', { 
+      success: data?.success, 
+      processed: data?.processed, 
+      errors: data?.errors,
+      sampleData: Object.keys(rawDripData).length > 0 ? rawDripData[Object.keys(rawDripData)[0]] : null
+    });
     
     // Normalize the data format to match cached data structure
     const normalizedDripData: Record<string, any> = {};
@@ -426,7 +432,9 @@ export const refreshDRIPData = async (tickers: string[], taxPreferences?: any): 
     });
     
     console.log('🔄 Normalized fresh DRIP data:', Object.keys(normalizedDripData).length, 'tickers');
-    console.log('🔍 Sample normalized data:', Object.values(normalizedDripData)[0]);
+    if (Object.keys(normalizedDripData).length > 0) {
+      console.log('🔍 Sample normalized data:', normalizedDripData[Object.keys(normalizedDripData)[0]]);
+    }
     
     // Update cache with normalized data
     const cacheKey = `global-drip-${tickers.sort().join(',')}-${JSON.stringify(taxPreferences)}`;
