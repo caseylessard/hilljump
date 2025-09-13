@@ -113,11 +113,40 @@ export const SEOSettings = () => {
       return;
     }
 
-    toast({
-      title: 'Favicon upload instructions',
-      description: 'Please upload your favicon to the public folder and update the URL field manually. For best results, use a 32x32 or 16x16 PNG/ICO file.',
-      variant: 'default'
-    });
+    if (file.size > 1 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Please upload a favicon smaller than 1MB',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Create a FileReader to handle the file
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `favicon.${fileExt}`;
+      const faviconPath = `/${fileName}`;
+      
+      // Update the settings with the new favicon path
+      setSettings({ ...settings, favicon_url: faviconPath });
+      
+      toast({
+        title: 'Favicon selected',
+        description: `${file.name} will be used as the favicon. Don't forget to save your settings!`,
+      });
+    };
+    
+    reader.onerror = () => {
+      toast({
+        title: 'Upload failed',
+        description: 'Failed to read the favicon file',
+        variant: 'destructive'
+      });
+    };
+    
+    reader.readAsDataURL(file);
   };
 
   if (loading) {
@@ -189,7 +218,7 @@ export const SEOSettings = () => {
             </label>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Small icon displayed in browser tabs and bookmarks
+            Select a favicon file to update the path. You can also drag favicon files into the Lovable chat and ask me to copy them to the public folder.
           </p>
         </div>
 

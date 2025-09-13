@@ -92,7 +92,7 @@ export const HomepageEditor = () => {
     }
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -105,28 +105,45 @@ export const HomepageEditor = () => {
       return;
     }
 
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `hero-${Date.now()}.${fileExt}`;
-      const filePath = `lovable-uploads/${fileName}`;
-
-      // Since we can't use Supabase storage directly, we'll use a placeholder for now
-      // The user would need to upload the image manually and update the URL
+    if (!file.type.startsWith('image/')) {
       toast({
-        title: 'Upload instructions',
-        description: 'Please upload your image and update the image URL field manually',
-        variant: 'default'
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Upload failed',
-        description: error.message,
+        title: 'Invalid file type',
+        description: 'Please upload an image file',
         variant: 'destructive'
       });
-    } finally {
-      setUploading(false);
+      return;
     }
+
+    setUploading(true);
+    
+    // Create a FileReader to read the file as data URL for preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `hero-${Date.now()}.${fileExt}`;
+      const imagePath = `/lovable-uploads/${fileName}`;
+      
+      // Update the content with the new image path
+      setContent({ ...content, hero_image_url: imagePath });
+      
+      toast({
+        title: 'Image selected',
+        description: `${file.name} will be used as the hero image. Don't forget to save your changes!`,
+      });
+      
+      setUploading(false);
+    };
+    
+    reader.onerror = () => {
+      toast({
+        title: 'Upload failed',
+        description: 'Failed to read the image file',
+        variant: 'destructive'
+      });
+      setUploading(false);
+    };
+    
+    reader.readAsDataURL(file);
   };
 
   if (loading) {
@@ -203,6 +220,9 @@ export const HomepageEditor = () => {
                 </Button>
               </label>
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Select an image file to update the hero image path. You can also drag images into the Lovable chat and ask me to copy them to the public folder.
+            </p>
           </div>
         </div>
 
