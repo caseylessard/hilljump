@@ -122,31 +122,11 @@ export const SEOSettings = () => {
       return;
     }
 
-    // Create a FileReader to handle the file
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `favicon.${fileExt}`;
-      const faviconPath = `/${fileName}`;
-      
-      // Update the settings with the new favicon path
-      setSettings({ ...settings, favicon_url: faviconPath });
-      
-      toast({
-        title: 'Favicon selected',
-        description: `${file.name} will be used as the favicon. Don't forget to save your settings!`,
-      });
-    };
-    
-    reader.onerror = () => {
-      toast({
-        title: 'Upload failed',
-        description: 'Failed to read the favicon file',
-        variant: 'destructive'
-      });
-    };
-    
-    reader.readAsDataURL(file);
+    toast({
+      title: 'Upload Instructions',
+      description: 'To upload favicon: 1) Drag your favicon file into the Lovable chat, 2) Ask me to "copy [filename] to public/", 3) Then update the favicon URL field with the correct path (e.g., /favicon.png).',
+      variant: 'default'
+    });
   };
 
   if (loading) {
@@ -218,7 +198,7 @@ export const SEOSettings = () => {
             </label>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Select a favicon file to update the path. You can also drag favicon files into the Lovable chat and ask me to copy them to the public folder.
+            Upload favicon by dragging it into the Lovable chat and asking me to copy it to the public folder, then update this URL field.
           </p>
         </div>
 

@@ -114,36 +114,11 @@ export const HomepageEditor = () => {
       return;
     }
 
-    setUploading(true);
-    
-    // Create a FileReader to read the file as data URL for preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `hero-${Date.now()}.${fileExt}`;
-      const imagePath = `/lovable-uploads/${fileName}`;
-      
-      // Update the content with the new image path
-      setContent({ ...content, hero_image_url: imagePath });
-      
-      toast({
-        title: 'Image selected',
-        description: `${file.name} will be used as the hero image. Don't forget to save your changes!`,
-      });
-      
-      setUploading(false);
-    };
-    
-    reader.onerror = () => {
-      toast({
-        title: 'Upload failed',
-        description: 'Failed to read the image file',
-        variant: 'destructive'
-      });
-      setUploading(false);
-    };
-    
-    reader.readAsDataURL(file);
+    toast({
+      title: 'Upload Instructions',
+      description: 'To upload images: 1) Drag your image file into the Lovable chat, 2) Ask me to "copy [filename] to public/lovable-uploads/", 3) Then update the image URL field with the correct path.',
+      variant: 'default'
+    });
   };
 
   if (loading) {
@@ -221,7 +196,7 @@ export const HomepageEditor = () => {
               </label>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Select an image file to update the hero image path. You can also drag images into the Lovable chat and ask me to copy them to the public folder.
+              Upload images by dragging them into the Lovable chat and asking me to copy them to the public folder, then update this URL field.
             </p>
           </div>
         </div>
