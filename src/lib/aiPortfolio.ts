@@ -53,6 +53,19 @@ export const buildAIPortfolio = async (
   );
 
   console.log(`📊 Scored ${scoredETFs.length} ETFs using Ladder-Delta system`);
+  
+  // Debug: log the first scored ETF to see available properties
+  if (scoredETFs.length > 0) {
+    console.log('🔍 First scored ETF properties:', Object.keys(scoredETFs[0]));
+    console.log('🔍 First scored ETF sample:', {
+      ticker: scoredETFs[0].ticker,
+      compositeScore: scoredETFs[0].compositeScore,
+      dripWeightedNorm: scoredETFs[0].dripWeightedNorm,
+      returnNorm: scoredETFs[0].returnNorm,
+      position: scoredETFs[0].position,
+      buySignal: scoredETFs[0].buySignal
+    });
+  }
 
   if (scoredETFs.length === 0) {
     console.warn('No valid scored ETFs after Ladder-Delta scoring');
@@ -80,11 +93,11 @@ export const buildAIPortfolio = async (
     const allocRounded = shares * currentPrice;
 
     // Convert scoring system scores to 0-100 scale for display
-    const trendScore = Math.round((etf.dripScore || 0) * 100); // DRIP score represents trend
-    const ret1yScore = Math.round((etf.returnScore || 0) * 100); // Return score
+    const trendScore = Math.round((etf.dripWeightedNorm || 0) * 100); // Use weighted DRIP score for trend
+    const ret1yScore = Math.round((etf.returnNorm || 0) * 100); // Use normalized return score
 
-    // Determine badge based on composite score
-    const { badge, badgeLabel, badgeColor } = determineBadge(etf);
+    // Determine badge based on composite score (use the actual compositeScore from scoring system)
+    const { badge, badgeLabel, badgeColor } = determineBadgeFromScore(etf.compositeScore);
 
     return {
       ticker: etf.ticker,
@@ -233,7 +246,25 @@ function calculateWeights(etfs: any[], method: WeightingMethod, maxWeight: numbe
   }
 }
 
-// Helper function to determine badge
+// Helper function to determine badge from composite score (0-1 scale)
+function determineBadgeFromScore(score: number): { badge: string; badgeLabel: string; badgeColor: string } {
+  // Convert 0-1 scale to percentage for easier threshold checking
+  const scorePct = score * 100;
+  
+  if (scorePct >= 80) {
+    return { badge: '⭐', badgeLabel: 'Top Performer', badgeColor: 'green' };
+  } else if (scorePct >= 70) {
+    return { badge: '📈', badgeLabel: 'Strong Buy', badgeColor: 'green' };
+  } else if (scorePct >= 60) {
+    return { badge: '➡️', badgeLabel: 'Buy', badgeColor: 'blue' };
+  } else if (scorePct >= 40) {
+    return { badge: '⚖️', badgeLabel: 'Hold', badgeColor: 'yellow' };
+  } else {
+    return { badge: '⚠️', badgeLabel: 'Caution', badgeColor: 'red' };
+  }
+}
+
+// Helper function to determine badge (legacy version)
 function determineBadge(etf: any): { badge: string; badgeLabel: string; badgeColor: string } {
   const score = etf.compositeScore;
   
