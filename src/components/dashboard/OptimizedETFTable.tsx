@@ -392,7 +392,7 @@ export const OptimizedETFTable = ({
       const drip26w = getDripPercent(ticker, "26w");
       const drip52w = getDripPercent(ticker, "52w");
       
-      // Debug MSTY specifically
+      // Debug MSTY specifically - always log for debugging
       if (ticker === 'MSTY') {
         console.log('🔍 MSTY Score Calculation:', {
           ticker,
