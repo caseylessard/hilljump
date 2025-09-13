@@ -10,7 +10,8 @@ import { UserBadge } from "@/components/UserBadge";
 import Navigation from "@/components/Navigation";
 import { useInputValidation, emailSchema, passwordSchema } from "@/hooks/useInputValidation";
 import { useSecurityMonitoring } from "@/hooks/useSecurityMonitoring";
-import { sanitizeEmail, checkRateLimit } from "@/utils/sanitization";
+import { sanitizeEmail, checkRateLimitSync } from "@/utils/sanitization";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 
 const Auth = () => {
   const { toast } = useToast();
@@ -19,7 +20,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState("signin");
-  const { validateField, getFieldError } = useInputValidation();
+  const { validateField, getFieldError, clearErrors, hasErrors } = useInputValidation();
   const { logFailedLogin, logSuccessfulLogin, logSuspiciousActivity } = useSecurityMonitoring();
 
   // SEO
@@ -42,7 +43,7 @@ const Auth = () => {
       }
 
       // Rate limiting check
-      if (!checkRateLimit(`signin_${sanitizedEmail}`, 5, 15 * 60 * 1000)) {
+      if (!checkRateLimitSync(`signin_${sanitizedEmail}`, 5, 15 * 60 * 1000)) {
         toast({ title: "Too many attempts", description: "Please try again in 15 minutes", variant: "destructive" });
         await logSuspiciousActivity('rate_limit_exceeded', { email: sanitizedEmail, action: 'signin' });
         return;
@@ -84,8 +85,8 @@ const Auth = () => {
       }
 
       // Rate limiting check
-      if (!checkRateLimit(`signup_${sanitizedEmail}`, 3, 15 * 60 * 1000)) {
-        toast({ title: "Too many attempts", description: "Please try again in 15 minutes", variant: "destructive" });
+      if (!checkRateLimitSync(`signup_${sanitizedEmail}`, 3, 60 * 60 * 1000)) {
+        toast({ title: "Too many attempts", description: "Please try again in 1 hour", variant: "destructive" });
         await logSuspiciousActivity('rate_limit_exceeded', { email: sanitizedEmail, action: 'signup' });
         return;
       }
@@ -162,22 +163,29 @@ const Auth = () => {
                   <p className="text-sm text-red-500 mt-1">{getFieldError('email')}</p>
                 )}
               </div>
-              <div>
+               <div>
                 <Input 
                   type="password" 
                   placeholder="Password" 
                   value={password} 
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (e.target.value) {
+                      validateField('password', e.target.value, passwordSchema);
+                    }
+                  }}
                   maxLength={128}
                 />
                 {getFieldError('password') && (
                   <p className="text-sm text-red-500 mt-1">{getFieldError('password')}</p>
                 )}
-                <p className="text-xs text-muted-foreground mt-1">
-                  Password must be 8+ characters with uppercase, lowercase, number, and special character.
-                </p>
+                <PasswordStrengthIndicator password={password} show={tab === 'signup'} />
               </div>
-              <Button onClick={signUp} disabled={loading} className="w-full">
+              <Button 
+                onClick={signUp} 
+                disabled={loading || hasErrors || !email || !password} 
+                className="w-full"
+              >
                 {loading ? "Creating account..." : "Create Account"}
               </Button>
             </TabsContent>
