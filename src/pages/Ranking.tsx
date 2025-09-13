@@ -578,7 +578,7 @@ const Ranking = () => {
             
             <div className="flex items-center gap-3">
               <UserBadge />
-              <RefreshDataButton />
+              <RefreshDataButton type="both" />
             </div>
           </div>
 
