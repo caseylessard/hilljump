@@ -111,7 +111,9 @@ export function dripOverPeriod(
   const includePolicy = opts.includePolicy ?? 'open-closed';
   const payOffsetDays = Number.isFinite(opts.payOffsetDays ?? 0) ? (opts.payOffsetDays as number) : 2;
   const useBusinessDays = opts.useBusinessDays ?? true;
-  const taxRate = opts.taxWithholdRate ?? 0;
+  // Normalize tax input (0–1 or 0–100) and clamp
+  const rawTaxRate = opts.taxWithholdRate ?? 0;
+  const taxRate = rawTaxRate > 1 ? Math.min(1, Math.max(0, rawTaxRate / 100)) : Math.min(1, Math.max(0, rawTaxRate));
 
   let shares = startShares;
   const factors: DripResult['factors'] = [];

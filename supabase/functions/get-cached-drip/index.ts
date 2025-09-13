@@ -25,33 +25,24 @@ serve(async (req: Request) => {
     console.log(`📊 Fetching cached DRIP data for ${tickers.length} tickers`);
     console.log(`🎯 Tax preferences:`, taxPreferences);
     
-    // Determine which cache table to use based on tax preferences
-    let tableName = 'drip_cache_us'; // Default
-    
-    if (taxPreferences) {
-      if (!taxPreferences.enabled) {
-        // Tax disabled = use CA cache (no withholding)
-        tableName = 'drip_cache_ca';
-        console.log(`📊 Using CA cache (no tax)`);
-      } else if (taxPreferences.enabled && taxPreferences.rate === 0.15) {
-        // Standard 15% tax = use country-appropriate cache
-        tableName = taxPreferences.country === 'CA' ? 'drip_cache_ca' : 'drip_cache_us';
-        console.log(`📊 Using ${tableName} (standard ${taxPreferences.country} tax)`);
-      } else {
-        // Custom tax rate = no cache available, will need live calculation
-        console.log(`⚠️ Custom tax rate ${(taxPreferences.rate * 100).toFixed(1)}% - no cache available`);
-        return new Response(JSON.stringify({
-          dripData: {},
-          cached: 0,
-          total: tickers.length,
-          missing: tickers,
-          useCache: false,
-          reason: 'Custom tax rate requires live calculation'
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    // Force live calculation for any tax scenario to ensure accuracy
+    if (taxPreferences && taxPreferences.enabled) {
+      console.log(`⚡ Tax enabled (${(taxPreferences.rate * 100).toFixed(1)}%) - forcing live calculation for accuracy`);
+      return new Response(JSON.stringify({
+        dripData: {},
+        cached: 0,
+        total: tickers.length,
+        missing: tickers,
+        useCache: false,
+        reason: 'Tax preferences require live calculation'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+    
+    // Use default cache (no tax scenario)
+    console.log(`📊 Using default DRIP cache (no tax)`);
+    const tableName = 'drip_cache_us';
     
     console.log(`🎯 Using DRIP cache table: ${tableName}`);
     const { data: cachedData, error } = await supabase

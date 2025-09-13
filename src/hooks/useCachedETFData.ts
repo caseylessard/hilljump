@@ -191,29 +191,25 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
     queryFn: async () => {
       if (tickers.length === 0) return {};
       
-      // First try to get cached data - this checks the appropriate cache table
-      console.log('🔍 Checking for cached DRIP data with tax preferences...', taxPreferences);
-      const cachedData = await getCachedGlobalDRIP(tickers, taxPreferences);
-      
-      // If we have valid cached data, use it
-      if (Object.keys(cachedData).length > 0) {
-        console.log('✅ Using cached DRIP data for', Object.keys(cachedData).length, 'tickers');
-        return cachedData;
-      }
-      
-      // Only calculate fresh if cache is empty
-      if (taxPreferences) {
-        console.log('🔄 No cache found, calculating fresh DRIP data...', taxPreferences);
-        setIsRefreshing(true);
-        try {
-          const result = await refreshDRIPData(tickers, taxPreferences);
-          return result;
-        } finally {
-          setIsRefreshing(false);
+      // Try cached data first for scenarios without tax
+      if (!taxPreferences || !taxPreferences.enabled) {
+        console.log('🔍 No tax preferences, checking cache...');
+        const cachedData = await getCachedGlobalDRIP(tickers, taxPreferences);
+        if (Object.keys(cachedData).length > 0) {
+          console.log('✅ Using cached DRIP data for', Object.keys(cachedData).length, 'tickers');
+          return cachedData;
         }
       }
       
-      return cachedData;
+      // For tax scenarios or when cache is empty, calculate fresh data
+      console.log('🔄 Calculating fresh DRIP data...', taxPreferences ? 'with tax preferences' : 'cache miss');
+      setIsRefreshing(true);
+      try {
+        const result = await refreshDRIPData(tickers, taxPreferences);
+        return result;
+      } finally {
+        setIsRefreshing(false);
+      }
     },
     enabled: tickers.length > 0,
     staleTime: 0, // Always consider data stale so it refetches when tax preferences change

@@ -298,11 +298,17 @@ serve(async (req) => {
       taxPrefs = { country: 'US', withholdingTax: false, taxRate: 15.0 } 
     } = await req.json()
     
+    // Normalize tax input (0–1 or 0–100) and clamp
+    function normTax(taxInput: number): number {
+      const t = taxInput > 1 ? taxInput / 100 : taxInput;
+      return Math.min(1, Math.max(0, t));
+    }
+    
     // Convert taxPrefs to expected format for backward compatibility
     const taxPreferences = {
       country: taxPrefs.country,
       enabled: taxPrefs.withholdingTax,
-      rate: taxPrefs.taxRate / 100 // Convert percentage to decimal
+      rate: normTax(taxPrefs.taxRate) // Normalize tax rate properly
     }
     
     // Initialize Supabase client early to get user info
@@ -474,23 +480,13 @@ serve(async (req) => {
         const etfInfo = etfsWithData?.find(etf => etf.ticker === ticker)
         const fundCountry = etfInfo?.country || 'US'
         
-        // Apply user-specified tax preferences based on real withholding tax rules
+        // Apply user-specified tax preferences - simplified logic
         let taxRate = 0
-        if (taxPreferences.enabled) {
-          // Apply withholding tax only when Canadian customers receive US dividends
-          // US customers receiving Canadian dividends have NO withholding due to tax treaty
-          const shouldApplyWithholding = (taxPreferences.country === 'CA' && fundCountry === 'US')
-          
-          if (shouldApplyWithholding) {
-            taxRate = taxPreferences.rate
-            console.log(`  💰 Applying ${(taxPreferences.rate * 100).toFixed(1)}% withholding tax (${taxPreferences.country} user, ${fundCountry} fund)`)
-          } else {
-            console.log(`  💰 No withholding tax (${taxPreferences.country} user, ${fundCountry} fund)`)
-          }
-        }
-        
-        if (taxRate > 0) {
-          console.log(`  💰 Tax rate applied: ${(taxRate * 100).toFixed(0)}% (${taxPreferences.country} user, ${fundCountry} fund)`)
+        if (taxPreferences.enabled && taxPreferences.rate > 0) {
+          taxRate = taxPreferences.rate
+          console.log(`  💰 Applying ${(taxPreferences.rate * 100).toFixed(1)}% withholding tax (User: ${taxPreferences.country}, Fund: ${fundCountry})`)
+        } else {
+          console.log(`  💰 No withholding tax applied (User: ${taxPreferences.country}, Fund: ${fundCountry})`)
         }
 
         // Calculate DRIP for all periods using business days for more accurate pay dates
