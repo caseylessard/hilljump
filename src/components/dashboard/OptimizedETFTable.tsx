@@ -380,8 +380,10 @@ export const OptimizedETFTable = ({
     };
     
     const getDripSum = (ticker: string): number => {
-      if (dripSumCache.has(ticker)) {
-        return dripSumCache.get(ticker)!;
+      // Create a unique cache key that includes the DRIP data source to ensure different tabs have different caches
+      const cacheKey = `${ticker}_${Object.keys(cachedDripData).length}_${taxedScoring}`;
+      if (dripSumCache.has(cacheKey)) {
+        return dripSumCache.get(cacheKey)!;
       }
       
       const sum = getDripPercent(ticker, "4w") + 
@@ -389,7 +391,7 @@ export const OptimizedETFTable = ({
                   getDripPercent(ticker, "26w") + 
                   getDripPercent(ticker, "52w");
       
-      dripSumCache.set(ticker, sum);
+      dripSumCache.set(cacheKey, sum);
       return sum;
     };
     
@@ -401,7 +403,7 @@ export const OptimizedETFTable = ({
       getDripSum,
       dripSumCache
     };
-  }, [originalRanking, cachedDripData, live, items.length]);
+  }, [originalRanking, cachedDripData, live, items.length, taxedScoring]);
   
   // Optimized constants
   const constants = useMemo(() => ({
