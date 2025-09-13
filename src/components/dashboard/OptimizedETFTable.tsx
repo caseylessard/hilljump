@@ -36,26 +36,29 @@ type Props = {
   taxedScoring?: boolean;
 };
 
-const PersistentRankingChangeIndicator = memo(({ ticker, currentRank, persistentRanking }: { ticker: string; currentRank: number; persistentRanking: Array<{ticker: string, rank: number, score: number, updatedAt: number}> }) => {
-  const persistentRank = persistentRanking.find(r => r.ticker === ticker)?.rank;
-  if (!persistentRank || persistentRank === currentRank) return null;
-  
-  const change = persistentRank - currentRank;
-  
-  if (Math.abs(change) <= 1 || Math.abs(change) > 20) return null;
-  
-  const movedUp = change > 0;
-  const Icon = movedUp ? TrendingUp : TrendingDown;
-  const colorClass = movedUp ? "text-emerald-600" : "text-red-600";
-  
-  return (
-    <div className={`flex items-center gap-1 ${colorClass}`}>
-      <Icon className="h-3 w-3" />
-      <span className="text-xs">{Math.abs(change)}</span>
-    </div>
-  );
-});
+  // Updated ranking change indicator to show actual position changes
+  const PersistentRankingChangeIndicator = memo(({ ticker, currentRank, persistentRanking }: { ticker: string; currentRank: number; persistentRanking: Array<{ticker: string, rank: number, score: number, updatedAt: number}> }) => {
+    const persistentRank = persistentRanking.find(r => r.ticker === ticker)?.rank;
+    if (!persistentRank || persistentRank === currentRank) return null;
+    
+    const change = persistentRank - currentRank;
+    
+    // Only show meaningful changes (> 1 position, < 20 positions to avoid noise)
+    if (Math.abs(change) <= 1 || Math.abs(change) > 20) return null;
+    
+    const movedUp = change > 0; // moved to better position (lower number)
+    const Icon = movedUp ? TrendingUp : TrendingDown;
+    const colorClass = movedUp ? "text-emerald-600" : "text-red-600";
+    
+    return (
+      <div className={`flex items-center gap-1 ${colorClass}`}>
+        <Icon className="h-3 w-3" />
+        <span className="text-xs">{Math.abs(change)}</span>
+      </div>
+    );
+  });
 
+// Memoized components for performance
 const RankingChangeIndicator = memo(({ ticker, changes }: { ticker: string; changes: Record<string, RankingChange> }) => {
   const change = changes[ticker];
   if (!change || change.isNew || !change.previousRank || Math.abs(change.change) > 50) return null;
@@ -91,9 +94,26 @@ const DRIPCell = memo(({
 }) => {
   const tickerData = dripData[ticker];
   
+  // Debug logging for first few tickers
+  if (['WNTR', 'BRKC', 'AAPW'].includes(ticker)) {
+    console.log(`🔍 DRIPCell Debug - ${ticker}:`, {
+      hasTickerData: !!tickerData,
+      tickerData: tickerData,
+      period,
+      dripDataKeys: Object.keys(dripData),
+      hasDripData: Object.keys(dripData).length > 0,
+      percentKey: `drip${period}Percent`,
+      dollarKey: `drip${period}Dollar`,
+      percentValue: tickerData?.[`drip${period}Percent`],
+      dollarValue: tickerData?.[`drip${period}Dollar`]
+    });
+  }
+  
+  // Check if we should show an estimate
   const shouldEstimate = shouldShowEstimate(tickerData, period);
   
   if (!tickerData || shouldEstimate) {
+    // First check live data
     const liveItem = live[ticker];
     const periodKey = period as '4w' | '12w' | '52w';
     const d = liveItem?.[`drip${periodKey}Dollar` as keyof LivePrice];
@@ -111,6 +131,7 @@ const DRIPCell = memo(({
       );
     }
     
+    // Show estimate if we have ETF data
     if (etfData) {
       const estimate = estimateQuickDrip({
         current_price: etfData.current_price,
@@ -145,6 +166,19 @@ const DRIPCell = memo(({
   
   const percent = tickerData?.[percentKey];
   const dollar = tickerData?.[dollarKey];
+  
+  // More detailed debugging for data access
+  if (['WNTR', 'BRKC', 'AAPW'].includes(ticker) && period === '4w') {
+    console.log(`🔍 ${ticker} DRIP Access Debug:`, {
+      tickerData,
+      percentKey,
+      dollarKey,
+      percent,
+      dollar,
+      percentExists: percentKey in (tickerData || {}),
+      dollarExists: dollarKey in (tickerData || {})
+    });
+  }
   
   if (percent === undefined || percent === null) return <span>—</span>;
   
@@ -191,19 +225,26 @@ const TrendIndicator = memo(({ position }: { position?: number }) => {
     );
   }
   
+  // 5-level scheme: filled vs outlined for better readability
   let circleClass: string;
   
   if (position === 2) {
+    // Strong Buy - green filled
     circleClass = "bg-emerald-500 border-emerald-500";
   } else if (position === 1) {
+    // Buy - green outline only
     circleClass = "bg-transparent border-2 border-emerald-500";
   } else if (position === 0) {
+    // Hold - yellow filled  
     circleClass = "bg-yellow-500 border-yellow-500";
   } else if (position === -1) {
+    // Sell - red outline only
     circleClass = "bg-transparent border-2 border-red-500";
   } else if (position === -2) {
+    // Strong Sell - red filled
     circleClass = "bg-red-500 border-red-500";
   } else {
+    // Unknown
     circleClass = "bg-muted-foreground border-muted-foreground";
   }
   
@@ -227,33 +268,47 @@ export const OptimizedETFTable = ({
   frozenRankings = new Map(),
   taxedScoring = false
 }: Props) => {
+  // Debug DRIP data being passed to table
+  console.log('🎯 OptimizedETFTable Debug:', {
+    itemsCount: items.length,
+    cachedDripDataKeys: Object.keys(cachedDripData),
+    cachedDripDataCount: Object.keys(cachedDripData).length,
+    sampleTicker: items[0]?.ticker,
+    sampleDripData: items[0] ? cachedDripData[items[0].ticker] : null
+  });
+  // Performance monitoring
   const performanceMonitor = usePerformanceMonitor(true);
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
   const [range, setRange] = useState<string>("1Y");
-  const [sortKey, setSortKey] = useState<string>("rank");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   
+  // Memoize tickers to prevent unnecessary refetches
   const tickers = useMemo(() => items.map(item => item.ticker), [items]);
   
+  // Bulk data fetching hooks
   const { data: bulkETFData = {} } = useBulkETFData(tickers);
   const { data: dividendPredictions = {} } = useBulkDividendPredictions(tickers);
   const { data: rankingChanges = {} } = useRankingHistory(tickers);
   
+  // Use passed RSI signals instead of fetching again
+  
+  // Pre-compute lookup tables for performance
   const lookupTables = useMemo(() => {
     const originalRankMap = new Map<string, number>();
     originalRanking.forEach((etf, index) => {
       originalRankMap.set(etf.ticker, index + 1);
     });
     
+    // Calculate score-based ranking for consistent rank display
     const scoreBasedRanking = [...items].sort((a, b) => {
       const scoreA = (a.compositeScore || 0);
       const scoreB = (b.compositeScore || 0);
-      return scoreB - scoreA;
+      return scoreB - scoreA; // Highest score first
     });
     
+    // Use persistent ranking for consistent rank display
     const persistentRankMap = new Map<string, number>();
     persistentRanking.forEach(item => {
       persistentRankMap.set(item.ticker, item.rank);
@@ -266,21 +321,28 @@ export const OptimizedETFTable = ({
     
     const dripSumCache = new Map<string, number>();
     const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
+      // Use cached DRIP if available, otherwise fallback to estimates
+      
+      // Check cached DRIP data first - try multiple potential formats
       const tickerData = cachedDripData?.[ticker];
       if (tickerData) {
+        // Format 1: Direct percentage properties (PRIORITIZE FOR CONSISTENCY WITH UI)
         const percentKey = `drip${period}Percent`;
         if (typeof tickerData[percentKey] === 'number') {
           return tickerData[percentKey];
         }
         
+        // Format 2: ticker.period structure with percentage
         if (tickerData[period] && typeof tickerData[period].percentage === 'number') {
           return tickerData[period].percentage;
         }
         
+        // Format 3: Direct period object with growthPercent (FALLBACK ONLY)
         if (tickerData[period] && typeof tickerData[period].growthPercent === 'number') {
           return tickerData[period].growthPercent;
         }
         
+        // Format 4: Nested period object with percentage
         if (tickerData[period] && typeof tickerData[period] === 'object') {
           const periodData = tickerData[period];
           if (typeof periodData.percentage === 'number') {
@@ -292,6 +354,7 @@ export const OptimizedETFTable = ({
         }
       }
       
+      // Fallback to live data
       const liveItem = live?.[ticker];
       let liveValue = 0;
       switch (period) {
@@ -303,6 +366,7 @@ export const OptimizedETFTable = ({
       
       if (liveValue !== 0) return liveValue;
       
+      // Final fallback: estimate based on ETF fundamentals
       const etf = originalRanking?.find(e => e.ticker === ticker);
       if (etf) {
         const estimate = estimateQuickDrip({
@@ -317,15 +381,32 @@ export const OptimizedETFTable = ({
     };
     
     const getDripSum = (ticker: string): number => {
+      // Create a unique cache key that includes the DRIP data source to ensure different tabs have different caches
       const cacheKey = `${ticker}_${Object.keys(cachedDripData).length}_${taxedScoring}`;
       if (dripSumCache.has(cacheKey)) {
         return dripSumCache.get(cacheKey)!;
       }
       
+      // Get individual DRIP percentages using the same logic as the individual columns
       const drip4w = getDripPercent(ticker, "4w");
       const drip13w = getDripPercent(ticker, "13w");
       const drip26w = getDripPercent(ticker, "26w");
       const drip52w = getDripPercent(ticker, "52w");
+      
+      // Debug MSTY specifically - always log for debugging
+      if (ticker === 'MSTY') {
+        console.log('🔍 MSTY Score Calculation (FIXED):', {
+          ticker,
+          taxedScoring,
+          drip4w,
+          drip13w,
+          drip26w,
+          drip52w,
+          sum: drip4w + drip13w + drip26w + drip52w,
+          cachedDataKeys: Object.keys(cachedDripData),
+          mstyData: cachedDripData[ticker]
+        });
+      }
       
       const sum = drip4w + drip13w + drip26w + drip52w;
       
@@ -343,6 +424,7 @@ export const OptimizedETFTable = ({
     };
   }, [originalRanking, cachedDripData, live, items.length, taxedScoring]);
   
+  // Optimized constants
   const constants = useMemo(() => ({
     UNDERLYING_MAP: { TSLY: "TSLA", NVDY: "NVDA", APLY: "AAPL", AMDY: "AMD" },
     MANAGER_LOGOS: {
@@ -359,6 +441,7 @@ export const OptimizedETFTable = ({
     }
   }), []);
   
+  // Helper functions (memoized)
   const helperFunctions = useMemo(() => ({
     countryFlag: (etf: ScoredETF) => {
       const currency = etf.currency || 'USD';
@@ -389,89 +472,92 @@ export const OptimizedETFTable = ({
       let base = "ETF";
       if (nm.includes("COVERED CALL") || nm.includes("OPTION INCOME") || cat.includes("COVERED CALL") || cat.includes("YIELDMAX")) {
         base = "CC ETF";
+      } else if (nm.includes("EQUITY PREMIUM INCOME") || cat.includes("INCOME")) {
+        base = "Income ETF";
       }
-      return base;
+      const underlying = constants.UNDERLYING_MAP[etf.ticker as keyof typeof constants.UNDERLYING_MAP];
+      return underlying ? `${base} - ${underlying}` : base;
     },
-
-    displayTicker: (ticker: string): string => {
-      const underlying = constants.UNDERLYING_MAP[ticker as keyof typeof constants.UNDERLYING_MAP];
-      return underlying ? `${ticker} (${underlying})` : ticker;
-    }
+    
+    displayTicker: (ticker: string) => ticker.replace(/\.(TO|NE)$/, '')
   }), [constants]);
-
-  const requestSort = useCallback((key: string) => {
+  
+  // Sorting state with localStorage persistence
+  type SortKey = "rank" | "ticker" | "price" | "lastDist" | "nextDist" | "drip4w" | "drip13w" | "drip26w" | "drip52w" | "score" | "signal";
+  
+  const getInitialSort = (): { key: SortKey; dir: "asc" | "desc" } => {
+    // Always default to score sorting (highest first)
+    return { key: "score", dir: "desc" };
+  };
+  
+  const initialSort = getInitialSort();
+  const [sortKey, setSortKey] = useState<SortKey>(initialSort.key);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(initialSort.dir);
+  
+  const indicator = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
+  
+  const requestSort = useCallback((key: SortKey) => {
     if (!allowSorting) return;
     
+    let newSortKey = key;
+    let newSortDir: "asc" | "desc";
+    
     if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
+      newSortDir = sortDir === "asc" ? "desc" : "asc";
+    } else { 
+      newSortKey = key; 
+      newSortDir = key === "ticker" ? "asc" : "desc"; 
+    }
+    
+    setSortKey(newSortKey);
+    setSortDir(newSortDir);
+    
+    try {
+      localStorage.setItem("etf-table-sort", JSON.stringify({ 
+        key: newSortKey, 
+        dir: newSortDir 
+      }));
+    } catch (e) {
+      // Ignore localStorage errors
     }
   }, [allowSorting, sortKey, sortDir]);
-
-  const indicator = useCallback((key: string) => {
-    if (sortKey !== key) return "";
-    return sortDir === "asc" ? "↑" : "↓";
-  }, [sortKey, sortDir]);
-
+  
+  // Optimized sorting with memoization
   const sortedRows = useMemo(() => {
-    const cmp = (a: ScoredETF, b: ScoredETF): number => {
-      let av: any, bv: any;
-      
+    const getVal = (etf: ScoredETF): number | string => {
+      const lp = live[etf.ticker];
       switch (sortKey) {
+        case "ticker": return etf.ticker;
+        case "price": return lp?.price ?? Number.NaN;
+        case "lastDist": return distributions[etf.ticker]?.amount ?? Number.NaN;
+        case "nextDist": return Number.NaN;
+        case "drip4w": return lookupTables.getDripPercent(etf.ticker, "4w");
+        case "drip13w": return lookupTables.getDripPercent(etf.ticker, "13w");
+        case "drip26w": return lookupTables.getDripPercent(etf.ticker, "26w");
+        case "drip52w": return lookupTables.getDripPercent(etf.ticker, "52w");
+        case "score": return lookupTables.getDripSum(etf.ticker);
+        case "signal": return etf.position === 2 ? 4 : etf.position === 1 ? 3 : etf.position === 0 ? 2 : etf.position === -1 ? 1 : 0;
         case "rank":
-          av = frozenRankings.get(a.ticker) ?? 999;
-          bv = frozenRankings.get(b.ticker) ?? 999;
-          break;
-        case "ticker":
-          av = a.ticker;
-          bv = b.ticker;
-          break;
-        case "signal":
-          av = a.position ?? 0;
-          bv = b.position ?? 0;
-          break;
-        case "price":
-          av = cachedPrices[a.ticker] || a.current_price || 0;
-          bv = cachedPrices[b.ticker] || b.current_price || 0;
-          break;
-        case "lastDist":
-          av = distributions[a.ticker]?.amount || 0;
-          bv = distributions[b.ticker]?.amount || 0;
-          break;
-        case "nextDist":
-          av = dividendPredictions[a.ticker]?.amount || 0;
-          bv = dividendPredictions[b.ticker]?.amount || 0;
-          break;
-        case "drip4w":
-          av = lookupTables.getDripPercent(a.ticker, "4w");
-          bv = lookupTables.getDripPercent(b.ticker, "4w");
-          break;
-        case "drip13w":
-          av = lookupTables.getDripPercent(a.ticker, "13w");
-          bv = lookupTables.getDripPercent(b.ticker, "13w");
-          break;
-        case "drip26w":
-          av = lookupTables.getDripPercent(a.ticker, "26w");
-          bv = lookupTables.getDripPercent(b.ticker, "26w");
-          break;
-        case "drip52w":
-          av = lookupTables.getDripPercent(a.ticker, "52w");
-          bv = lookupTables.getDripPercent(b.ticker, "52w");
-          break;
-        case "score":
-          av = lookupTables.getDripSum(a.ticker);
-          bv = lookupTables.getDripSum(b.ticker);
-          break;
-        default:
-          return 0;
+        default: return lookupTables.getDripSum(etf.ticker);
+      }
+    };
+    
+    const cmp = (a: ScoredETF, b: ScoredETF) => {
+      if (sortKey === "score" || sortKey === "rank") {
+        const scoreA = lookupTables.getDripSum(a.ticker);
+        const scoreB = lookupTables.getDripSum(b.ticker);
+        
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA; // descending
+        }
+        return a.ticker.localeCompare(b.ticker);
       }
       
+      const av = getVal(a);
+      const bv = getVal(b);
       if (typeof av === "string" && typeof bv === "string") {
         return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
       }
-      
       const an = typeof av === "number" ? av : Number.NaN;
       const bn = typeof bv === "number" ? bv : Number.NaN;
       if (Number.isNaN(an) && Number.isNaN(bn)) return 0;
@@ -480,11 +566,13 @@ export const OptimizedETFTable = ({
       return sortDir === "asc" ? an - bn : bn - an;
     };
     
+    
     return items.sort(cmp);
   }, [items, sortKey, sortDir, live, distributions, lookupTables, rsiSignals]);
   
   const headerBtnClass = allowSorting ? "flex items-center gap-1" : "flex items-center gap-1 opacity-50 pointer-events-none";
   
+  // Navigation helpers
   const currentIndex = useMemo(() => {
     if (!selected) return -1;
     return sortedRows.findIndex(item => item.ticker === selected.ticker);
@@ -507,12 +595,7 @@ export const OptimizedETFTable = ({
     setRange("1Y");
   }, [currentIndex, sortedRows, lookupTables.originalRankMap]);
 
-  const handlePrevious = () => navigateToETF('prev');
-  const handleNext = () => navigateToETF('next');
-  
-  const hasPrevious = currentIndex > 0;
-  const hasNext = currentIndex < sortedRows.length - 1;
-
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!open || !selected) return;
@@ -534,362 +617,378 @@ export const OptimizedETFTable = ({
     }
   }, [open, selected, navigateToETF]);
 
-  if (isMobile) {
-    return (
-      <>
-        <MobileETFTable
-          items={sortedRows}
-          live={live}
-          distributions={distributions}
-          cachedDripData={cachedDripData}
-          cachedPrices={cachedPrices}
-          frozenRankings={frozenRankings}
-          persistentRanking={persistentRanking}
-          onItemClick={(etf, rank) => {
-            const originalRank = lookupTables.originalRankMap.get(etf.ticker) || rank;
-            setSelected(etf);
-            setSelectedRank(originalRank);
-            setRange("1Y");
-            setOpen(true);
-          }}
-        />
-        
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto p-4">
-            {selected && (
-              <div className="space-y-4">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{helperFunctions.countryFlag(selected)}</span>
+  return (
+    <>
+      {isMobile ? (
+        /* Mobile Layout - Card-based */
+        <div className="space-y-3">
+          {sortedRows.map((etf, idx) => {
+            const rank = frozenRankings.get(etf.ticker) || idx + 1;
+            const manager = helperFunctions.getFundManager(etf);
+            const logo = helperFunctions.getManagerLogo(etf, manager);
+            const price = cachedPrices[etf.ticker] || etf.current_price || 0;
+
+            return (
+              <Card 
+                key={etf.ticker} 
+                className="p-3 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => {
+                  const originalRank = lookupTables.originalRankMap.get(etf.ticker) || idx + 1;
+                  setSelected(etf);
+                  setSelectedRank(originalRank);
+                  setRange("1Y");
+                  setOpen(true);
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Rank and Flag */}
+                  <div className="flex flex-col items-center shrink-0 min-w-[40px]">
+                    <span className="text-lg font-bold text-muted-foreground">#{rank}</span>
+                    <span className="text-lg">{helperFunctions.countryFlag(etf)}</span>
+                  </div>
+                  
+                  {/* Main Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-bold text-lg">{etf.ticker}</span>
+                      <TrendIndicator position={etf.position} />
+                      <RankingChangeIndicator ticker={etf.ticker} changes={rankingChanges} />
+                      <PersistentRankingChangeIndicator 
+                        ticker={etf.ticker} 
+                        currentRank={rank} 
+                        persistentRanking={persistentRanking} 
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-2">
+                      {logo && (
+                        <Avatar className="h-6 w-6">
+                          <img src={logo} alt={manager} className="object-contain" />
+                          <AvatarFallback className="text-xs">{manager.slice(0, 2)}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <span className="text-sm font-medium truncate">{manager}</span>
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {helperFunctions.getEtfDescription(etf)}
+                    </p>
+                    
+                    {/* Key Metrics Grid */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Price:</span>
+                        <span className="font-medium">${price.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">4W:</span>
+                        <div className="text-right">
+                          <DRIPCell 
+                            ticker={etf.ticker} 
+                            period="4w" 
+                            dripData={cachedDripData} 
+                            live={live}
+                            etfData={etf}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">13W:</span>
+                        <div className="text-right">
+                          <DRIPCell 
+                            ticker={etf.ticker} 
+                            period="13w" 
+                            dripData={cachedDripData} 
+                            live={live}
+                            etfData={etf}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Next:</span>
+                        <div className="text-right">
+                          <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        /* Desktop Layout - Table */
+        <Card className="p-4 overflow-x-auto">
+      <Table>
+        <TableCaption>All high-yield dividend ETFs ranked by risk-aware total return. Live data where available.</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12">
+              <button onClick={() => requestSort("rank")} className={headerBtnClass} aria-disabled={!allowSorting}>
+                # <span className="text-muted-foreground text-xs">{indicator("rank")}</span>
+              </button>
+            </TableHead>
+            <TableHead>
+              <button onClick={() => requestSort("ticker")} className={headerBtnClass} aria-disabled={!allowSorting}>
+                Ticker <span className="text-muted-foreground text-xs">{indicator("ticker")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-center">
+              <button onClick={() => requestSort("signal")} className={`${headerBtnClass} mx-auto`} aria-disabled={!allowSorting}>
+                Trend <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
+              </button>
+              <div className="flex justify-center gap-1 mt-1">
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-xs text-muted-foreground">B</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                  <span className="text-xs text-muted-foreground">H</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-xs text-muted-foreground">S</span>
+                </div>
+              </div>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("price")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                Price <span className="text-muted-foreground text-xs">{indicator("price")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("lastDist")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                Last Dist. <span className="text-muted-foreground text-xs">{indicator("lastDist")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("nextDist")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                Next Dist. <span className="text-muted-foreground text-xs">{indicator("nextDist")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("drip4w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                4W DRIP <span className="text-muted-foreground text-xs">{indicator("drip4w")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("drip13w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                13W DRIP <span className="text-muted-foreground text-xs">{indicator("drip13w")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("drip26w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                26W DRIP <span className="text-muted-foreground text-xs">{indicator("drip26w")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("drip52w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                52W DRIP <span className="text-muted-foreground text-xs">{indicator("drip52w")}</span>
+              </button>
+            </TableHead>
+            <TableHead className="text-right">
+              <button onClick={() => requestSort("score")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
+                Score <span className="text-muted-foreground text-xs">{indicator("score")}</span>
+              </button>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedRows.map((etf, idx) => {
+            const liveItem = live[etf.ticker];
+            const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
+            const ret28dFallback = (Math.pow(1 + daily, 28) - 1) * 100;
+            const ret3m = (Math.pow(1 + daily, 90) - 1) * 100;
+            const ret1w = (Math.pow(1 + daily, 7) - 1) * 100;
+            const ret28d = liveItem?.totalReturn28dPercent ?? ret28dFallback;
+            
+            return (
+              <TableRow
+                key={etf.ticker}
+                className={idx < 3 ? "font-semibold cursor-pointer hover:bg-accent" : "cursor-pointer hover:bg-accent"}
+                onClick={() => { 
+                  const originalRank = lookupTables.originalRankMap.get(etf.ticker) || idx + 1;
+                  setSelected(etf); 
+                  setSelectedRank(originalRank); 
+                  setRange("1Y"); 
+                  setOpen(true); 
+                }}
+              >
+                 <TableCell>
+                   <div className="flex items-center gap-2">
+                     <span className="font-mono">{frozenRankings.get(etf.ticker) || idx + 1}</span>
+                     <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />
+                   </div>
+                 </TableCell>
+                <TableCell>
+                  <div className="inline-flex flex-col">
+                    <span className="inline-flex items-center">
+                      {helperFunctions.displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{helperFunctions.countryFlag(etf)}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">{helperFunctions.getFundManager(etf)}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-center">
+                  <TrendIndicator position={etf.position} />
+                </TableCell>
+                 <TableCell className="text-right">
+                   {(() => {
+                     const price = liveItem?.price;
+                     const cp = liveItem?.changePercent;
+                     
+                     if (price == null) return "—";
+                     const up = (cp ?? 0) >= 0;
+                     
+                     // Get price update date from cached prices
+                     const cachedPrice = cachedPrices[etf.ticker];
+                     const priceDate = cachedPrice?.priceUpdatedAt;
+                     const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
+                     
+                     return (
+                       <div className="inline-flex flex-col items-end leading-tight">
+                         <span>${price.toFixed(2)}</span>
+                         <div className="text-xs space-y-0">
+                           {cp != null && (
+                             <div className={up ? "text-emerald-600" : "text-red-600"}>
+                               {up ? "+" : ""}{cp.toFixed(2)}%
+                             </div>
+                           )}
+                           {dateStr && (
+                             <div className="text-muted-foreground">
+                               {dateStr}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     );
+                   })()}
+                 </TableCell>
+                <TableCell className="text-right">
+                  {(() => {
+                    const dist = distributions[etf.ticker];
+                    if (!dist) return "—";
+                    
+                    const currency = dist.currency || (etf.currency === 'CAD' ? 'CAD' : 'USD');
+                    const symbol = currency === 'CAD' ? 'CA$' : '$';
+                    
+                    const amountStr = `${symbol}${dist.amount.toFixed(3)}`;
+                    const [year, month, day] = dist.date.split('-').map(Number);
+                    const localDate = new Date(year, month - 1, day);
+                    const dateStr = format(localDate, "MM/dd");
+                    return (
+                      <div className="inline-flex flex-col items-end leading-tight">
+                        <span>{amountStr}</span>
+                        <span className="text-muted-foreground text-xs">{dateStr}</span>
+                      </div>
+                    );
+                  })()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <DRIPCell ticker={etf.ticker} period="4w" dripData={cachedDripData} live={live} etfData={etf} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <DRIPCell ticker={etf.ticker} period="13w" dripData={cachedDripData} live={live} etfData={etf} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <DRIPCell ticker={etf.ticker} period="26w" dripData={cachedDripData} live={live} etfData={etf} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <DRIPCell ticker={etf.ticker} period="52w" dripData={cachedDripData} live={live} etfData={etf} />
+                </TableCell>
+                 <TableCell className="text-right font-mono">
+                   <div className="inline-flex flex-col items-end">
+                     <span className="font-semibold">
+                       {lookupTables.getDripSum(etf.ticker).toFixed(1)}
+                     </span>
+                   </div>
+                 </TableCell>
+              </TableRow>
+            );
+            )}
+          </TableBody>
+        </Table>
+      )}
+      
+      {/* Modal */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {selected && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => navigateToETF('prev')}
+                    className="flex items-center justify-center w-8 h-8 rounded-full bg-muted hover:bg-muted/80"
+                    aria-label="Previous ETF"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-12 w-12 bg-muted flex items-center justify-center">
+                      <AvatarFallback className="text-sm font-bold">
+                        {selectedRank}
+                      </AvatarFallback>
+                    </Avatar>
+                    
                     <div>
-                      <h2 className="text-xl font-bold">{selected.ticker}</h2>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-semibold">{helperFunctions.displayTicker(selected.ticker)}</h3>
+                        <span>{helperFunctions.countryFlag(selected)}</span>
+                        {(() => {
+                          const logo = helperFunctions.getManagerLogo(selected);
+                          return logo ? <img src={logo} alt="Manager logo" className="h-6 w-auto" /> : null;
+                        })()}
+                      </div>
                       <p className="text-sm text-muted-foreground">{helperFunctions.getEtfDescription(selected)}</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    {(() => {
-                      const manager = helperFunctions.getFundManager(selected);
-                      const logo = helperFunctions.getManagerLogo(selected, manager);
-                      return (
-                        <div className="flex items-center gap-2">
-                          {logo && (
-                            <Avatar className="h-6 w-6">
-                              <img src={logo} alt={manager} className="object-contain" />
-                              <AvatarFallback className="text-xs">{manager.slice(0, 2)}</AvatarFallback>
-                            </Avatar>
-                          )}
-                          <span className="text-sm font-medium">{manager}</span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 p-3 bg-muted/20 rounded-lg">
-                  <div className="text-center">
-                    <div className="text-lg font-bold">${(cachedPrices[selected.ticker] || selected.current_price || 0).toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground">Price</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold">{constants.formatPct(selected.yieldTTM || 0)}</div>
-                    <div className="text-xs text-muted-foreground">Yield</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold">{constants.formatPct(selected.totalReturn1Y || 0)}</div>
-                    <div className="text-xs text-muted-foreground">1Y Return</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold">{constants.fmtCompact.format(selected.aum || 0)}</div>
-                    <div className="text-xs text-muted-foreground">AUM</div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center">
                   <button
-                    onClick={handlePrevious}
-                    disabled={!hasPrevious}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-accent disabled:opacity-50"
+                    onClick={() => navigateToETF('next')}
+                    className="flex items-center justify-center w-8 h-8 rounded-full bg-muted hover:bg-muted/80"
+                    aria-label="Next ETF"
                   >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </button>
-                  
-                  <span className="text-sm text-muted-foreground">
-                    #{selectedRank} of {items.length}
-                  </span>
-                  
-                  <button
-                    onClick={handleNext}
-                    disabled={!hasNext}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-accent disabled:opacity-50"
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
-
-                <div className="mt-4">
+                
+                <button
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-muted hover:bg-muted/80"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <Tabs value={range} onValueChange={setRange} className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="1W">1 Week</TabsTrigger>
+                  <TabsTrigger value="1M">1 Month</TabsTrigger>
+                  <TabsTrigger value="3M">3 Months</TabsTrigger>
+                  <TabsTrigger value="1Y">1 Year</TabsTrigger>
+                </TabsList>
+                <TabsContent value="1W" className="mt-4">
                   <DistributionHistory ticker={selected.ticker} />
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Card className="p-4 overflow-x-auto">
-        <Table>
-          <TableCaption>All high-yield dividend ETFs ranked by risk-aware total return. Live data where available.</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <button onClick={() => requestSort("rank")} className={headerBtnClass} aria-disabled={!allowSorting}>
-                  # <span className="text-muted-foreground text-xs">{indicator("rank")}</span>
-                </button>
-              </TableHead>
-              <TableHead>
-                <button onClick={() => requestSort("ticker")} className={headerBtnClass} aria-disabled={!allowSorting}>
-                  Ticker <span className="text-muted-foreground text-xs">{indicator("ticker")}</span>
-                </button>
-              </TableHead>
-              <TableHead className="text-center">
-                <button onClick={() => requestSort("signal")} className={`${headerBtnClass} mx-auto`} aria-disabled={!allowSorting}>
-                  Trend <span className="text-muted-foreground text-xs">{indicator("signal")}</span>
-                </button>
-                <div className="flex justify-center gap-1 mt-1">
-                  <div className="flex items-center gap-0.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-xs text-muted-foreground">B</span>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                    <span className="text-xs text-muted-foreground">H</span>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <div className="w-2 h-2 rounded-full bg-red-500" />
-                    <span className="text-xs text-muted-foreground">S</span>
-                  </div>
-                </div>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => requestSort("price")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                  Price <span className="text-muted-foreground text-xs">{indicator("price")}</span>
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => requestSort("lastDist")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                  Last Dist. <span className="text-muted-foreground text-xs">{indicator("lastDist")}</span>
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => requestSort("nextDist")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                  Next Dist. <span className="text-muted-foreground text-xs">{indicator("nextDist")}</span>
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => requestSort("drip4w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                  4W DRIP <span className="text-muted-foreground text-xs">{indicator("drip4w")}</span>
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => requestSort("drip13w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                  13W DRIP <span className="text-muted-foreground text-xs">{indicator("drip13w")}</span>
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => requestSort("drip26w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                  26W DRIP <span className="text-muted-foreground text-xs">{indicator("drip26w")}</span>
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => requestSort("drip52w")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                  52W DRIP <span className="text-muted-foreground text-xs">{indicator("drip52w")}</span>
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => requestSort("score")} className={`${headerBtnClass} ml-auto`} aria-disabled={!allowSorting}>
-                  Score <span className="text-muted-foreground text-xs">{indicator("score")}</span>
-                </button>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedRows.map((etf, idx) => {
-              const liveItem = live[etf.ticker];
-              const daily = Math.pow(1 + etf.totalReturn1Y / 100, 1 / 365) - 1;
-              const ret28dFallback = (Math.pow(1 + daily, 28) - 1) * 100;
-              const ret28d = liveItem?.totalReturn28dPercent ?? ret28dFallback;
+                </TabsContent>
+                <TabsContent value="1M" className="mt-4">
+                  <DistributionHistory ticker={selected.ticker} />
+                </TabsContent>
+                <TabsContent value="3M" className="mt-4">
+                  <DistributionHistory ticker={selected.ticker} />
+                </TabsContent>
+                <TabsContent value="1Y" className="mt-4">
+                  <DistributionHistory ticker={selected.ticker} />
+                </TabsContent>
+              </Tabs>
               
-              return (
-                <TableRow
-                  key={etf.ticker}
-                  className={idx < 3 ? "font-semibold cursor-pointer hover:bg-accent" : "cursor-pointer hover:bg-accent"}
-                  onClick={() => { 
-                    const originalRank = lookupTables.originalRankMap.get(etf.ticker) || idx + 1;
-                    setSelected(etf); 
-                    setSelectedRank(originalRank); 
-                    setRange("1Y"); 
-                    setOpen(true); 
-                  }}
-                >
-                   <TableCell>
-                     <div className="flex items-center gap-2">
-                       <span className="font-mono">{frozenRankings.get(etf.ticker) || idx + 1}</span>
-                       <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />
-                     </div>
-                   </TableCell>
-                  <TableCell>
-                    <div className="inline-flex flex-col">
-                      <span className="inline-flex items-center">
-                        {helperFunctions.displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{helperFunctions.countryFlag(etf)}</span>
-                      </span>
-                      <span className="text-xs text-muted-foreground">{helperFunctions.getFundManager(etf)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <TrendIndicator position={etf.position} />
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    <div className="inline-flex flex-col items-end">
-                      <span>${(cachedPrices[etf.ticker] || etf.current_price || 0).toFixed(2)}</span>
-                      <span className={`text-xs ${ret28d >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {ret28d >= 0 ? '+' : ''}{ret28d.toFixed(1)}%
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {distributions[etf.ticker] ? (
-                      <div className="inline-flex flex-col items-end">
-                        <span>${distributions[etf.ticker].amount.toFixed(4)}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {distributions[etf.ticker].date ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(distributions[etf.ticker].date)) : "—"}
-                        </span>
-                      </div>
-                    ) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DRIPCell ticker={etf.ticker} period="4w" dripData={cachedDripData} live={live} etfData={etf} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DRIPCell ticker={etf.ticker} period="13w" dripData={cachedDripData} live={live} etfData={etf} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DRIPCell ticker={etf.ticker} period="26w" dripData={cachedDripData} live={live} etfData={etf} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DRIPCell ticker={etf.ticker} period="52w" dripData={cachedDripData} live={live} etfData={etf} />
-                  </TableCell>
-                   <TableCell className="text-right font-mono">
-                     <div className="inline-flex flex-col items-end">
-                       <span className="font-semibold">
-                         {lookupTables.getDripSum(etf.ticker).toFixed(1)}
-                       </span>
-                     </div>
-                   </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </Card>
-      
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          {selected && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{helperFunctions.countryFlag(selected)}</span>
-                  <div>
-                    <h2 className="text-2xl font-bold">{selected.ticker}</h2>
-                    <p className="text-muted-foreground">{helperFunctions.getEtfDescription(selected)}</p>
-                  </div>
-                </div>
-                
-                <div className="ml-auto flex items-center gap-2">
-                  {(() => {
-                    const manager = helperFunctions.getFundManager(selected);
-                    const logo = helperFunctions.getManagerLogo(selected, manager);
-                    return (
-                      <div className="flex items-center gap-2">
-                        {logo && (
-                          <Avatar className="h-8 w-8">
-                            <img src={logo} alt={manager} className="object-contain" />
-                            <AvatarFallback className="text-sm">{manager.slice(0, 2)}</AvatarFallback>
-                          </Avatar>
-                        )}
-                        <span className="font-medium">{manager}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-6 p-4 bg-muted/20 rounded-lg">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">${(cachedPrices[selected.ticker] || selected.current_price || 0).toFixed(2)}</div>
-                  <div className="text-sm text-muted-foreground">Current Price</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{constants.formatPct(selected.yieldTTM || 0)}</div>
-                  <div className="text-sm text-muted-foreground">Yield TTM</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{constants.formatPct(selected.totalReturn1Y || 0)}</div>
-                  <div className="text-sm text-muted-foreground">1Y Return</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{constants.fmtCompact.format(selected.aum || 0)}</div>
-                  <div className="text-sm text-muted-foreground">AUM</div>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={handlePrevious}
-                  disabled={!hasPrevious}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border hover:bg-accent disabled:opacity-50"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </button>
-                
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">
-                    #{selectedRank} of {items.length}
-                  </span>
-                  <Tabs value={range} onValueChange={setRange}>
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="3M">3M</TabsTrigger>
-                      <TabsTrigger value="6M">6M</TabsTrigger>
-                      <TabsTrigger value="1Y">1Y</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                
-                <button
-                  onClick={handleNext}
-                  disabled={!hasNext}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border hover:bg-accent disabled:opacity-50"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-4">
-                <DistributionHistory ticker={selected.ticker} />
-              </div>
-              
-              <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className={`mt-4 grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
                 <div>
                   <div className="text-sm text-muted-foreground">1Y Total Return</div>
                   <div className="text-lg font-medium">{selected.totalReturn1Y ? constants.formatPct(selected.totalReturn1Y, 1) : "—"}</div>
@@ -906,11 +1005,26 @@ export const OptimizedETFTable = ({
                   <div className="text-sm text-muted-foreground">Volatility (1Y)</div>
                   <div className="text-lg font-medium">{selected.volatility1Y ? constants.formatPct(selected.volatility1Y, 1) : "—"}</div>
                 </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Max Drawdown (1Y)</div>
+                  <div className="text-lg font-medium">{selected.maxDrawdown1Y ? constants.formatPct(selected.maxDrawdown1Y, 1) : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">AUM</div>
+                  <div className="text-lg font-medium">{selected.aum ? new Intl.NumberFormat("en", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(selected.aum) : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Risk Score</div>
+                  <div className="text-lg font-medium">{Math.round(selected.riskScore * 100)}%</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Vol: {Math.round(selected.volNorm * 100)}% | Drawdown: {Math.round(selected.drawdownNorm * 100)}%
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </Card>
   );
 };
