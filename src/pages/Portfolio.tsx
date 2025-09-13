@@ -193,10 +193,10 @@ const Portfolio = () => {
         returnScore: score?.return_score || 0,
         yieldScore: score?.yield_score || 0,
         riskScore: score?.risk_score || 0,
-        // Real calculated values from DRIP+RSI logic (not stored defaults)
-        trendScore: position, // Use calculated position as trend mark (-2 to +2)
-        ret1yScore: score?.composite_score || 0, // Use real composite_score, not default return_score
-        position: position // Real calculated position from DRIP+RSI
+        // Scale scores to 0-100 like AI Portfolio for consistency
+        trendScore: Math.round(((position + 2) / 4) * 100), // Convert -2 to +2 range to 0-100
+        ret1yScore: Math.round((score?.composite_score || 0)), // Use composite_score directly
+        position: position // Real calculated position from DRIP+RSI (-2 to +2)
       };
     });
   }, [etfData, storedScores, cachedDripData, rsiSignals]);
