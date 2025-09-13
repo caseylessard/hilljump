@@ -325,22 +325,22 @@ const Portfolio = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <header className="container py-8">
+      <header className="container py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="h-8 w-8 text-primary" />
-            <h1 className="text-4xl font-bold">AI Portfolio Builder</h1>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">AI Portfolio Builder</h1>
           </div>
           <RefreshButton />
         </div>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
           Build an AI-optimized ETF portfolio using Ladder-Delta Trend scoring, 1-year returns, and advanced risk metrics.
         </p>
       </header>
 
-      <main className="container grid lg:grid-cols-[1fr,2fr] gap-8 pb-16">
+      <main className="container grid lg:grid-cols-[1fr,2fr] gap-6 lg:gap-8 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         {/* Controls Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

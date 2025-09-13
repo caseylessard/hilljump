@@ -401,9 +401,9 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   }, [items, sortKey, sortDir, live, dripData]);
 
   return (
-    <Card className="p-4 overflow-x-auto">
+    <Card className="p-2 sm:p-4 overflow-x-auto">
       <Table>
-        <TableCaption>All high-yield dividend ETFs ranked by risk-aware total return. Live data where available.</TableCaption>
+        <TableCaption className="text-xs sm:text-sm">All high-yield dividend ETFs ranked by risk-aware total return. Live data where available.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">

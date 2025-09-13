@@ -23,19 +23,19 @@ const Bots = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <header className="container py-8">
-        <div className="flex items-center gap-3 mb-4">
-          <Bot className="h-8 w-8 text-primary" />
-          <h1 className="text-4xl font-bold">Trading Bots</h1>
+      <header className="container py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2 sm:gap-3 mb-4">
+          <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Trading Bots</h1>
         </div>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
           Professional Pine Script trading bots for TradingView. Automated strategies based on HillJump ETF analysis.
         </p>
       </header>
 
-      <main className="container pb-16">
+      <main className="container pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         {/* Features Section */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">

@@ -67,16 +67,16 @@ const Home = () => {
       
       <main>
         {/* Hero Section */}
-        <section className="relative overflow-hidden py-20">
+        <section className="relative overflow-hidden py-12 sm:py-16 lg:py-20">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5" />
-          <div className="container relative">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <Badge variant="secondary" className="mb-4">
+          <div className="container relative px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+              <div className="space-y-6 lg:space-y-8 text-center lg:text-left">
+                <div className="space-y-3 sm:space-y-4">
+                  <Badge variant="secondary" className="mb-3 sm:mb-4 text-xs sm:text-sm">
                     {contentLoading ? 'Loading...' : content.hero_badge_text}
                   </Badge>
-                  <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
                     {contentLoading ? (
                       'Loading...'
                     ) : content.hero_title.includes('Income Investors') ? (
@@ -88,26 +88,26 @@ const Home = () => {
                       content.hero_title
                     )}
                   </h1>
-                  <p className="text-xl text-muted-foreground leading-relaxed">
+                  <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-2xl lg:max-w-none">
                     {contentLoading ? 'Loading content...' : content.hero_description}
                   </p>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button size="lg" asChild>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
+                  <Button size="lg" asChild className="w-full sm:w-auto">
                     <a href="/ranking">Explore Rankings</a>
                   </Button>
-                  <Button size="lg" variant="outline" asChild>
+                  <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
                     <a href="/portfolio">Track Portfolio</a>
                   </Button>
                 </div>
               </div>
               
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden order-first lg:order-last">
                 <img 
                   src={`${content.hero_image_url}?v=${Date.now()}`} 
                   alt="Investment platform visualization showing market data and analysis tools" 
-                  className="w-full h-80 object-cover"
+                  className="w-full h-64 sm:h-80 lg:h-96 object-cover"
                 />
               </Card>
             </div>
@@ -115,25 +115,25 @@ const Home = () => {
         </section>
 
         {/* Features Section */}
-        <section className="py-20 bg-muted/30">
-          <div className="container">
-            <div className="text-center space-y-4 mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold">
+        <section className="py-12 sm:py-16 lg:py-20 bg-muted/30">
+          <div className="container px-4 sm:px-6 lg:px-8">
+            <div className="text-center space-y-3 sm:space-y-4 mb-12 sm:mb-16">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold">
                 {contentLoading ? 'Loading...' : content.features_title}
               </h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
                 {contentLoading ? 'Loading content...' : content.features_description}
               </p>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
               {features.map((feature, index) => (
-                <Card key={index} className="p-6 text-center hover:shadow-lg transition-shadow">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <feature.icon className="w-6 h-6 text-primary" />
+                <Card key={index} className="p-4 sm:p-6 text-center hover:shadow-lg transition-shadow">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                  <h3 className="text-lg sm:text-xl font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{feature.description}</p>
                 </Card>
               ))}
             </div>
@@ -141,12 +141,12 @@ const Home = () => {
         </section>
 
         {/* Quick Actions Section */}
-        <section className="py-20">
-          <div className="container">
-            <div className="grid md:grid-cols-3 gap-8">
-              <Card className="p-6">
-                <h3 className="text-xl font-semibold mb-3">Income Rankings</h3>
-                <p className="text-muted-foreground mb-4">
+        <section className="py-12 sm:py-16 lg:py-20">
+          <div className="container px-4 sm:px-6 lg:px-8">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+              <Card className="p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-semibold mb-3">Income Rankings</h3>
+                <p className="text-sm sm:text-base text-muted-foreground mb-4 leading-relaxed">
                   Discover top-performing income ETFs ranked by total return with risk adjustments.
                 </p>
                 <Button asChild className="w-full">
@@ -154,9 +154,9 @@ const Home = () => {
                 </Button>
               </Card>
               
-              <Card className="p-6">
-                <h3 className="text-xl font-semibold mb-3">Portfolio Tracker</h3>
-                <p className="text-muted-foreground mb-4">
+              <Card className="p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-semibold mb-3">Portfolio Tracker</h3>
+                <p className="text-sm sm:text-base text-muted-foreground mb-4 leading-relaxed">
                   Track your positions, monitor performance, and optimize your income strategy.
                 </p>
                 <Button asChild variant="outline" className="w-full">
@@ -164,9 +164,9 @@ const Home = () => {
                 </Button>
               </Card>
               
-              <Card className="p-6">
-                <h3 className="text-xl font-semibold mb-3">Market Alerts</h3>
-                <p className="text-muted-foreground mb-4">
+              <Card className="p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
+                <h3 className="text-lg sm:text-xl font-semibold mb-3">Market Alerts</h3>
+                <p className="text-sm sm:text-base text-muted-foreground mb-4 leading-relaxed">
                   Stay informed with daily market alerts and trading opportunities.
                 </p>
                 <Button asChild variant="outline" className="w-full">

@@ -30,12 +30,12 @@ const Crypto = () => {
     <div>
       <Navigation />
       <header className="relative overflow-hidden">
-        <div className="container py-8">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Crypto</h1>
+        <div className="container py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">Crypto</h1>
         </div>
       </header>
 
-      <main className="container grid gap-8 pb-16">
+      <main className="container grid gap-6 sm:gap-8 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         <section aria-labelledby="crypto-alerts">
           <h2 id="crypto-alerts" className="sr-only">Daily Crypto Alerts</h2>
           <DailyAlerts />

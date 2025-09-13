@@ -24,7 +24,7 @@ import Navigation from '@/components/Navigation';
 import { RefreshDataButton } from '@/components/RefreshDataButton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { warmGlobalCache } from '@/lib/globalCache';
+import { MobileETFTable } from '@/components/dashboard/MobileETFTable';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -625,18 +625,33 @@ const Ranking = () => {
                   </div>
                 </div>
 
-                <OptimizedETFTable
-                  items={filtered} 
-                  live={cachedPrices}
-                  distributions={distributions}
-                  cachedDripData={dripDataTaxFree || {}}
-                  rsiSignals={rsiSignals || {}}
-                  originalRanking={currentRanked}
-                  persistentRanking={persistentRanking}
-                  allowSorting={isSubscribed || isAdmin}
-                  cachedPrices={cachedPrices}
-                  frozenRankings={frozenRankings}
-                />
+                <div className="hidden sm:block">
+                  <OptimizedETFTable
+                    items={filtered} 
+                    live={cachedPrices}
+                    distributions={distributions}
+                    cachedDripData={dripDataTaxFree || {}}
+                    rsiSignals={rsiSignals || {}}
+                    originalRanking={currentRanked}
+                    persistentRanking={persistentRanking}
+                    allowSorting={isSubscribed || isAdmin}
+                    cachedPrices={cachedPrices}
+                    frozenRankings={frozenRankings}
+                  />
+                </div>
+                <div className="block sm:hidden">
+                  <MobileETFTable
+                    items={filtered}
+                    distributions={distributions}
+                    cachedDripData={dripDataTaxFree || {}}
+                    originalRanking={currentRanked}
+                    cachedPrices={cachedPrices}
+                    onSelectETF={(etf, rank) => {
+                      // Handle ETF selection for mobile detail view if needed
+                      console.log('Selected ETF:', etf, 'Rank:', rank);
+                    }}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="taxed" className="space-y-4">
@@ -846,18 +861,33 @@ const Ranking = () => {
                 </div>
               </div>
 
-              <OptimizedETFTable
-                items={filtered} 
-                live={cachedPrices}
-                distributions={distributions}
-                cachedDripData={dripDataTaxFree || {}}
-                rsiSignals={rsiSignals || {}}
-                originalRanking={currentRanked}
-                persistentRanking={persistentRanking}
-                allowSorting={isSubscribed || isAdmin}
-                cachedPrices={cachedPrices}
-                frozenRankings={frozenRankings}
-              />
+          <div className="hidden sm:block">
+            <OptimizedETFTable
+              items={filtered} 
+              live={cachedPrices}
+              distributions={distributions}
+              cachedDripData={dripDataTaxFree || {}}
+              rsiSignals={rsiSignals || {}}
+              originalRanking={currentRanked}
+              persistentRanking={persistentRanking}
+              allowSorting={isSubscribed || isAdmin}
+              cachedPrices={cachedPrices}
+              frozenRankings={frozenRankings}
+            />
+          </div>
+          <div className="block sm:hidden">
+            <MobileETFTable
+              items={filtered}
+              distributions={distributions}
+              cachedDripData={dripDataTaxFree || {}}
+              originalRanking={currentRanked}
+              cachedPrices={cachedPrices}
+              onSelectETF={(etf, rank) => {
+                // Handle ETF selection for mobile detail view if needed
+                console.log('Selected ETF:', etf, 'Rank:', rank);
+              }}
+            />
+          </div>
             </div>
           )}
         </section>
