@@ -6,101 +6,56 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { ETFTable } from '@/components/dashboard/ETFTable';
 import { OptimizedETFTable } from '@/components/dashboard/OptimizedETFTable';
-
 import { ScoringControls } from '@/components/dashboard/ScoringControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
-import { ScoredETF, scoreETFsWithPrefs } from '@/lib/scoring';
-import { RankingPrefs } from '@/lib/rankingPresets';
-import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedDRIP } from '@/hooks/useCachedETFData';
+import { useCachedETFs, useCachedPrices, useCachedDRIP } from '@/hooks/useCachedETFData';
 import { useBulkRSISignals } from '@/hooks/useBulkETFData';
-import { Distribution, fetchLatestDistributions } from '@/lib/dividends';
-import { saveCurrentRankings } from '@/hooks/useRankingHistory';
-import { getETFs } from '@/lib/db';
 import { UserBadge } from '@/components/UserBadge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
 import { RefreshDataButton } from '@/components/RefreshDataButton';
-// Removed deleted components - functionality consolidated
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-// ShowDripWork component removed
-import { warmGlobalCache } from '@/lib/globalCache';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
-// Load cached state from localStorage
-const loadCachedState = () => {
-  try {
-    const cached = localStorage.getItem('etf-ranking-state');
-    return cached ? JSON.parse(cached) : {
-      weights: { return: 15, yield: 25, risk: 20, dividendStability: 20, period4w: 8, period52w: 2, homeCountryBias: 6 },
-      filter: 'all' as FilterType,
-      searchTerm: '',
-      taxEnabled: false,
-      taxRate: 15,
-      taxCountry: 'CA',
-      persistentRanking: []
-    };
-  } catch (error) {
-    console.warn('Failed to load cached state:', error);
-    return {
-      weights: { return: 15, yield: 25, risk: 20, dividendStability: 20, period4w: 8, period52w: 2, homeCountryBias: 6 },
-      filter: 'all' as FilterType,
-      searchTerm: '',
-      taxEnabled: false,
-      taxRate: 15,
-      taxCountry: 'CA',
-      persistentRanking: []
-    };
-  }
-};
-
-// Save state to localStorage with throttling
-let saveTimeout: NodeJS.Timeout;
-const saveCachedState = (state: any) => {
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    try {
-      localStorage.setItem('etf-ranking-state', JSON.stringify(state));
-    } catch (error) {
-      console.warn('Failed to save cached state:', error);
-    }
-  }, 500);
+// Simplified ETF type for display
+type DisplayETF = {
+  ticker: string;
+  name: string;
+  exchange: string;
+  totalReturn1Y?: number;
+  yieldTTM?: number;
+  expenseRatio?: number;
+  volatility1Y?: number;
+  maxDrawdown1Y?: number;
+  aum?: number;
+  current_price?: number;
+  category?: string;
+  summary?: string;
+  compositeScore: number;
+  returnScore: number;
+  yieldScore: number;
+  riskScore: number;
+  dripData?: any;
+  signal?: any;
 };
 
 const Ranking = () => {
   const { toast } = useToast();
   const { profile } = useUserProfile();
 
-  // Initialize state from cache
-  const [cachedState, setCachedState] = useState(() => loadCachedState());
-  const [weights, setWeights] = useState(cachedState.weights);
-  const [filter, setFilter] = useState<FilterType>(cachedState.filter);
-  const [searchTerm, setSearchTerm] = useState(cachedState.searchTerm);
-  const [taxEnabled, setTaxEnabled] = useState(cachedState.taxEnabled);
-  const [taxRate, setTaxRate] = useState(cachedState.taxRate);
-  const [taxCountry, setTaxCountry] = useState(cachedState.taxCountry);
-  const [loadingProgress, setLoadingProgress] = useState({ prices: { current: 0, total: 0 } });
-  const [selectedETF, setSelectedETF] = useState<ScoredETF | null>(null);
+  // State management
+  const [weights, setWeights] = useState({ return: 60, yield: 25, risk: 15 });
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [taxRate, setTaxRate] = useState(15);
+  const [taxCountry, setTaxCountry] = useState('CA');
+  const [selectedETF, setSelectedETF] = useState<DisplayETF | null>(null);
   const [isETFDialogOpen, setIsETFDialogOpen] = useState(false);
-  const [showOptimized, setShowOptimized] = useState(true); // Default to optimized view
-
-  // Save state changes to cache
-  useEffect(() => {
-    const state = {
-      weights,
-      filter,
-      searchTerm,
-      taxEnabled,
-      taxRate,
-      taxCountry,
-      persistentRanking: cachedState.persistentRanking
-    };
-    setCachedState(state);
-    saveCachedState(state);
-  }, [weights, filter, searchTerm, taxEnabled, taxRate, taxCountry, cachedState.persistentRanking]);
+  const [showOptimized, setShowOptimized] = useState(true);
 
   // Get all ETFs from cache
   const { data: etfs = [], isLoading: etfsLoading, error: etfsError } = useCachedETFs();
@@ -112,112 +67,67 @@ const Ranking = () => {
     const isCA = profile?.country === 'CA';
     setTaxEnabled(isCA);
     setTaxRate(isCA ? 15 : 0);
+    setTaxCountry(profile.country);
   }, [profile?.country]);
 
-  // Get tickers for data queries - memoized to prevent infinite loops
+  // Get tickers for data queries
   const tickers = useMemo(() => etfs.map(e => e.ticker), [etfs]);
   
-  // Use fresh calculations for accurate data
+  // Data fetching
   const { data: cachedPrices = {}, isLoading: pricesLoading } = useCachedPrices(tickers);
   const { data: dripData, isLoading: dripLoading } = useCachedDRIP(tickers, { 
     country: taxCountry, 
     enabled: taxEnabled, 
     rate: taxRate / 100 
   });
-  
-  // Debug DRIP data loading
-  useEffect(() => {
-    if (dripData) {
-      console.log('💰 DRIP data loaded:', Object.keys(dripData).length, 'tickers');
-      console.log('💰 Sample DRIP data:', Object.keys(dripData).slice(0, 3).map(ticker => ({
-        ticker,
-        data: dripData[ticker]
-      })));
-      
-      // Debug actual data structure
-      const sampleTicker = Object.keys(dripData)[0];
-      if (sampleTicker) {
-        console.log('💰 Sample DRIP structure for', sampleTicker, ':', dripData[sampleTicker]);
-      }
-    } else if (dripLoading) {
-      console.log('⏳ DRIP data loading...');
-    } else {
-      console.log('❌ No DRIP data available');
-    }
-  }, [dripData, dripLoading]);
-  
-  // Get RSI signals for trend indicators
-  const { data: rsiSignals = {}, isLoading: rsiLoading } = useBulkRSISignals(tickers.slice(0, 50)); // Limit to prevent timeout
-  
-  // Debug RSI signals loading  
-  useEffect(() => {
-    if (rsiSignals && Object.keys(rsiSignals).length > 0) {
-      console.log('📈 RSI signals loaded:', Object.keys(rsiSignals).length, 'tickers');
-      console.log('📈 Sample RSI signals:', Object.keys(rsiSignals).slice(0, 3).map(ticker => ({
-        ticker,
-        signal: rsiSignals[ticker]
-      })));
-    } else if (rsiLoading) {
-      console.log('⏳ RSI signals loading...');
-    } else if (!rsiLoading) {
-      console.log('❌ No RSI signals available, rsiLoading:', rsiLoading);
-      console.log('🔍 RSI signals object:', rsiSignals);
-    }
-  }, [rsiSignals, rsiLoading]);
+  const { data: rsiSignals = {}, isLoading: rsiLoading } = useBulkRSISignals(tickers.slice(0, 50));
 
-  // Calculate fresh scores using the same system as AI Portfolio
+  // Calculate fresh scores
   const scoredETFs = useMemo(() => {
     if (!etfs.length || pricesLoading || dripLoading) return [];
     
-    console.log('🎯 Using fresh calculations for ranking display');
+    console.log('🎯 Calculating fresh scores for ranking');
     
-    // Convert weights to RankingPrefs format (using presets)
-    const rankingPrefs: RankingPrefs = {
-      drip_4w: weights.period4w / 100,
-      drip_52w: weights.period52w / 100,
-      home_country_bias: weights.homeCountryBias / 100,
-      tax_enabled: taxEnabled,
-      tax_rate: taxRate / 100,
-      country: taxCountry as 'US' | 'CA'
-    };
-    
-    // Use the same scoring system as AI Portfolio
-    const freshScores = scoreETFsWithPrefs(etfs, rankingPrefs, cachedPrices, dripData);
-    
-    // Convert to the format expected by the UI and add RSI signals
-    return freshScores.map(scored => ({
-      ...scored,
-      // Map the fresh score properties to expected UI properties
-      returnScore: scored.returnNorm,
-      yieldScore: scored.yieldNorm, 
-      riskScore: scored.riskScore,
-      current_price: cachedPrices[scored.ticker] || scored.current_price,
-      dripData: dripData?.[scored.ticker],
-      signal: rsiSignals[scored.ticker] || { signal: 'HOLD', rsi: 50, trend: 'neutral' }
-    }));
-  }, [etfs, cachedPrices, pricesLoading, dripData, dripLoading, weights, taxEnabled, taxRate, taxCountry, rsiSignals]);
+    return etfs.map(etf => {
+      // Simple scoring calculation
+      const returnScore = Math.max(0, (etf.totalReturn1Y || 0) + 0.5);
+      const yieldScore = Math.max(0, (etf.yieldTTM || 0) * 10);
+      const riskScore = Math.max(0, 1 - (etf.volatility1Y || 0.2));
+      
+      const compositeScore = 
+        (returnScore * weights.return / 100) + 
+        (yieldScore * weights.yield / 100) + 
+        (riskScore * weights.risk / 100);
 
-  const ranked: ScoredETF[] = useMemo(() => {
-    return scoredETFs; // Already sorted by composite score from scoreETFsWithPrefs
-  }, [scoredETFs]);
+      const displayETF: DisplayETF = {
+        ...etf,
+        compositeScore,
+        returnScore,
+        yieldScore,
+        riskScore,
+        current_price: cachedPrices[etf.ticker] || etf.current_price,
+        dripData: dripData?.[etf.ticker],
+        signal: rsiSignals[etf.ticker] || { signal: 'HOLD', rsi: 50, trend: 'neutral' }
+      };
+      
+      return displayETF;
+    }).sort((a, b) => b.compositeScore - a.compositeScore);
+  }, [etfs, cachedPrices, pricesLoading, dripData, dripLoading, rsiSignals, weights]);
 
-  
-  const filtered: ScoredETF[] = useMemo(() => {
-    // Filter out ETFs with invalid data (dummy prices only)
-    const validETFs = ranked.filter(etf => {
+  // Filter ETFs
+  const filtered = useMemo(() => {
+    let result = scoredETFs.filter(etf => {
       const price = etf.current_price || 0;
       return price > 0.01; // Filter out dummy prices
     });
 
-    let result = validETFs;
-
     // Apply country filter
     if (filter === 'canada') {
-      result = result.filter(etf => etf.ticker.includes('.TO') || etf.country === 'CA');
+      result = result.filter(etf => etf.ticker.includes('.TO') || etf.exchange === 'TSX');
     } else if (filter === 'usa') {
-      result = result.filter(etf => !etf.ticker.includes('.TO') && etf.country !== 'CA');
+      result = result.filter(etf => !etf.ticker.includes('.TO') && etf.exchange !== 'TSX');
     } else if (filter === 'high-yield') {
-      result = result.filter(etf => (etf.yieldTTM || 0) > 0.08); // 8%+ yield
+      result = result.filter(etf => (etf.yieldTTM || 0) > 0.08);
     }
 
     // Apply search filter
@@ -231,15 +141,7 @@ const Ranking = () => {
     }
 
     return result;
-  }, [ranked, filter, searchTerm]);
-
-  // Distribution data
-  const [distributions, setDistributions] = useState<Record<string, Distribution[]>>({});
-  const { data: cachedDistributions = {}, isLoading: distributionsLoading } = useCachedDistributions(tickers);
-  
-  useEffect(() => {
-    setDistributions(cachedDistributions);
-  }, [cachedDistributions]);
+  }, [scoredETFs, filter, searchTerm]);
 
   // Loading state
   const isLoading = etfsLoading || pricesLoading || dripLoading || rsiLoading;
@@ -256,18 +158,17 @@ const Ranking = () => {
     );
   }
 
-  const handleETFClick = useCallback((etf: ScoredETF) => {
+  const handleETFClick = useCallback((etf: any) => {
     setSelectedETF(etf);
     setIsETFDialogOpen(true);
   }, []);
 
-  const handleWeightChange = useCallback((newWeights: any) => {
-    setWeights(newWeights);
-  }, []);
-
-  const resetWeights = useCallback(() => {
-    const defaultWeights = { return: 15, yield: 25, risk: 20, dividendStability: 20, period4w: 8, period52w: 2, homeCountryBias: 6 };
-    setWeights(defaultWeights);
+  const handleWeightChange = useCallback((newWeights: { return: number; yield: number; risk: number }) => {
+    setWeights({
+      return: Math.round(newWeights.return * 100),
+      yield: Math.round(newWeights.yield * 100), 
+      risk: Math.round(newWeights.risk * 100)
+    });
   }, []);
 
   return (
@@ -289,17 +190,15 @@ const Ranking = () => {
         </div>
         
         <div className="container">
-          {/* Detailed loading progress tracking */}
-          {(isLoading || pricesLoading || dripLoading || Object.keys(distributions).length === 0 && etfs.length > 0) && (
+          {/* Loading indicator */}
+          {isLoading && (
             <div className="mb-4 p-4 bg-muted/50 rounded-lg space-y-2">
               <div className="text-sm font-medium">Loading ETF Data...</div>
               <div className="space-y-1 text-xs text-muted-foreground">
-                {isLoading && <div>• Fetching ETF list from database...</div>}
-                {pricesLoading && <div>• Loading current prices ({loadingProgress.prices.current}/{loadingProgress.prices.total})</div>}
+                {etfsLoading && <div>• Fetching ETF list...</div>}
+                {pricesLoading && <div>• Loading current prices...</div>}
                 {dripLoading && <div>• Calculating DRIP returns...</div>}
                 {rsiLoading && <div>• Fetching trend signals...</div>}
-                {Object.keys(distributions).length === 0 && etfs.length > 0 && <div>• Loading distribution history...</div>}
-                {!isLoading && !pricesLoading && !dripLoading && <div>• Finalizing rankings...</div>}
               </div>
             </div>
           )}
@@ -317,7 +216,7 @@ const Ranking = () => {
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                       <Input
                         id="search"
-                        placeholder="Search by ticker, name, or category..."
+                        placeholder="Search by ticker, name..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10"
@@ -351,18 +250,13 @@ const Ranking = () => {
                         checked={taxEnabled}
                         onCheckedChange={setTaxEnabled}
                       />
-                      <Label>Apply {taxCountry} withholding tax ({taxRate}%)</Label>
+                      <Label>Apply {taxCountry} tax ({taxRate}%)</Label>
                     </div>
                   </div>
                 </div>
               </Card>
 
-              <ScoringControls
-                weights={weights}
-                onWeightsChange={handleWeightChange}
-                onReset={resetWeights}
-                showDripControls={true}
-              />
+              <ScoringControls onChange={handleWeightChange} />
               
               <div className="text-center pt-4">
                 <UserBadge />
@@ -371,10 +265,9 @@ const Ranking = () => {
 
             {/* Results Area */}
             <div>
-              {/* View Toggle */}
               <div className="flex justify-between items-center mb-4">
                 <div className="text-sm text-muted-foreground">
-                  Showing {filtered.length} of {ranked.length} ETFs
+                  Showing {filtered.length} ETFs
                 </div>
                 <div className="flex items-center gap-2">
                   <Label htmlFor="optimized-toggle" className="text-sm">Optimized View</Label>
@@ -386,22 +279,24 @@ const Ranking = () => {
                 </div>
               </div>
 
-              {/* ETF Table */}
-              {showOptimized ? (
-                <OptimizedETFTable
-                  etfs={filtered}
-                  distributions={distributions}
-                  onETFClick={handleETFClick}
-                  isLoading={isLoading}
-                  persistentRanking={cachedState.persistentRanking}
-                />
-              ) : (
-                <ETFTable
-                  etfs={filtered}
-                  distributions={distributions}
-                  onETFClick={handleETFClick}
-                  isLoading={isLoading}
-                />
+              {/* Simple ETF List */}
+              {!isLoading && (
+                <div className="space-y-2">
+                  {filtered.map((etf, index) => (
+                    <Card key={etf.ticker} className="p-4 cursor-pointer hover:bg-muted/50" onClick={() => handleETFClick(etf)}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="font-semibold">{etf.ticker}</div>
+                          <div className="text-sm text-muted-foreground truncate">{etf.name}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">${etf.current_price?.toFixed(2) || '—'}</div>
+                          <div className="text-sm text-muted-foreground">Score: {etf.compositeScore.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -428,13 +323,13 @@ const Ranking = () => {
                 <div>
                   <div className="text-sm text-muted-foreground">Yield (TTM)</div>
                   <div className="text-lg font-medium">
-                    {selectedETF.yield_ttm ? `${(selectedETF.yield_ttm * 100).toFixed(2)}%` : '—'}
+                    {selectedETF.yieldTTM ? `${(selectedETF.yieldTTM * 100).toFixed(2)}%` : '—'}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Expense Ratio</div>
                   <div className="text-lg font-medium">
-                    {selectedETF.expense_ratio ? `${(selectedETF.expense_ratio * 100).toFixed(2)}%` : '—'}
+                    {selectedETF.expenseRatio ? `${(selectedETF.expenseRatio * 100).toFixed(2)}%` : '—'}
                   </div>
                 </div>
                 <div>
@@ -449,38 +344,6 @@ const Ranking = () => {
                 <div className="text-sm text-muted-foreground mb-2">Description</div>
                 <p className="text-sm">{selectedETF.summary || 'No description available.'}</p>
               </div>
-
-              {selectedETF.dripData && (
-                <div>
-                  <div className="text-sm text-muted-foreground mb-2">DRIP Performance</div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <div className="font-medium">4 Week</div>
-                      <div className="text-green-600">
-                        {selectedETF.dripData.period_4w?.growthPercent?.toFixed(2)}%
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-medium">13 Week</div>
-                      <div className="text-green-600">
-                        {selectedETF.dripData.period_13w?.growthPercent?.toFixed(2)}%
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-medium">26 Week</div>
-                      <div className="text-green-600">
-                        {selectedETF.dripData.period_26w?.growthPercent?.toFixed(2)}%
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-medium">52 Week</div>
-                      <div className="text-green-600">
-                        {selectedETF.dripData.period_52w?.growthPercent?.toFixed(2)}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>
