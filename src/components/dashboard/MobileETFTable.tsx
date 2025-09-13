@@ -35,20 +35,6 @@ export const MobileETFTable = ({
   persistentRanking = [],
   onSelectETF 
 }: Props) => {
-  // Debug logging to understand data flow
-  console.log('📱 MobileETFTable Debug:', {
-    itemsCount: items.length,
-    liveDataKeys: Object.keys(live),
-    liveDataCount: Object.keys(live).length,
-    cachedPricesKeys: Object.keys(cachedPrices),
-    cachedPricesCount: Object.keys(cachedPrices).length,
-    cachedDripDataKeys: Object.keys(cachedDripData),
-    cachedDripDataCount: Object.keys(cachedDripData).length,
-    sampleTicker: items[0]?.ticker,
-    sampleLiveData: items[0] ? live[items[0].ticker] : null,
-    sampleCachedPrice: items[0] ? cachedPrices[items[0].ticker] : null,
-    sampleETFCurrentPrice: items[0]?.current_price
-  });
   // Create original ranking lookup for persistent rank numbers
   const originalRankMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -252,17 +238,6 @@ export const MobileETFTable = ({
                     let price = liveItem?.price;
                     const cp = liveItem?.changePercent;
                     
-                    // Debug logging for first few tickers
-                    if (['AVGY.TO', 'GOGY.TO', 'PLTE.TO'].includes(etf.ticker)) {
-                      console.log(`💰 MobileETFTable Price Debug - ${etf.ticker}:`, {
-                        liveItem,
-                        livePrice: liveItem?.price,
-                        cachedPrice: cachedPrices[etf.ticker],
-                        etfCurrentPrice: etf.current_price,
-                        finalPrice: price
-                      });
-                    }
-                    
                     // If no live price, get from cached prices or ETF current_price
                     if (price == null) {
                       const cachedPrice = cachedPrices[etf.ticker];
@@ -281,14 +256,6 @@ export const MobileETFTable = ({
                           price = (etf.current_price as any).price;
                         }
                       }
-                    }
-                    
-                    // Additional debug after all price resolution attempts
-                    if (['AVGY.TO', 'GOGY.TO', 'PLTE.TO'].includes(etf.ticker)) {
-                      console.log(`💰 MobileETFTable Final Price - ${etf.ticker}:`, {
-                        resolvedPrice: price,
-                        willShowDash: price == null
-                      });
                     }
                     
                     if (price == null) return "—";

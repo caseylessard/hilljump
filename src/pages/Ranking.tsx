@@ -625,7 +625,8 @@ const Ranking = () => {
                   </div>
                 </div>
 
-                <div className="hidden sm:block">
+                {/* Desktop: Full table */}
+                <div className="hidden lg:block">
                   <OptimizedETFTable
                     items={filtered} 
                     live={cachedPrices}
@@ -639,13 +640,33 @@ const Ranking = () => {
                     frozenRankings={frozenRankings}
                   />
                 </div>
-                <div className="block sm:hidden">
+                
+                {/* Tablet: Enhanced mobile cards */}
+                <div className="hidden md:block lg:hidden">
                   <MobileETFTable
                     items={filtered}
                     distributions={distributions}
                     cachedDripData={dripDataTaxFree || {}}
                     originalRanking={currentRanked}
                     cachedPrices={cachedPrices}
+                    frozenRankings={frozenRankings}
+                    persistentRanking={persistentRanking}
+                    onSelectETF={(etf, rank) => {
+                      console.log('Selected ETF:', etf, 'Rank:', rank);
+                    }}
+                  />
+                </div>
+                
+                {/* Mobile: Compact cards */}
+                <div className="block md:hidden">
+                  <MobileETFTable
+                    items={filtered}
+                    distributions={distributions}
+                    cachedDripData={dripDataTaxFree || {}}
+                    originalRanking={currentRanked}
+                    cachedPrices={cachedPrices}
+                    frozenRankings={frozenRankings}
+                    persistentRanking={persistentRanking}
                     onSelectETF={(etf, rank) => {
                       // Handle ETF selection for mobile detail view if needed
                       console.log('Selected ETF:', etf, 'Rank:', rank);
