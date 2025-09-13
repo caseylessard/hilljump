@@ -188,15 +188,15 @@ const Portfolio = () => {
         polygonSupported: etf.polygon_supported,
         twelveSymbol: etf.twelve_symbol,
         eodhSymbol: etf.eodhd_symbol,
-        // Add ranking score data with real calculations (matching Rankings page)
+        // Add ranking score data - only composite_score is real, others are defaults
         compositeScore: score?.composite_score || 0,
         returnScore: score?.return_score || 0,
         yieldScore: score?.yield_score || 0,
         riskScore: score?.risk_score || 0,
-        // Real trend and return scores from Rankings calculations
-        trendScore: position, // Use the position directly as trend mark (same as Rankings)
-        ret1yScore: (score?.return_score || 0) * 100, // Convert to 0-100 scale for display
-        position: position // Same position calculation as Rankings page
+        // Real calculated values from DRIP+RSI logic (not stored defaults)
+        trendScore: position, // Use calculated position as trend mark (-2 to +2)
+        ret1yScore: score?.composite_score || 0, // Use real composite_score, not default return_score
+        position: position // Real calculated position from DRIP+RSI
       };
     });
   }, [etfData, storedScores, cachedDripData, rsiSignals]);
