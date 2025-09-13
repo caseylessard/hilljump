@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ETFTable } from '@/components/dashboard/ETFTable';
 import { OptimizedETFTable } from '@/components/dashboard/OptimizedETFTable';
@@ -110,9 +110,9 @@ const Ranking = () => {
   const [dripDataTaxed, setDripDataTaxed] = useState<any>({});
   const [dripLoadingTaxed, setDripLoadingTaxed] = useState(false);
   
-  // Calculate taxed DRIP data when tab switches to taxed
+  // Calculate taxed DRIP data when tab switches to taxed (for Canadian users only)
   useEffect(() => {
-    if (activeTab === 'taxed' && dripDataTaxFree && Object.keys(dripDataTaxed).length === 0) {
+    if (activeTab === 'taxed' && dripDataTaxFree && Object.keys(dripDataTaxed).length === 0 && profile?.country === 'CA') {
       setDripLoadingTaxed(true);
       console.log('🏦 Calculating 15% tax impact on US funds...');
       
@@ -155,7 +155,7 @@ const Ranking = () => {
       setDripDataTaxed(taxedData);
       setDripLoadingTaxed(false);
     }
-  }, [activeTab, dripDataTaxFree, dripDataTaxed]);
+  }, [activeTab, dripDataTaxFree, dripDataTaxed, profile?.country]);
 
   // Debug DRIP data being passed to table
   useEffect(() => {
@@ -306,8 +306,22 @@ const Ranking = () => {
     return buildRanking(etfs, storedScores, cachedPrices, dripDataTaxed, rsiSignals, 'taxed');
   }, [etfs, storedScores, cachedPrices, dripDataTaxed, rsiSignals]);
 
-  // Get current ranking based on active tab
-  const currentRanked = activeTab === 'taxfree' ? rankedTaxFree : rankedTaxed;
+  // Get current ranking based on active tab (default to tax-free for US users)
+  const currentRanked = profile?.country === 'CA' && activeTab === 'taxed' ? rankedTaxed : rankedTaxFree;
+  
+  // Store original rankings with fixed positions
+  const [frozenRankings, setFrozenRankings] = useState<Map<string, number>>(new Map());
+  
+  // Update frozen rankings when unfiltered rankings change
+  useEffect(() => {
+    if (currentRanked.length > 0 && !searchQuery.trim()) {
+      const newFrozenRankings = new Map<string, number>();
+      currentRanked.forEach((etf, index) => {
+        newFrozenRankings.set(etf.ticker, index + 1);
+      });
+      setFrozenRankings(newFrozenRankings);
+    }
+  }, [currentRanked, searchQuery]);
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (dummy prices only)
@@ -483,14 +497,236 @@ const Ranking = () => {
 
       <main className="container grid gap-8 pb-16">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
-          {/* Tab Navigation */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="taxfree">Tax-Free</TabsTrigger>
-              <TabsTrigger value="taxed">15% Tax on US Funds</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="taxfree" className="space-y-4">
+          {/* Tab Navigation - Only show for Canadian users */}
+          {profile?.country === 'CA' ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="taxfree">Tax-Free</TabsTrigger>
+                <TabsTrigger value="taxed">Taxable</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="taxfree" className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Desktop: Filter buttons and Search */}
+                  <div className="hidden sm:flex items-center justify-between w-full gap-4">
+                    <div className="flex items-center gap-1 border rounded-lg p-1">
+                      <Button
+                        variant={filter === "All ETFs" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setFilter("All ETFs")}
+                        className="h-8"
+                      >
+                        All ETFs
+                      </Button>
+                      <Button
+                        variant={filter === "US Funds" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setFilter("US Funds")}
+                        className="h-8"
+                      >
+                        US Funds
+                      </Button>
+                      <Button
+                        variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setFilter("Canadian Funds")}
+                        className="h-8"
+                      >
+                        Canadian Funds
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {(isSubscribed || isAdmin) && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowDialog(true)}
+                        >
+                          Scoring
+                        </Button>
+                      )}
+
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by ticker or underlying..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10 pr-8 w-64"
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Mobile: Dropdown and Search */}
+                  <div className="flex sm:hidden flex-col gap-2 w-full">
+                    <Select value={filter} onValueChange={setFilter}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-background shadow-lg">
+                        <SelectItem value="All ETFs">All ETFs</SelectItem>
+                        <SelectItem value="US Funds">US Funds</SelectItem>
+                        <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by ticker or underlying..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 pr-8"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <OptimizedETFTable
+                  items={filtered} 
+                  live={cachedPrices}
+                  distributions={distributions}
+                  cachedDripData={dripDataTaxFree || {}}
+                  rsiSignals={rsiSignals || {}}
+                  originalRanking={currentRanked}
+                  persistentRanking={persistentRanking}
+                  allowSorting={isSubscribed || isAdmin}
+                  cachedPrices={cachedPrices}
+                  frozenRankings={frozenRankings}
+                />
+              </TabsContent>
+
+              <TabsContent value="taxed" className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Desktop: Filter buttons and Search */}
+                  <div className="hidden sm:flex items-center justify-between w-full gap-4">
+                    <div className="flex items-center gap-1 border rounded-lg p-1">
+                      <Button
+                        variant={filter === "All ETFs" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setFilter("All ETFs")}
+                        className="h-8"
+                      >
+                        All ETFs
+                      </Button>
+                      <Button
+                        variant={filter === "US Funds" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setFilter("US Funds")}
+                        className="h-8"
+                      >
+                        US Funds
+                      </Button>
+                      <Button
+                        variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setFilter("Canadian Funds")}
+                        className="h-8"
+                      >
+                        Canadian Funds
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {(isSubscribed || isAdmin) && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowDialog(true)}
+                        >
+                          Scoring
+                        </Button>
+                      )}
+
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by ticker or underlying..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10 pr-8 w-64"
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Mobile: Dropdown and Search */}
+                  <div className="flex sm:hidden flex-col gap-2 w-full">
+                    <Select value={filter} onValueChange={setFilter}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-background shadow-lg">
+                        <SelectItem value="All ETFs">All ETFs</SelectItem>
+                        <SelectItem value="US Funds">US Funds</SelectItem>
+                        <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by ticker or underlying..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 pr-8"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <OptimizedETFTable
+                  items={filtered} 
+                  live={cachedPrices}
+                  distributions={distributions}
+                  cachedDripData={dripDataTaxed || {}}
+                  rsiSignals={rsiSignals || {}}
+                  originalRanking={currentRanked}
+                  persistentRanking={persistentRanking}
+                  allowSorting={isSubscribed || isAdmin}
+                  cachedPrices={cachedPrices}
+                  frozenRankings={frozenRankings}
+                  taxedScoring={true}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            /* US users - no tabs, just tax-free view */
+            <div className="space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 {/* Desktop: Filter buttons and Search */}
                 <div className="hidden sm:flex items-center justify-between w-full gap-4">
@@ -538,8 +774,16 @@ const Ranking = () => {
                         placeholder="Search by ticker or underlying..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 w-64"
+                        className="pl-10 pr-8 w-64"
                       />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -563,8 +807,16 @@ const Ranking = () => {
                       placeholder="Search by ticker or underlying..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 pr-8"
                     />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -579,101 +831,10 @@ const Ranking = () => {
                 persistentRanking={persistentRanking}
                 allowSorting={isSubscribed || isAdmin}
                 cachedPrices={cachedPrices}
+                frozenRankings={frozenRankings}
               />
-            </TabsContent>
-
-            <TabsContent value="taxed" className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                {/* Desktop: Filter buttons and Search */}
-                <div className="hidden sm:flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-1 border rounded-lg p-1">
-                    <Button
-                      variant={filter === "All ETFs" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setFilter("All ETFs")}
-                      className="h-8"
-                    >
-                      All ETFs
-                    </Button>
-                    <Button
-                      variant={filter === "US Funds" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setFilter("US Funds")}
-                      className="h-8"
-                    >
-                      US Funds
-                    </Button>
-                    <Button
-                      variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setFilter("Canadian Funds")}
-                      className="h-8"
-                    >
-                      Canadian Funds
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {(isSubscribed || isAdmin) && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setShowDialog(true)}
-                      >
-                        Scoring
-                      </Button>
-                    )}
-
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search by ticker or underlying..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 w-64"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Mobile: Dropdown and Search */}
-                <div className="flex sm:hidden flex-col gap-2 w-full">
-                  <Select value={filter} onValueChange={setFilter}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Filter" />
-                    </SelectTrigger>
-                    <SelectContent className="z-50 bg-background shadow-lg">
-                      <SelectItem value="All ETFs">All ETFs</SelectItem>
-                      <SelectItem value="US Funds">US Funds</SelectItem>
-                      <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by ticker or underlying..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <OptimizedETFTable
-                items={filtered} 
-                live={cachedPrices}
-                distributions={distributions}
-                cachedDripData={dripDataTaxed || {}}
-                rsiSignals={rsiSignals || {}}
-                originalRanking={currentRanked}
-                persistentRanking={persistentRanking}
-                allowSorting={isSubscribed || isAdmin}
-                cachedPrices={cachedPrices}
-              />
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </section>
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>

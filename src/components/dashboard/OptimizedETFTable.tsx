@@ -31,6 +31,8 @@ type Props = {
   originalRanking?: ScoredETF[];
   persistentRanking?: Array<{ticker: string, rank: number, score: number, updatedAt: number}>;
   cachedPrices?: Record<string, any>;
+  frozenRankings?: Map<string, number>;
+  taxedScoring?: boolean;
 };
 
   // Updated ranking change indicator to show actual position changes
@@ -261,7 +263,9 @@ export const OptimizedETFTable = ({
   rsiSignals = {},
   originalRanking = [],
   persistentRanking = [],
-  cachedPrices = {}
+  cachedPrices = {},
+  frozenRankings = new Map(),
+  taxedScoring = false
 }: Props) => {
   // Debug DRIP data being passed to table
   console.log('🎯 OptimizedETFTable Debug:', {
@@ -692,7 +696,7 @@ export const OptimizedETFTable = ({
               >
                  <TableCell>
                    <div className="flex items-center gap-2">
-                     <span className="font-mono">{idx + 1}</span>
+                     <span className="font-mono">{frozenRankings.get(etf.ticker) || idx + 1}</span>
                      <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />
                    </div>
                  </TableCell>
@@ -774,13 +778,13 @@ export const OptimizedETFTable = ({
                 <TableCell className="text-right">
                   <DRIPCell ticker={etf.ticker} period="52w" dripData={cachedDripData} live={live} etfData={etf} />
                 </TableCell>
-                <TableCell className="text-right font-mono">
-                  <div className="inline-flex flex-col items-end">
-                    <span className="font-semibold">
-                      {lookupTables.getDripSum(etf.ticker).toFixed(1)}%
-                    </span>
-                  </div>
-                </TableCell>
+                 <TableCell className="text-right font-mono">
+                   <div className="inline-flex flex-col items-end">
+                     <span className="font-semibold">
+                       {lookupTables.getDripSum(etf.ticker).toFixed(1)}
+                     </span>
+                   </div>
+                 </TableCell>
               </TableRow>
             );
           })}
