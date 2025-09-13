@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ETFTable } from '@/components/dashboard/ETFTable';
 import { OptimizedETFTable } from '@/components/dashboard/OptimizedETFTable';
 
@@ -21,10 +22,8 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
 import { RefreshDataButton } from '@/components/RefreshDataButton';
-// Removed deleted components - functionality consolidated
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-// ShowDripWork component removed
 import { warmGlobalCache } from '@/lib/globalCache';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
@@ -83,28 +82,15 @@ const Ranking = () => {
     scores: { current: 0, total: 0 }
   });
   
+  // Tab state for tax-free vs tax tables
+  const [activeTab, setActiveTab] = useState('taxfree');
+  
   const { toast } = useToast();
   const { profile } = useUserProfile();
   const { data: etfs = [], isLoading, error } = useCachedETFs();
-  
-  // Warm global cache on first load - disabled, now only on background refresh
-  // useEffect(() => {
-  //   warmGlobalCache();
-  // }, []);
 
   // Get tax country from profile, fallback to US
   const taxCountry = profile?.country === 'CA' ? 'CA' : 'US';
-  
-  // Tax preference state - for US users, always 0% tax and hidden controls
-  const [taxEnabled, setTaxEnabled] = useState(taxCountry === 'CA');
-  const [taxRate, setTaxRate] = useState(taxCountry === 'CA' ? 15 : 0);
-
-  // Update tax preferences when profile country changes
-  useEffect(() => {
-    const isCA = profile?.country === 'CA';
-    setTaxEnabled(isCA);
-    setTaxRate(isCA ? 15 : 0);
-  }, [profile?.country]);
 
   // Get tickers for data queries - memoized to prevent infinite loops
   const tickers = useMemo(() => etfs.map(e => e.ticker), [etfs]);
@@ -112,68 +98,48 @@ const Ranking = () => {
   // Use stored scores by default for fast loading
   const { data: storedScores = {}, isLoading: scoresLoading } = useCachedStoredScores(tickers, weights, taxCountry);
   const { data: cachedPrices = {}, isLoading: pricesLoading } = useCachedPrices(tickers);
-  const { data: dripData, isLoading: dripLoading } = useCachedDRIP(tickers, { 
+  
+  // Tax-free DRIP data (always 0% tax)
+  const { data: dripDataTaxFree, isLoading: dripLoadingTaxFree } = useCachedDRIP(tickers, { 
     country: taxCountry, 
-    enabled: taxEnabled, 
-    rate: taxRate / 100 
+    enabled: false, 
+    rate: 0 
+  });
+  
+  // Taxed DRIP data (15% on US funds only)
+  const { data: dripDataTaxed, isLoading: dripLoadingTaxed } = useCachedDRIP(tickers, { 
+    country: taxCountry, 
+    enabled: true, 
+    rate: 0.15 
   });
   
   // Debug DRIP data being passed to table
   useEffect(() => {
-    if (dripData) {
-      console.log('🎯 Ranking Debug - Passing to table:', {
-        dripDataExists: !!dripData,
-        dripDataKeys: Object.keys(dripData).slice(0, 5),
-        sampleDripEntry: Object.keys(dripData).length > 0 ? 
-          { [Object.keys(dripData)[0]]: dripData[Object.keys(dripData)[0]] } : null
+    const currentDripData = activeTab === 'taxfree' ? dripDataTaxFree : dripDataTaxed;
+    if (currentDripData) {
+      console.log(`🎯 Ranking Debug - Passing ${activeTab} data to table:`, {
+        dripDataExists: !!currentDripData,
+        dripDataKeys: Object.keys(currentDripData).slice(0, 5),
+        sampleDripEntry: Object.keys(currentDripData).length > 0 ? 
+          { [Object.keys(currentDripData)[0]]: currentDripData[Object.keys(currentDripData)[0]] } : null
       });
     }
-  }, [dripData]);
+  }, [dripDataTaxFree, dripDataTaxed, activeTab]);
 
   // Debug DRIP data loading
   useEffect(() => {
-    if (dripData) {
-      console.log('💰 DRIP data loaded:', Object.keys(dripData).length, 'tickers');
-      console.log('💰 Sample DRIP data:', Object.keys(dripData).slice(0, 3).map(ticker => ({
-        ticker,
-        data: dripData[ticker]
-      })));
-      
-      // Debug actual data structure
-      const sampleTicker = Object.keys(dripData)[0];
-      if (sampleTicker) {
-        console.log('💰 Sample DRIP structure for', sampleTicker, ':', dripData[sampleTicker]);
-      }
-    } else if (dripLoading) {
-      console.log('⏳ DRIP data loading...');
-    } else {
-      console.log('❌ No DRIP data available');
-    }
-  }, [dripData, dripLoading]);
+    console.log('💰 Tax-free DRIP data:', dripDataTaxFree ? Object.keys(dripDataTaxFree).length : 0, 'tickers');
+    console.log('💰 Taxed DRIP data:', dripDataTaxed ? Object.keys(dripDataTaxed).length : 0, 'tickers');
+  }, [dripDataTaxFree, dripDataTaxed]);
   
   // Get RSI signals for trend indicators
   const { data: rsiSignals = {}, isLoading: rsiLoading } = useBulkRSISignals(tickers.slice(0, 50)); // Limit to prevent timeout
-  
-  // Debug RSI signals loading  
-  useEffect(() => {
-    if (rsiSignals && Object.keys(rsiSignals).length > 0) {
-      console.log('📈 RSI signals loaded:', Object.keys(rsiSignals).length, 'tickers');
-      console.log('📈 Sample RSI signals:', Object.keys(rsiSignals).slice(0, 3).map(ticker => ({
-        ticker,
-        signal: rsiSignals[ticker]
-      })));
-    } else if (rsiLoading) {
-      console.log('⏳ RSI signals loading...');
-    } else if (!rsiLoading) {
-      console.log('❌ No RSI signals available, rsiLoading:', rsiLoading);
-      console.log('🔍 RSI signals object:', rsiSignals);
-    }
-  }, [rsiSignals, rsiLoading]);
 
-  const ranked: ScoredETF[] = useMemo(() => {
+  // Helper function to build rankings
+  const buildRanking = (etfs: any[], storedScores: any, cachedPrices: any, dripData: any, rsiSignals: any, scenario: string): ScoredETF[] => {
     if (etfs.length === 0) return [];
     
-    console.log('📊 Building ETF rankings from stored scores...');
+    console.log(`📊 Building ETF rankings for ${scenario} scenario...`);
     
     // Convert stored scores to ScoredETF format
     const scoredETFs: ScoredETF[] = etfs.map(etf => {
@@ -183,19 +149,10 @@ const Ranking = () => {
       // Calculate combined DRIP + RSI trend score
       let combinedScore: number = 0;
       
-      // Debug for AAPW - show all data regardless of availability
-      if (etf.ticker === 'AAPW') {
-        console.log('🎯 AAPW Debug - Starting combined trend calculation:', {
-          ticker: etf.ticker,
-          hasDripData: !!dripData?.[etf.ticker],
-          hasRsiData: !!rsiSignals[etf.ticker],
-          rsiSignal: rsiSignals[etf.ticker]
-        });
-      }
-      
       // 1. Calculate DRIP position (70% weight)
       let dripPosition = 0;
       const tickerDripData = dripData?.[etf.ticker];
+      
       if (tickerDripData) {
         // Extract DRIP percentages (try multiple formats)
         const getDripPercent = (period: string) => {
@@ -248,24 +205,6 @@ const Ranking = () => {
         } else {
           dripPosition = 0;
         }
-        
-        // Debug logging for AAPW specifically
-        if (etf.ticker === 'AAPW') {
-          console.log('🔍 AAPW DRIP Component:', {
-            ticker: etf.ticker,
-            rawDrip: { drip4w, drip13w, drip26w, drip52w },
-            perWeekReturns: { p4, p13, p26, p52 },
-            deltas: { d1, d2, d3 },
-            signalComponents: { 
-              baseScore: baseScore.toFixed(6), 
-              positiveDeltaBonus: positiveDeltaBonus.toFixed(6), 
-              negativeDeltaPenalty: negativeDeltaPenalty.toFixed(6),
-              ladderDeltaSignalScore: ladderDeltaSignalScore.toFixed(6)
-            },
-            conditions: { condBuy, condSell },
-            dripPosition
-          });
-        }
       }
       
       // 2. Calculate RSI position (30% weight)
@@ -281,15 +220,6 @@ const Ranking = () => {
           rsiPosition = -1; // Overbought = SELL
         } else {
           rsiPosition = 0; // Neutral = HOLD
-        }
-        
-        if (etf.ticker === 'AAPW') {
-          console.log('🔍 AAPW RSI Component:', {
-            ticker: etf.ticker,
-            rsiValue,
-            rsiPosition,
-            rsiSignal: rsiSignalData.signal
-          });
         }
       }
       
@@ -310,20 +240,6 @@ const Ranking = () => {
         position = -2; // Strong Sell
       }
       
-      if (etf.ticker === 'AAPW') {
-        console.log('🔍 AAPW Combined Score:', {
-          ticker: etf.ticker,
-          dripPosition,
-          rsiPosition,
-          combinedScore: combinedScore.toFixed(3),
-          finalPosition: position,
-          interpretation: position === 2 ? 'Strong Buy' :
-                        position === 1 ? 'Buy' :
-                        position === 0 ? 'Hold' :
-                        position === -1 ? 'Sell' : 'Strong Sell'
-        });
-      }
-      
       return {
         ...etf,
         compositeScore: score?.compositeScore || 0,
@@ -339,38 +255,25 @@ const Ranking = () => {
     // Sort by composite score (highest first)
     const sortedETFs = scoredETFs.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
     
-    // Check if we have valid scores (non-zero)
-    const hasValidScores = sortedETFs.some(etf => (etf.compositeScore || 0) > 0);
-    
-    if (hasValidScores) {
-      // Update persistent ranking only when we have valid scores
-      const newPersistentRanking = sortedETFs.map((etf, index) => ({
-        ticker: etf.ticker,
-        rank: index + 1,
-        score: etf.compositeScore || 0,
-        updatedAt: Date.now()
-      }));
-      
-      const newState = {
-        ...cachedState,
-        persistentRanking: newPersistentRanking,
-        lastRankingUpdate: Date.now()
-      };
-      saveCachedState(newState);
-      
-      console.log(`✅ Updated persistent ranking with ${newPersistentRanking.length} valid scores`);
-    } else {
-      console.log('📋 Using existing persistent ranking - no valid scores found');
-    }
-    
-    console.log(`✅ Ranked ${sortedETFs.length} ETFs using stored scores with RSI positions`);
+    console.log(`✅ Ranked ${sortedETFs.length} ETFs using stored scores for ${scenario}`);
     return sortedETFs;
-  }, [etfs, storedScores, cachedPrices, dripData, rsiSignals, cachedState]);
+  };
 
+  // Create separate rankings for tax-free and taxed scenarios
+  const rankedTaxFree: ScoredETF[] = useMemo(() => {
+    return buildRanking(etfs, storedScores, cachedPrices, dripDataTaxFree, rsiSignals, 'tax-free');
+  }, [etfs, storedScores, cachedPrices, dripDataTaxFree, rsiSignals]);
+
+  const rankedTaxed: ScoredETF[] = useMemo(() => {
+    return buildRanking(etfs, storedScores, cachedPrices, dripDataTaxed, rsiSignals, 'taxed');
+  }, [etfs, storedScores, cachedPrices, dripDataTaxed, rsiSignals]);
+
+  // Get current ranking based on active tab
+  const currentRanked = activeTab === 'taxfree' ? rankedTaxFree : rankedTaxed;
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (dummy prices only)
-    let validETFs = ranked.filter(etf => {
+    let validETFs = currentRanked.filter(etf => {
       // Exclude ETFs with clearly invalid data
       if (etf.current_price === 50.0) return false; // Remove $50 dummy prices
       return true;
@@ -395,7 +298,7 @@ const Ranking = () => {
     }
     
     return validETFs;
-  }, [ranked, filter, searchQuery]);
+  }, [currentRanked, filter, searchQuery]);
 
   useEffect(() => {
     (async () => {
@@ -464,72 +367,42 @@ const Ranking = () => {
     if (!etfs.length) return;
     
     const priceCount = Object.keys(cachedPrices).length;
+    
     setLoadingProgress(prev => ({
       ...prev,
-      prices: { current: priceCount, total: etfs.length }
+      prices: { current: priceCount, total: etfs.length },
+      scores: { 
+        current: Object.keys(storedScores).length, 
+        total: etfs.length 
+      }
     }));
-    
-    if (priceCount > 0) {
-      console.log('✅ Prices loaded via hook:', priceCount);
+
+    if (priceCount === etfs.length) {
+      setLastUpdated(new Date());
     }
-  }, [cachedPrices, etfs.length]);
+  }, [etfs.length, cachedPrices, storedScores]);
 
-  // Debug logging
+  // Save current rankings to database when ranking changes
   useEffect(() => {
-    console.log('🔍 Ranking Debug:', {
-      cachedPricesKeys: Object.keys(cachedPrices),
-      cachedPricesCount: Object.keys(cachedPrices).length,
-      sampleCachedPrice: cachedPrices['YBTC'] || cachedPrices['AAPW'],
-      filteredCount: filtered.length,
-      sampleTicker: filtered[0]?.ticker
-    });
-  }, [cachedPrices, filtered]);
+    if (currentRanked.length > 50) {
+      console.log('📋 Saving current rankings to database');
+      saveCurrentRankings(currentRanked.slice(0, 50));
+    }
+  }, [currentRanked]);
 
-  // Cache the ranking when it changes (after live data calculations)
+  // Cache the computed ranking data when it updates  
   useEffect(() => {
-    if (etfs.length > 0 && ranked.length > 0) {
-      setCachedRanking(ranked);
-      
-      // Also save to cache service and database for historical tracking
-      const saveRankingToCache = async () => {
-        try {
-          const { cache } = await import('@/lib/cache');
-          cache.set('ranking', ranked);
-          console.log('💾 Saved updated ranking to cache');
-
-          // Save to database for historical tracking (only once per day)
-          const lastSaveKey = 'ranking-last-saved-date';
-          const today = new Date().toISOString().split('T')[0];
-          const lastSaved = localStorage.getItem(lastSaveKey);
-          
-          if (lastSaved !== today) {
-            await saveCurrentRankings(ranked);
-            localStorage.setItem(lastSaveKey, today);
-            console.log('📊 Saved current rankings to database for historical tracking');
-          }
-        } catch (e) {
-          console.warn('Failed to cache ranking:', e);
-        }
+    if (currentRanked.length > 0) {
+      const newState = { 
+        weights, 
+        filter, 
+        cachedRanking: currentRanked.slice(0, 100), // Cache top 100 for performance
+        lastRankingUpdate: Date.now(),
+        persistentRanking: persistentRanking
       };
-      
-      saveRankingToCache();
+      saveCachedState(newState);
     }
-  }, [ranked, etfs.length]);
-
-  // Save state to localStorage whenever weights, filter, or ranking changes
-  useEffect(() => {
-    try {
-      const stateToSave = {
-        weights,
-        filter,
-        cachedRanking,
-        lastRankingUpdate: Date.now()
-      };
-      localStorage.setItem('ranking-state', JSON.stringify(stateToSave));
-    } catch (e) {
-      console.warn('Failed to save ranking state to localStorage:', e);
-    }
-  }, [weights, filter, cachedRanking]);
+  }, [currentRanked, weights, filter, persistentRanking]);
 
   return (
     <div className="min-h-screen">
@@ -544,7 +417,7 @@ const Ranking = () => {
             <RefreshDataButton 
               type="both"
               tickers={tickers}
-              taxPreferences={{ country: taxCountry, enabled: taxEnabled, rate: taxRate / 100 }}
+              taxPreferences={{ country: taxCountry, enabled: false, rate: 0 }}
               weights={weights}
               country={taxCountry}
             />
@@ -553,17 +426,17 @@ const Ranking = () => {
         
         <div className="container">
           {/* Detailed loading progress tracking */}
-          {(isLoading || pricesLoading || scoresLoading || dripLoading || Object.keys(distributions).length === 0 && etfs.length > 0) && (
+          {(isLoading || pricesLoading || scoresLoading || (dripLoadingTaxFree && dripLoadingTaxed) || Object.keys(distributions).length === 0 && etfs.length > 0) && (
             <div className="mb-4 p-4 bg-muted/50 rounded-lg space-y-2">
               <div className="text-sm font-medium">Loading ETF Data...</div>
               <div className="space-y-1 text-xs text-muted-foreground">
                 {isLoading && <div>• Fetching ETF list from database...</div>}
                 {pricesLoading && <div>• Loading current prices ({loadingProgress.prices.current}/{loadingProgress.prices.total})</div>}
                 {scoresLoading && <div>• Loading scoring data...</div>}
-                {dripLoading && <div>• Calculating DRIP returns with tax preferences...</div>}
+                {(dripLoadingTaxFree || dripLoadingTaxed) && <div>• Calculating DRIP returns...</div>}
                 {rsiLoading && <div>• Fetching trend signals...</div>}
                 {Object.keys(distributions).length === 0 && etfs.length > 0 && <div>• Loading distribution history...</div>}
-                {!isLoading && !pricesLoading && !scoresLoading && !dripLoading && <div>• Finalizing rankings...</div>}
+                {!isLoading && !pricesLoading && !scoresLoading && !dripLoadingTaxFree && !dripLoadingTaxed && <div>• Finalizing rankings...</div>}
               </div>
             </div>
           )}
@@ -572,149 +445,197 @@ const Ranking = () => {
 
       <main className="container grid gap-8 pb-16">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            {/* Desktop: Buttons left, Search right */}
-            <div className="hidden sm:flex items-center justify-between w-full gap-4">
-              <div className="flex items-center gap-1 border rounded-lg p-1">
-                <Button
-                  variant={filter === "All ETFs" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setFilter("All ETFs")}
-                  className="h-8"
-                >
-                  All ETFs
-                </Button>
-                <Button
-                  variant={filter === "US Funds" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setFilter("US Funds")}
-                  className="h-8"
-                >
-                  US Funds
-                </Button>
-                <Button
-                  variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setFilter("Canadian Funds")}
-                  className="h-8"
-                >
-                  Canadian Funds
-                </Button>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by ticker or underlying..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
-                  />
+          {/* Tab Navigation */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="taxfree">Tax-Free</TabsTrigger>
+              <TabsTrigger value="taxed">15% Tax on US Funds</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="taxfree" className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                {/* Desktop: Filter buttons and Search */}
+                <div className="hidden sm:flex items-center justify-between w-full gap-4">
+                  <div className="flex items-center gap-1 border rounded-lg p-1">
+                    <Button
+                      variant={filter === "All ETFs" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("All ETFs")}
+                      className="h-8"
+                    >
+                      All ETFs
+                    </Button>
+                    <Button
+                      variant={filter === "US Funds" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("US Funds")}
+                      className="h-8"
+                    >
+                      US Funds
+                    </Button>
+                    <Button
+                      variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("Canadian Funds")}
+                      className="h-8"
+                    >
+                      Canadian Funds
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {(isSubscribed || isAdmin) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowDialog(true)}
+                      >
+                        Scoring
+                      </Button>
+                    )}
+
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by ticker or underlying..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 w-64"
+                      />
+                    </div>
+                  </div>
                 </div>
                 
-                {/* Tax Preferences - only show for Canadian users */}
-                {taxCountry === 'CA' && (
-                  <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="tax-enabled"
-                        checked={taxEnabled}
-                        onCheckedChange={(checked) => {
-                          setTaxEnabled(checked);
-                          if (!checked) setTaxRate(0);
-                          else setTaxRate(15);
-                        }}
-                      />
-                      <Label htmlFor="tax-enabled" className="text-sm">Withholding Tax</Label>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={taxRate}
-                        onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))}
-                        className="w-16 h-7 text-xs text-center"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        disabled={!taxEnabled}
-                      />
-                      <Label className="text-xs text-muted-foreground">%</Label>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Mobile: Dropdown and Search */}
-            <div className="flex sm:hidden flex-col gap-2 w-full">
-              <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter" />
-                </SelectTrigger>
-                <SelectContent className="z-50 bg-background shadow-lg">
-                  <SelectItem value="All ETFs">All ETFs</SelectItem>
-                  <SelectItem value="US Funds">US Funds</SelectItem>
-                  <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search by ticker or underlying..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              {/* Tax Preferences - only show for Canadian users */}
-              {taxCountry === 'CA' && (
-                <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="tax-enabled-mobile"
-                      checked={taxEnabled}
-                      onCheckedChange={(checked) => {
-                        setTaxEnabled(checked);
-                        if (!checked) setTaxRate(0);
-                        else setTaxRate(15);
-                      }}
-                    />
-                    <Label htmlFor="tax-enabled-mobile" className="text-sm">Withholding Tax</Label>
-                  </div>
+                {/* Mobile: Dropdown and Search */}
+                <div className="flex sm:hidden flex-col gap-2 w-full">
+                  <Select value={filter} onValueChange={setFilter}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filter" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-background shadow-lg">
+                      <SelectItem value="All ETFs">All ETFs</SelectItem>
+                      <SelectItem value="US Funds">US Funds</SelectItem>
+                      <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
+                    </SelectContent>
+                  </Select>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      type="number"
-                      value={taxRate}
-                      onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))}
-                      className="w-16 h-7 text-xs text-center"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      disabled={!taxEnabled}
+                      placeholder="Search by ticker or underlying..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
                     />
-                    <Label className="text-xs text-muted-foreground">%</Label>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-           <OptimizedETFTable
-             items={filtered} 
-             live={cachedPrices}
-             distributions={distributions}
-             cachedDripData={dripData || {}}
-             rsiSignals={rsiSignals || {}}
-             originalRanking={ranked}
-             persistentRanking={persistentRanking}
-             allowSorting={isSubscribed || isAdmin}
-             cachedPrices={cachedPrices}
-           />
+              <OptimizedETFTable
+                items={filtered} 
+                live={cachedPrices}
+                distributions={distributions}
+                cachedDripData={dripDataTaxFree || {}}
+                rsiSignals={rsiSignals || {}}
+                originalRanking={currentRanked}
+                persistentRanking={persistentRanking}
+                allowSorting={isSubscribed || isAdmin}
+                cachedPrices={cachedPrices}
+              />
+            </TabsContent>
+
+            <TabsContent value="taxed" className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                {/* Desktop: Filter buttons and Search */}
+                <div className="hidden sm:flex items-center justify-between w-full gap-4">
+                  <div className="flex items-center gap-1 border rounded-lg p-1">
+                    <Button
+                      variant={filter === "All ETFs" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("All ETFs")}
+                      className="h-8"
+                    >
+                      All ETFs
+                    </Button>
+                    <Button
+                      variant={filter === "US Funds" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("US Funds")}
+                      className="h-8"
+                    >
+                      US Funds
+                    </Button>
+                    <Button
+                      variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilter("Canadian Funds")}
+                      className="h-8"
+                    >
+                      Canadian Funds
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {(isSubscribed || isAdmin) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowDialog(true)}
+                      >
+                        Scoring
+                      </Button>
+                    )}
+
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by ticker or underlying..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 w-64"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Mobile: Dropdown and Search */}
+                <div className="flex sm:hidden flex-col gap-2 w-full">
+                  <Select value={filter} onValueChange={setFilter}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filter" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-background shadow-lg">
+                      <SelectItem value="All ETFs">All ETFs</SelectItem>
+                      <SelectItem value="US Funds">US Funds</SelectItem>
+                      <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by ticker or underlying..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <OptimizedETFTable
+                items={filtered} 
+                live={cachedPrices}
+                distributions={distributions}
+                cachedDripData={dripDataTaxed || {}}
+                rsiSignals={rsiSignals || {}}
+                originalRanking={currentRanked}
+                persistentRanking={persistentRanking}
+                allowSorting={isSubscribed || isAdmin}
+                cachedPrices={cachedPrices}
+              />
+            </TabsContent>
+          </Tabs>
         </section>
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
