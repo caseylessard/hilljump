@@ -316,8 +316,27 @@ const Ranking = () => {
   // Update frozen rankings for tax-free scenario
   useEffect(() => {
     if (rankedTaxFree.length > 0 && frozenRankingsTaxFree.size === 0) {
-      // Use the same sorting logic as the main ranking (by composite score)
-      const scoreBasedRanking = [...rankedTaxFree].sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
+      const scoreBasedRanking = [...rankedTaxFree].sort((a, b) => {
+        const getDripSum = (etf: ScoredETF): number => {
+          const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
+            const tickerData = dripDataTaxFree?.[ticker];
+            if (tickerData) {
+              const percentKey = `drip${period}Percent`;
+              if (typeof tickerData[percentKey] === 'number') {
+                return tickerData[percentKey];
+              }
+            }
+            return 0;
+          };
+          
+          return getDripPercent(etf.ticker, "4w") + 
+                 getDripPercent(etf.ticker, "13w") + 
+                 getDripPercent(etf.ticker, "26w") + 
+                 getDripPercent(etf.ticker, "52w");
+        };
+        
+        return getDripSum(b) - getDripSum(a); // Highest score first
+      });
       
       const newFrozenRankings = new Map<string, number>();
       scoreBasedRanking.forEach((etf, index) => {
@@ -325,13 +344,32 @@ const Ranking = () => {
       });
       setFrozenRankingsTaxFree(newFrozenRankings);
     }
-  }, [rankedTaxFree]);
+  }, [rankedTaxFree, dripDataTaxFree]);
 
   // Update frozen rankings for taxed scenario
   useEffect(() => {
     if (rankedTaxed.length > 0 && frozenRankingsTaxed.size === 0) {
-      // Use the same sorting logic as the main ranking (by composite score)
-      const scoreBasedRanking = [...rankedTaxed].sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
+      const scoreBasedRanking = [...rankedTaxed].sort((a, b) => {
+        const getDripSum = (etf: ScoredETF): number => {
+          const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
+            const tickerData = dripDataTaxed?.[ticker];
+            if (tickerData) {
+              const percentKey = `drip${period}Percent`;
+              if (typeof tickerData[percentKey] === 'number') {
+                return tickerData[percentKey];
+              }
+            }
+            return 0;
+          };
+          
+          return getDripPercent(etf.ticker, "4w") + 
+                 getDripPercent(etf.ticker, "13w") + 
+                 getDripPercent(etf.ticker, "26w") + 
+                 getDripPercent(etf.ticker, "52w");
+        };
+        
+        return getDripSum(b) - getDripSum(a); // Highest score first
+      });
       
       const newFrozenRankings = new Map<string, number>();
       scoreBasedRanking.forEach((etf, index) => {
@@ -339,7 +377,7 @@ const Ranking = () => {
       });
       setFrozenRankingsTaxed(newFrozenRankings);
     }
-  }, [rankedTaxed]);
+  }, [rankedTaxed, dripDataTaxed]);
 
   // Get current frozen rankings based on active tab
   const frozenRankings = (profile?.country === 'CA' || !profile) && activeTab === 'taxed' ? frozenRankingsTaxed : frozenRankingsTaxFree;
@@ -642,7 +680,6 @@ const Ranking = () => {
                     cachedDripData={dripDataTaxFree || {}}
                     originalRanking={currentRanked}
                     cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankingsTaxFree}
                     onSelectETF={(etf, rank) => {
                       // Handle ETF selection for mobile detail view if needed
                       console.log('Selected ETF:', etf, 'Rank:', rank);
@@ -768,7 +805,7 @@ const Ranking = () => {
                     cachedDripData={dripDataTaxed || {}}
                     originalRanking={currentRanked}
                     cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankingsTaxed}
+                    frozenRankings={frozenRankings}
                     persistentRanking={persistentRanking}
                     onSelectETF={(etf, rank) => {
                       // Handle ETF selection for mobile detail view if needed
@@ -896,7 +933,7 @@ const Ranking = () => {
               cachedDripData={dripDataTaxFree || {}}
               originalRanking={currentRanked}
               cachedPrices={cachedPrices}
-              frozenRankings={frozenRankingsTaxFree}
+              frozenRankings={frozenRankings}
               persistentRanking={persistentRanking}
               onSelectETF={(etf, rank) => {
                 // Handle ETF selection for mobile detail view if needed
