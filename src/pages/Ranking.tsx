@@ -476,14 +476,14 @@ const Ranking = () => {
   }, [currentRanked, activeTab]);
 
   const renderSearchAndFilter = (isMobile: boolean = false) => (
-    <div className={`flex ${isMobile ? 'flex-col gap-3 w-full' : 'items-center gap-2'} ${isMobile ? '' : 'min-w-0'}`}>
+    <div className={`flex ${isMobile ? 'flex-col gap-3' : 'items-center gap-2'}`}>
       {!isMobile && (
-        <div className="flex items-center gap-1 border rounded-lg p-1 shrink-0">
+        <div className="flex items-center gap-1 border rounded-lg p-1">
           <Button
             variant={filter === "All ETFs" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setFilter("All ETFs")}
-            className="h-8 text-xs"
+            className="h-8"
           >
             All ETFs
           </Button>
@@ -491,7 +491,7 @@ const Ranking = () => {
             variant={filter === "US Funds" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setFilter("US Funds")}
-            className="h-8 text-xs"
+            className="h-8"
           >
             US Funds
           </Button>
@@ -499,7 +499,7 @@ const Ranking = () => {
             variant={filter === "Canadian Funds" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setFilter("Canadian Funds")}
-            className="h-8 text-xs"
+            className="h-8"
           >
             Canadian Funds
           </Button>
@@ -519,25 +519,24 @@ const Ranking = () => {
         </Select>
       )}
 
-      <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : 'shrink-0'}`}>
+      <div className="flex items-center gap-2">
         {(isSubscribed || isAdmin) && (
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => setShowDialog(true)}
-            className="shrink-0"
           >
             Scoring
           </Button>
         )}
 
-        <div className={`relative ${isMobile ? 'flex-1' : 'w-48 lg:w-64'}`}>
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={isMobile ? "Search..." : "Search by ticker or underlying..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-8 w-full"
+            className={`pl-10 pr-8 ${!isMobile ? 'w-64' : ''}`}
           />
           {searchQuery && (
             <button
@@ -569,44 +568,43 @@ const Ranking = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <main className="w-full max-w-full overflow-hidden">
-        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 w-full max-w-full">
-          <section className="w-full">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="w-full sm:w-auto min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-primary">ETF Rankings</h1>
-                <p className="text-sm sm:text-base text-muted-foreground">
-                  High-yield dividend ETFs ranked by risk-aware total return
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end shrink-0">
-                <UserBadge />
-                <RefreshDataButton type="both" />
-              </div>
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
+        <section>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl font-bold text-primary">ETF Rankings</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                High-yield dividend ETFs ranked by risk-aware total return
+              </p>
             </div>
+            
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+              <UserBadge />
+              <RefreshDataButton type="both" />
+            </div>
+          </div>
 
-            {/* Only show tabs for Canadian users and non-authenticated users */}
-            {(profile?.country === 'CA' || !profile) ? (
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="taxfree" className="text-xs sm:text-sm px-2 sm:px-3">
-                    {isMobile ? "Tax-Free" : "Tax-Free Account"}
-                  </TabsTrigger>
-                  <TabsTrigger value="taxed" className="text-xs sm:text-sm px-2 sm:px-3">
-                    {isMobile ? "Taxable" : "Taxable Account"}
-                  </TabsTrigger>
-                </TabsList>
+          {/* Only show tabs for Canadian users and non-authenticated users */}
+          {(profile?.country === 'CA' || !profile) ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="taxfree" className="text-xs sm:text-sm px-2 sm:px-3">
+                  {isMobile ? "Tax-Free" : "Tax-Free Account"}
+                </TabsTrigger>
+                <TabsTrigger value="taxed" className="text-xs sm:text-sm px-2 sm:px-3">
+                  {isMobile ? "Taxable" : "Taxable Account"}
+                </TabsTrigger>
+              </TabsList>
 
-              <TabsContent value="taxfree" className="space-y-4 w-full min-w-0">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full min-w-0">
+              <TabsContent value="taxfree" className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   {/* Desktop controls */}
-                  <div className="hidden sm:flex items-center justify-between w-full gap-4 min-w-0">
+                  <div className="hidden sm:flex items-center justify-between w-full gap-4">
                     {renderSearchAndFilter(false)}
                   </div>
                   
                   {/* Mobile controls */}
-                  <div className="flex sm:hidden flex-col gap-3 w-full min-w-0">
+                  <div className="flex sm:hidden flex-col gap-3 w-full">
                     {renderSearchAndFilter(true)}
                   </div>
                 </div>
@@ -679,40 +677,37 @@ const Ranking = () => {
                 allowSorting={isSubscribed || isAdmin}
                 cachedPrices={cachedPrices}
                 frozenRankings={frozenRankings}
-                 />
-               </div>
-             )}
-           </section>
-         </div>
+              />
+            </div>
+          )}
+        </section>
 
-         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-           <DialogContent className="sm:max-w-[425px] w-[95vw] max-h-[85vh] overflow-y-auto">
-             <DialogHeader>
-               <DialogTitle className="text-lg sm:text-xl">Scoring Settings</DialogTitle>
-             </DialogHeader>
-             {(isSubscribed || isAdmin) ? (
-               <ScoringControls onChange={setWeights} />
-             ) : (
-               <div className="text-sm text-muted-foreground">Subscribe to access scoring settings.</div>
-             )}
-           </DialogContent>
-         </Dialog>
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogContent className="sm:max-w-[425px] w-[95vw] max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-lg sm:text-xl">Scoring Settings</DialogTitle>
+            </DialogHeader>
+            {(isSubscribed || isAdmin) ? (
+              <ScoringControls onChange={setWeights} />
+            ) : (
+              <div className="text-sm text-muted-foreground">Subscribe to access scoring settings.</div>
+            )}
+          </DialogContent>
+        </Dialog>
 
-         <div className="container mx-auto px-2 sm:px-4 pb-4">
-           <p className="text-muted-foreground text-xs">Not investment advice.</p>
-           
-           {/* Admin debugging section simplified */}
-           {isAdmin && (
-             <div className="border-t pt-8 mt-8">
-               <div className="text-center py-4 text-muted-foreground">
-                 DRIP calculation tools consolidated into admin dashboard
-               </div>
-             </div>
-           )}
-         </div>
-       </main>
-     </div>
-   );
- };
+        <p className="text-muted-foreground text-xs">Not investment advice.</p>
+        
+        {/* Admin debugging section simplified */}
+        {isAdmin && (
+          <div className="border-t pt-8">
+            <div className="text-center py-4 text-muted-foreground">
+              DRIP calculation tools consolidated into admin dashboard
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
 
- export default Ranking;
+export default Ranking;
