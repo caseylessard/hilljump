@@ -680,6 +680,7 @@ const Ranking = () => {
                     cachedDripData={dripDataTaxFree || {}}
                     originalRanking={currentRanked}
                     cachedPrices={cachedPrices}
+                    frozenRankings={frozenRankingsTaxFree}
                     onSelectETF={(etf, rank) => {
                       // Handle ETF selection for mobile detail view if needed
                       console.log('Selected ETF:', etf, 'Rank:', rank);
@@ -805,7 +806,7 @@ const Ranking = () => {
                     cachedDripData={dripDataTaxed || {}}
                     originalRanking={currentRanked}
                     cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankings}
+                    frozenRankings={frozenRankingsTaxed}
                     persistentRanking={persistentRanking}
                     onSelectETF={(etf, rank) => {
                       // Handle ETF selection for mobile detail view if needed
@@ -933,7 +934,7 @@ const Ranking = () => {
               cachedDripData={dripDataTaxFree || {}}
               originalRanking={currentRanked}
               cachedPrices={cachedPrices}
-              frozenRankings={frozenRankings}
+              frozenRankings={frozenRankingsTaxFree}
               persistentRanking={persistentRanking}
               onSelectETF={(etf, rank) => {
                 // Handle ETF selection for mobile detail view if needed
