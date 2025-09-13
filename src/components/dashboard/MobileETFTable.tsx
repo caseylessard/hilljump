@@ -156,7 +156,9 @@ export const MobileETFTable = ({
         const rank = frozenRankings.get(etf.ticker) || index + 1;
         const manager = getFundManager(etf);
         const logoUrl = getManagerLogo(etf, manager);
-        const price = Number(cachedPrices[etf.ticker] || etf.current_price || 0);
+        // Use live price to match table display
+        const liveItem = live[etf.ticker];
+        const price = liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0);
         const dripSum = getDripSum(etf.ticker);
         
         return (
@@ -205,9 +207,6 @@ export const MobileETFTable = ({
               {/* Position indicator */}
               <div className="flex justify-between items-center">
                 <PositionIndicator position={etf.position} />
-                <Badge variant="outline" className="text-xs">
-                  {etf.yieldTTM ? `${etf.yieldTTM.toFixed(1)}%` : 'N/A'} yield
-                </Badge>
               </div>
 
               {/* DRIP performance grid */}
