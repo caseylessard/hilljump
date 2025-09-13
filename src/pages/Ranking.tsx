@@ -749,7 +749,8 @@ const Ranking = () => {
                   </div>
                 </div>
 
-                <div className="hidden sm:block">
+                {/* Desktop + Tablet: Full table */}
+                <div className="hidden md:block">
                   <OptimizedETFTable
                     items={filtered} 
                     live={cachedPrices}
@@ -764,7 +765,9 @@ const Ranking = () => {
                     taxedScoring={true}
                   />
                 </div>
-                <div className="block sm:hidden">
+                
+                {/* Mobile: Compact cards */}
+                <div className="block md:hidden">
                   <MobileETFTable
                     items={filtered}
                     distributions={distributions}
@@ -938,8 +941,8 @@ const Ranking = () => {
                 </div>
               </div>
 
-          {/* Desktop: Full table */}
-          <div className="hidden lg:block">
+          {/* Desktop + Tablet: Full table */}
+          <div className="hidden md:block">
             <OptimizedETFTable
               items={filtered} 
               live={cachedPrices}
@@ -954,23 +957,8 @@ const Ranking = () => {
             />
           </div>
           
-          {/* Tablet: Mobile cards with better spacing */}
-          <div className="hidden sm:block lg:hidden">
-            <MobileETFTable
-              items={filtered}
-              distributions={distributions}
-              cachedDripData={dripDataTaxFree || {}}
-              originalRanking={currentRanked}
-              cachedPrices={cachedPrices}
-              frozenRankings={frozenRankings}
-              persistentRanking={persistentRanking}
-              onSelectETF={(etf, rank) => {
-                // Handle ETF selection for mobile detail view if needed
-                console.log('Selected ETF:', etf, 'Rank:', rank);
-              }}
-            />
-          </div>
-          <div className="block sm:hidden">
+          {/* Mobile: Compact cards */}
+          <div className="block md:hidden">
             <MobileETFTable
               items={filtered}
               distributions={distributions}
