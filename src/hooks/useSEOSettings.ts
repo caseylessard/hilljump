@@ -67,11 +67,12 @@ export const useSEOSettings = () => {
     // Update favicon
     let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
     if (favicon) {
-      favicon.setAttribute('href', seoSettings.favicon_url);
+      favicon.setAttribute('href', `${seoSettings.favicon_url}?v=${Date.now()}`);
     } else {
       favicon = document.createElement('link');
       favicon.setAttribute('rel', 'icon');
-      favicon.setAttribute('href', seoSettings.favicon_url);
+      favicon.setAttribute('type', 'image/x-icon');
+      favicon.setAttribute('href', `${seoSettings.favicon_url}?v=${Date.now()}`);
       document.head.appendChild(favicon);
     }
   };
