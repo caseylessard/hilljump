@@ -197,10 +197,9 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
       return getCachedGlobalDRIP(tickers, taxPreferences);
     },
     enabled: tickers.length > 0,
-    staleTime: taxPreferences?.enabled ? 0 : 60 * 60 * 1000, // Fresh data when tax enabled, otherwise 1 hour cache
+    staleTime: 0, // Always consider data stale so it refetches when tax preferences change
     gcTime: 24 * 60 * 60 * 1000, // Keep in memory for 1 day
-    placeholderData: (previousData) => previousData, // Show stale data while loading
-    refetchOnMount: false, // Don't auto-refetch on mount
+    refetchOnMount: true, // Always refetch when component mounts
     refetchOnWindowFocus: false, // Don't auto-refetch on focus
     refetchInterval: false, // Don't auto-refresh - only manual refresh
   });
