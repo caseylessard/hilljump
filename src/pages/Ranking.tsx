@@ -589,7 +589,7 @@ const Ranking = () => {
             {/* Only show tabs for Canadian users and non-authenticated users */}
             {(profile?.country === 'CA' || !profile) ? (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
                   <TabsTrigger value="taxfree" className="text-xs sm:text-sm px-2 sm:px-3">
                     {isMobile ? "Tax-Free" : "Tax-Free Account"}
                   </TabsTrigger>
