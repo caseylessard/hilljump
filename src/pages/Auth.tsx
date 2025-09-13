@@ -116,7 +116,7 @@ const Auth = () => {
     <div>
       <Navigation />
 
-      <main className="w-full max-w-none px-4 py-10 max-w-md mx-auto">
+      <main className="container py-10 max-w-md">
         <Card className="p-6">
           <h1 className="text-2xl font-semibold mb-4">Sign in or create account</h1>
           <Tabs value={tab} onValueChange={setTab}>
