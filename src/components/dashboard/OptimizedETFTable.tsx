@@ -386,6 +386,19 @@ export const OptimizedETFTable = ({
         return dripSumCache.get(cacheKey)!;
       }
       
+      // Debug MSTY specifically
+      if (ticker === 'MSTY') {
+        console.log('🔍 MSTY DRIP Debug:', {
+          ticker,
+          taxedScoring,
+          cachedData: cachedDripData[ticker],
+          drip4w: getDripPercent(ticker, "4w"),
+          drip13w: getDripPercent(ticker, "13w"),
+          drip26w: getDripPercent(ticker, "26w"),
+          drip52w: getDripPercent(ticker, "52w")
+        });
+      }
+      
       const sum = getDripPercent(ticker, "4w") + 
                   getDripPercent(ticker, "13w") + 
                   getDripPercent(ticker, "26w") + 
