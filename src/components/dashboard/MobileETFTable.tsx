@@ -235,15 +235,38 @@ export const MobileETFTable = ({
                 <div className="text-right">
                   {(() => {
                     const liveItem = live[etf.ticker];
-                    const price = liveItem?.price;
+                    let price = liveItem?.price;
                     const cp = liveItem?.changePercent;
+                    
+                    // If no live price, get from cached prices or ETF current_price
+                    if (price == null) {
+                      const cachedPrice = cachedPrices[etf.ticker];
+                      if (cachedPrice) {
+                        if (typeof cachedPrice === 'number') {
+                          price = cachedPrice;
+                        } else if (typeof cachedPrice === 'object' && 'price' in cachedPrice && typeof cachedPrice.price === 'number') {
+                          price = cachedPrice.price;
+                        }
+                      }
+                      
+                      if (price == null && etf.current_price) {
+                        if (typeof etf.current_price === 'number') {
+                          price = etf.current_price;
+                        } else if (typeof etf.current_price === 'object' && 'price' in etf.current_price && typeof (etf.current_price as any).price === 'number') {
+                          price = (etf.current_price as any).price;
+                        }
+                      }
+                    }
                     
                     if (price == null) return "—";
                     const up = (cp ?? 0) >= 0;
                     
                     // Get price update date from cached prices
                     const cachedPrice = cachedPrices[etf.ticker];
-                    const priceDate = cachedPrice?.priceUpdatedAt;
+                    let priceDate = null;
+                    if (cachedPrice && typeof cachedPrice === 'object' && 'priceUpdatedAt' in cachedPrice) {
+                      priceDate = (cachedPrice as any).priceUpdatedAt;
+                    }
                     const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
                     
                     return (
