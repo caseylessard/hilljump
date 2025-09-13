@@ -110,9 +110,9 @@ const Ranking = () => {
   const [dripDataTaxed, setDripDataTaxed] = useState<any>({});
   const [dripLoadingTaxed, setDripLoadingTaxed] = useState(false);
   
-  // Calculate taxed DRIP data when tab switches to taxed (for Canadian users only)
+  // Calculate taxed DRIP data when tab switches to taxed (for Canadian users and non-authenticated users)
   useEffect(() => {
-    if (activeTab === 'taxed' && dripDataTaxFree && Object.keys(dripDataTaxed).length === 0 && profile?.country === 'CA') {
+    if (activeTab === 'taxed' && dripDataTaxFree && Object.keys(dripDataTaxed).length === 0 && (profile?.country === 'CA' || !profile)) {
       setDripLoadingTaxed(true);
       console.log('🏦 Calculating 15% tax impact on US funds...');
       
@@ -306,8 +306,8 @@ const Ranking = () => {
     return buildRanking(etfs, storedScores, cachedPrices, dripDataTaxed, rsiSignals, 'taxed');
   }, [etfs, storedScores, cachedPrices, dripDataTaxed, rsiSignals]);
 
-  // Get current ranking based on active tab (default to tax-free for US users)
-  const currentRanked = profile?.country === 'CA' && activeTab === 'taxed' ? rankedTaxed : rankedTaxFree;
+  // Get current ranking based on active tab (default to tax-free, taxed for Canadian users and non-authenticated users)
+  const currentRanked = (profile?.country === 'CA' || !profile) && activeTab === 'taxed' ? rankedTaxed : rankedTaxFree;
   
   // Store original rankings with fixed positions based on DRIP score
   const [frozenRankings, setFrozenRankings] = useState<Map<string, number>>(new Map());
@@ -318,7 +318,7 @@ const Ranking = () => {
       // Create a score-sorted version for frozen rankings
       const scoreBasedRanking = [...currentRanked].sort((a, b) => {
         const getDripSum = (etf: ScoredETF): number => {
-          const dripData = activeTab === 'taxed' && profile?.country === 'CA' ? dripDataTaxed : dripDataTaxFree;
+          const dripData = ((profile?.country === 'CA' || !profile) && activeTab === 'taxed') ? dripDataTaxed : dripDataTaxFree;
           
           const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
             const tickerData = dripData?.[ticker];
