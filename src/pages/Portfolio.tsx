@@ -325,7 +325,7 @@ const Portfolio = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <header className="container py-8">
+      <header className="w-full max-w-none px-4 py-8">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
           <div className="flex items-center gap-3">
             <TrendingUp className="h-8 w-8 text-primary" />
@@ -338,7 +338,7 @@ const Portfolio = () => {
         </p>
       </header>
 
-      <main className="container grid lg:grid-cols-[1fr,2fr] gap-8 pb-16">
+      <main className="w-full max-w-none px-4 grid lg:grid-cols-[1fr,2fr] gap-8 pb-16">
         {/* Controls Sidebar */}
         <div className="space-y-6">
           <Card>

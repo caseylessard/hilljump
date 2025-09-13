@@ -31,12 +31,12 @@ const Options = () => {
     <div>
       <Navigation />
       <header className="relative overflow-hidden">
-        <div className="container py-8">
+        <div className="w-full max-w-none px-4 py-8">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Options</h1>
         </div>
       </header>
 
-      <main className="container grid gap-8 pb-16">
+      <main className="w-full max-w-none px-4 grid gap-8 pb-16">
         <section aria-labelledby="options-intro">
           <h2 id="options-intro" className="sr-only">Introduction</h2>
           <p className="text-muted-foreground">Content coming soon.</p>

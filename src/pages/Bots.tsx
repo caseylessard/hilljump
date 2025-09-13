@@ -23,7 +23,7 @@ const Bots = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <header className="container py-8">
+      <header className="w-full max-w-none px-4 py-8">
         <div className="flex items-center gap-3 mb-4">
           <Bot className="h-8 w-8 text-primary" />
           <h1 className="text-4xl font-bold">Trading Bots</h1>
@@ -33,7 +33,7 @@ const Bots = () => {
         </p>
       </header>
 
-      <main className="container pb-16">
+      <main className="w-full max-w-none px-4 pb-16">
         {/* Features Section */}
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           <Card>

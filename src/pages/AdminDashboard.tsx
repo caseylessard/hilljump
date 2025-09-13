@@ -47,7 +47,7 @@ const AdminDashboard = () => {
     return (
       <div>
         <Navigation />
-        <div className="container py-8">
+        <div className="w-full max-w-none px-4 py-8">
           <div className="text-center">Loading...</div>
         </div>
       </div>
@@ -62,7 +62,7 @@ const AdminDashboard = () => {
     <div>
       <Navigation />
       
-      <main className="container py-8">
+      <main className="w-full max-w-none px-4 py-8">
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
