@@ -7,7 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { useBulkETFData } from "@/hooks/useBulkETFData";
-import { useCachedPrices, useCachedDRIP } from "@/hooks/useCachedETFData";
+import { useCachedPrices, useCachedDRIP, useCachedStoredScores } from "@/hooks/useCachedETFData";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { scoreETFsWithPrefs } from "@/lib/scoring";
 import { buildAIPortfolio, type AIPortfolioETF, type WeightingMethod, type ScoreSource } from "@/lib/aiPortfolio";
 import Navigation from "@/components/Navigation";
@@ -15,6 +16,9 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart } from "lucide-react";
 
 const Portfolio = () => {
+  // Get user profile for country-specific data
+  const { profile } = useUserProfile();
+  
   // AI Portfolio preferences
   const [preferences, setPreferences] = useState({
     topK: 10,                          // Number of ETFs to select
@@ -45,7 +49,18 @@ const Portfolio = () => {
   // Fetch bulk ETF data using same source as optimized table
   const { data: etfData = {}, isLoading: etfsLoading } = useBulkETFData(allTickersData);
   
-  // Convert to ETF format compatible with AI portfolio - memoized to prevent infinite loops
+  // Get cached prices and DRIP data (same as Rankings page)
+  const { data: cachedPrices = {} } = useCachedPrices(allTickersData);
+  const { data: cachedDripData = {} } = useCachedDRIP(allTickersData);
+  
+  // Get stored scores using same system as Rankings page
+  const { data: storedScores = {} } = useCachedStoredScores(
+    allTickersData, 
+    { return: 15, yield: 25, risk: 20 }, // Default weights
+    profile?.country || 'CA'
+  );
+  
+  // Convert to ETF format compatible with AI portfolio - using real ranking scores
   const etfs = useMemo(() => {
     return Object.values(etfData).filter((etf: any) => {
       // Filter out ETFs with bad or test data
@@ -65,28 +80,33 @@ const Portfolio = () => {
       }
       
       return true;
-    }).map((etf: any) => ({
-      ...etf,
-      totalReturn1Y: etf.total_return_1y,
-      yieldTTM: etf.yield_ttm,
-      avgVolume: etf.avg_volume,
-      expenseRatio: etf.expense_ratio,
-      volatility1Y: etf.volatility_1y,
-      maxDrawdown1Y: etf.max_drawdown_1y,
-      current_price: etf.current_price,
-      strategyLabel: etf.strategy_label,
-      logoKey: etf.logo_key,
-      dataSource: etf.data_source,
-      polygonSupported: etf.polygon_supported,
-      twelveSymbol: etf.twelve_symbol,
-      eodhSymbol: etf.eodhd_symbol
-    }));
-  }, [etfData]);
-  
-  const { data: prices = {} } = useCachedPrices(etfs.map(e => e.ticker));
-  
-  // Get DRIP data - this is the key missing piece!
-  const { data: dripData = {} } = useCachedDRIP(etfs.map(e => e.ticker));
+    }).map((etf: any) => {
+      // Get the stored score for this ETF (same as Rankings page)
+      const score = storedScores[etf.ticker];
+      
+      return {
+        ...etf,
+        totalReturn1Y: etf.total_return_1y,
+        yieldTTM: etf.yield_ttm,
+        avgVolume: etf.avg_volume,
+        expenseRatio: etf.expense_ratio,
+        volatility1Y: etf.volatility_1y,
+        maxDrawdown1Y: etf.max_drawdown_1y,
+        current_price: etf.current_price,
+        strategyLabel: etf.strategy_label,
+        logoKey: etf.logo_key,
+        dataSource: etf.data_source,
+        polygonSupported: etf.polygon_supported,
+        twelveSymbol: etf.twelve_symbol,
+        eodhSymbol: etf.eodhd_symbol,
+        // Add ranking score data
+        compositeScore: score?.composite_score || 0,
+        returnScore: score?.return_score || 0,
+        yieldScore: score?.yield_score || 0,
+        riskScore: score?.risk_score || 0
+      };
+    });
+  }, [etfData, storedScores]);
 
   // SEO setup
   useEffect(() => {
@@ -110,7 +130,7 @@ const Portfolio = () => {
     let isCancelled = false;
     
     const buildPortfolio = async () => {
-      if (etfs.length === 0 || Object.keys(prices).length === 0) return;
+      if (etfs.length === 0 || Object.keys(cachedPrices).length === 0) return;
       
       setPortfolioLoading(true);
       try {
@@ -135,7 +155,7 @@ const Portfolio = () => {
         console.log(`🔍 Filtered ${etfs.length} ETFs down to ${qualityETFs.length} quality ETFs`);
         
         // Pass DRIP data to the AI portfolio builder
-        const result = await buildAIPortfolio(qualityETFs, prices, {
+        const result = await buildAIPortfolio(qualityETFs, cachedPrices, {
           topK: preferences.topK,
           minTradingDays: preferences.minTradingDays,
           scoreSource: preferences.scoreSource,
@@ -143,7 +163,7 @@ const Portfolio = () => {
           maxWeight: preferences.maxWeight,
           capital: portfolioSize,
           roundShares: true
-        }, dripData);
+        }, cachedDripData);
         
         if (!isCancelled) {
           setResolvedPortfolio(result);
@@ -165,7 +185,7 @@ const Portfolio = () => {
     return () => {
       isCancelled = true;
     };
-  }, [etfs, prices, dripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minTradingDays, portfolioSize]);
+  }, [etfs, cachedPrices, cachedDripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minTradingDays, portfolioSize]);
 
   // Portfolio allocations are now calculated within the AI portfolio builder
   const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
