@@ -325,9 +325,10 @@ export const OptimizedETFTable = ({
       // Check cached DRIP data first - try multiple potential formats
       const tickerData = cachedDripData?.[ticker];
       if (tickerData) {
-        // Format 1: Direct period object with growthPercent (from Supabase cache)
-        if (tickerData[period] && typeof tickerData[period].growthPercent === 'number') {
-          return tickerData[period].growthPercent;
+        // Format 1: Direct percentage properties (PRIORITIZE FOR CONSISTENCY WITH UI)
+        const percentKey = `drip${period}Percent`;
+        if (typeof tickerData[percentKey] === 'number') {
+          return tickerData[percentKey];
         }
         
         // Format 2: ticker.period structure with percentage
@@ -335,10 +336,9 @@ export const OptimizedETFTable = ({
           return tickerData[period].percentage;
         }
         
-        // Format 3: Direct percentage properties
-        const percentKey = `drip${period}Percent`;
-        if (typeof tickerData[percentKey] === 'number') {
-          return tickerData[percentKey];
+        // Format 3: Direct period object with growthPercent (FALLBACK ONLY)
+        if (tickerData[period] && typeof tickerData[period].growthPercent === 'number') {
+          return tickerData[period].growthPercent;
         }
         
         // Format 4: Nested period object with percentage
@@ -380,8 +380,11 @@ export const OptimizedETFTable = ({
     };
     
     const getDripSum = (ticker: string): number => {
-      // Force fresh calculation for debugging by adding timestamp to cache key
-      const cacheKey = `${ticker}_${Object.keys(cachedDripData).length}_${taxedScoring}_${Date.now()}`;
+      // Create a unique cache key that includes the DRIP data source to ensure different tabs have different caches
+      const cacheKey = `${ticker}_${Object.keys(cachedDripData).length}_${taxedScoring}`;
+      if (dripSumCache.has(cacheKey)) {
+        return dripSumCache.get(cacheKey)!;
+      }
       
       // Get individual DRIP percentages using the same logic as the individual columns
       const drip4w = getDripPercent(ticker, "4w");
@@ -391,7 +394,7 @@ export const OptimizedETFTable = ({
       
       // Debug MSTY specifically - always log for debugging
       if (ticker === 'MSTY') {
-        console.log('🔍 MSTY Score Calculation:', {
+        console.log('🔍 MSTY Score Calculation (FIXED):', {
           ticker,
           taxedScoring,
           drip4w,
