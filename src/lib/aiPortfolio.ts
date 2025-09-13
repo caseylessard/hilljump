@@ -181,13 +181,40 @@ function calculateTrendScore(etf: any, priceData: any, dripData?: Record<string,
 
 // Helper function to calculate return score (0-100)
 function calculateReturnScore(etf: any): number {
-  const totalReturn1Y = etf.total_return_1y || etf.totalReturn1Y || 0;
+  // Try multiple possible field names and formats
+  let totalReturn1Y = etf.total_return_1y || etf.totalReturn1Y || etf.totalReturn || 0;
   
-  if (totalReturn1Y === 0) return 10; // Low score for missing data - don't reward lack of performance data
+  // Debug log for problematic ETFs
+  if (etf.ticker === 'AVGY.TO') {
+    console.log(`🔍 AVGY.TO return data:`, {
+      total_return_1y: etf.total_return_1y,
+      totalReturn1Y: etf.totalReturn1Y,
+      totalReturn: etf.totalReturn,
+      raw_etf: etf
+    });
+  }
   
-  const returnPct = totalReturn1Y * 100; // Convert to percentage
+  if (totalReturn1Y === 0 || totalReturn1Y === null || totalReturn1Y === undefined) {
+    return 10; // Low score for missing data - don't reward lack of performance data
+  }
+  
+  // Handle both decimal (0.25 = 25%) and percentage (25) formats
+  let returnPct = totalReturn1Y;
+  if (Math.abs(totalReturn1Y) <= 5) {
+    // Likely decimal format, convert to percentage
+    returnPct = totalReturn1Y * 100;
+  }
+  // If already in percentage format, use as-is
+  
   // Normalize: 0% return = 50, +20% = 100, -20% = 0
-  return Math.max(0, Math.min(100, 50 + (returnPct * 2.5)));
+  const score = Math.max(0, Math.min(100, 50 + (returnPct * 2.5)));
+  
+  // Debug log for problematic ETFs
+  if (etf.ticker === 'AVGY.TO') {
+    console.log(`📊 AVGY.TO return score: ${score} (from ${returnPct}% return)`);
+  }
+  
+  return score;
 }
 
 // Helper function to calculate weights
