@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Save, Edit2 } from "lucide-react";
+import { Save, Edit2 } from "lucide-react";
 
 interface HomepageContent {
   hero_badge_text: string;
@@ -28,7 +28,6 @@ export const HomepageEditor = () => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadHomepageContent();
@@ -92,35 +91,6 @@ export const HomepageEditor = () => {
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please upload an image smaller than 5MB',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload an image file',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    toast({
-      title: 'Upload Instructions',
-      description: 'To upload images: 1) Drag your image file into the Lovable chat, 2) Ask me to "copy [filename] to public/lovable-uploads/", 3) Then update the image URL field with the correct path.',
-      variant: 'default'
-    });
-  };
-
   if (loading) {
     return (
       <Card>
@@ -174,27 +144,11 @@ export const HomepageEditor = () => {
 
           <div>
             <label className="block text-sm font-medium mb-1">Hero Image URL</label>
-            <div className="flex gap-2">
-              <Input
-                value={content.hero_image_url}
-                onChange={(e) => setContent({ ...content, hero_image_url: e.target.value })}
-                placeholder="/lovable-uploads/hero-image.png"
-              />
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                  disabled={uploading}
-                />
-                <Button variant="outline" size="sm" disabled={uploading} asChild>
-                  <span>
-                    <Upload className="h-4 w-4" />
-                  </span>
-                </Button>
-              </label>
-            </div>
+            <Input
+              value={content.hero_image_url}
+              onChange={(e) => setContent({ ...content, hero_image_url: e.target.value })}
+              placeholder="/lovable-uploads/hero-image.png"
+            />
             <p className="text-xs text-muted-foreground mt-1">
               Upload images by dragging them into the Lovable chat and asking me to copy them to the public folder, then update this URL field.
             </p>

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Globe, Save, Upload } from "lucide-react";
+import { Globe, Save } from "lucide-react";
 
 interface SEOSettings {
   site_title: string;
@@ -100,35 +100,6 @@ export const SEOSettings = () => {
     }
   };
 
-  const handleFaviconUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload an image file (PNG, JPG, ICO, SVG)',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (file.size > 1 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please upload a favicon smaller than 1MB',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    toast({
-      title: 'Upload Instructions',
-      description: 'To upload favicon: 1) Drag your favicon file into the Lovable chat, 2) Ask me to "copy [filename] to public/", 3) Then update the favicon URL field with the correct path (e.g., /favicon.png).',
-      variant: 'default'
-    });
-  };
-
   if (loading) {
     return (
       <Card>
@@ -177,26 +148,11 @@ export const SEOSettings = () => {
 
         <div>
           <label className="block text-sm font-medium mb-1">Favicon URL</label>
-          <div className="flex gap-2">
-            <Input
-              value={settings.favicon_url}
-              onChange={(e) => setSettings({ ...settings, favicon_url: e.target.value })}
-              placeholder="/favicon.ico"
-            />
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept="image/*,.ico"
-                className="hidden"
-                onChange={handleFaviconUpload}
-              />
-              <Button variant="outline" size="sm" asChild>
-                <span>
-                  <Upload className="h-4 w-4" />
-                </span>
-              </Button>
-            </label>
-          </div>
+          <Input
+            value={settings.favicon_url}
+            onChange={(e) => setSettings({ ...settings, favicon_url: e.target.value })}
+            placeholder="/favicon.ico"
+          />
           <p className="text-xs text-muted-foreground mt-1">
             Upload favicon by dragging it into the Lovable chat and asking me to copy it to the public folder, then update this URL field.
           </p>
