@@ -520,20 +520,61 @@ const Ranking = () => {
         </div>
       </header>
 
-      <main className="container grid gap-8 pb-16">
+      <main className="container grid gap-4 md:gap-8 pb-8 md:pb-16 px-4">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           {/* Tab Navigation - Show for all users, default to Canada behavior for non-authenticated */}
           {(profile?.country === 'CA' || !profile) ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="taxfree">Tax-Free</TabsTrigger>
-                <TabsTrigger value="taxed">Taxable</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 h-9">
+                <TabsTrigger value="taxfree" className="text-xs md:text-sm">Tax-Free</TabsTrigger>
+                <TabsTrigger value="taxed" className="text-xs md:text-sm">Taxable</TabsTrigger>
               </TabsList>
               
               <TabsContent value="taxfree" className="space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex flex-col gap-4">
+                  {/* Mobile: Dropdown and Search */}
+                  <div className="flex md:hidden flex-col gap-3">
+                    <Select value={filter} onValueChange={setFilter}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="All ETFs">All ETFs</SelectItem>
+                        <SelectItem value="US Funds">US Funds</SelectItem>
+                        <SelectItem value="Canadian Funds">Canadian Funds</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Search..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10"
+                        />
+                        {searchQuery && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 h-6 w-6 p-0 -translate-y-1/2"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                      {(isSubscribed || isAdmin) && (
+                        <Button variant="outline" size="sm" onClick={() => setShowDialog(true)}>
+                          Scoring
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
                   {/* Desktop: Filter buttons and Search */}
-                  <div className="hidden sm:flex items-center justify-between w-full gap-4">
+                  <div className="hidden md:flex items-center justify-between w-full gap-4">
                     <div className="flex items-center gap-1 border rounded-lg p-1">
                       <Button
                         variant={filter === "All ETFs" ? "secondary" : "ghost"}
@@ -591,9 +632,6 @@ const Ranking = () => {
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Mobile: Dropdown and Search */}
-                  <div className="flex sm:hidden flex-col gap-2 w-full">
                     <Select value={filter} onValueChange={setFilter}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Filter" />

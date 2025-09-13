@@ -20,6 +20,7 @@ import { useBulkETFData, useBulkDividendPredictions, useBulkRSISignals } from "@
 import { useRankingHistory, type RankingChange } from "@/hooks/useRankingHistory";
 import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 import { estimateQuickDrip, shouldShowEstimate } from "@/lib/dripEstimator";
+import { MobileETFTable } from "./MobileETFTable";
 
 type Props = {
   items: ScoredETF[];
@@ -617,7 +618,108 @@ export const OptimizedETFTable = ({
   }, [open, selected, navigateToETF]);
 
   return (
-    <Card className="p-4 overflow-x-auto">
+    <>
+      {isMobile ? (
+        /* Mobile Layout - Card-based */
+        <div className="space-y-3">
+          {sortedRows.map((etf, idx) => {
+            const rank = frozenRankings.get(etf.ticker) || idx + 1;
+            const manager = helperFunctions.getFundManager(etf);
+            const logo = helperFunctions.getManagerLogo(etf, manager);
+            const price = cachedPrices[etf.ticker] || etf.current_price || 0;
+
+            return (
+              <Card 
+                key={etf.ticker} 
+                className="p-3 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => {
+                  const originalRank = lookupTables.originalRankMap.get(etf.ticker) || idx + 1;
+                  setSelected(etf);
+                  setSelectedRank(originalRank);
+                  setRange("1Y");
+                  setOpen(true);
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Rank and Flag */}
+                  <div className="flex flex-col items-center shrink-0 min-w-[40px]">
+                    <span className="text-lg font-bold text-muted-foreground">#{rank}</span>
+                    <span className="text-lg">{helperFunctions.countryFlag(etf)}</span>
+                  </div>
+                  
+                  {/* Main Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-bold text-lg">{etf.ticker}</span>
+                      <TrendIndicator position={etf.position} />
+                      <RankingChangeIndicator ticker={etf.ticker} changes={rankingChanges} />
+                      <PersistentRankingChangeIndicator 
+                        ticker={etf.ticker} 
+                        currentRank={rank} 
+                        persistentRanking={persistentRanking} 
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-2">
+                      {logo && (
+                        <Avatar className="h-6 w-6">
+                          <img src={logo} alt={manager} className="object-contain" />
+                          <AvatarFallback className="text-xs">{manager.slice(0, 2)}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <span className="text-sm font-medium truncate">{manager}</span>
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {helperFunctions.getEtfDescription(etf)}
+                    </p>
+                    
+                    {/* Key Metrics Grid */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Price:</span>
+                        <span className="font-medium">${price.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">4W:</span>
+                        <div className="text-right">
+                          <DRIPCell 
+                            ticker={etf.ticker} 
+                            period="4w" 
+                            dripData={cachedDripData} 
+                            live={live}
+                            etfData={etf}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">13W:</span>
+                        <div className="text-right">
+                          <DRIPCell 
+                            ticker={etf.ticker} 
+                            period="13w" 
+                            dripData={cachedDripData} 
+                            live={live}
+                            etfData={etf}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Next:</span>
+                        <div className="text-right">
+                          <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        /* Desktop Layout - Table */
+        <Card className="p-4 overflow-x-auto">
       <Table>
         <TableCaption>All high-yield dividend ETFs ranked by risk-aware total return. Live data where available.</TableCaption>
         <TableHeader>
@@ -807,10 +909,12 @@ export const OptimizedETFTable = ({
                  </TableCell>
               </TableRow>
             );
-          })}
-        </TableBody>
-      </Table>
+            )}
+          </TableBody>
+        </Table>
+      )}
       
+      {/* Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selected && (
