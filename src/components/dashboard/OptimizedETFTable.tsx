@@ -474,17 +474,17 @@ export const OptimizedETFTable = ({
         case "drip13w": return lookupTables.getDripPercent(etf.ticker, "13w");
         case "drip26w": return lookupTables.getDripPercent(etf.ticker, "26w");
         case "drip52w": return lookupTables.getDripPercent(etf.ticker, "52w");
-        case "score": return etf.compositeScore ?? 0;
+        case "score": return lookupTables.getDripSum(etf.ticker);
         case "signal": return etf.position === 2 ? 4 : etf.position === 1 ? 3 : etf.position === 0 ? 2 : etf.position === -1 ? 1 : 0;
         case "rank":
-        default: return etf.compositeScore ?? 0;
+        default: return lookupTables.getDripSum(etf.ticker);
       }
     };
     
     const cmp = (a: ScoredETF, b: ScoredETF) => {
       if (sortKey === "score" || sortKey === "rank") {
-        const scoreA = a.compositeScore ?? 0;
-        const scoreB = b.compositeScore ?? 0;
+        const scoreA = lookupTables.getDripSum(a.ticker);
+        const scoreB = lookupTables.getDripSum(b.ticker);
         
         if (scoreA !== scoreB) {
           return scoreB - scoreA; // descending
