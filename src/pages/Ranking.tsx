@@ -589,12 +589,10 @@ const Ranking = () => {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="taxfree" className="text-xs sm:text-sm px-2 sm:px-3">
-                  <span className="hidden sm:inline">Tax-Free Account</span>
-                  <span className="sm:hidden">Tax-Free</span>
+                  {isMobile ? "Tax-Free" : "Tax-Free Account"}
                 </TabsTrigger>
                 <TabsTrigger value="taxed" className="text-xs sm:text-sm px-2 sm:px-3">
-                  <span className="hidden sm:inline">Taxable Account</span>
-                  <span className="sm:hidden">Taxable</span>
+                  {isMobile ? "Taxable" : "Taxable Account"}
                 </TabsTrigger>
               </TabsList>
 
