@@ -54,7 +54,7 @@ export const buildAIPortfolio = async (
     const trendScore = calculateTrendScore(etf, priceData, dripData);
     
     // Calculate return score (1Y total return normalized to 0-100)
-    const ret1yScore = calculateReturnScore(etf);
+    const ret1yScore = calculateReturnScore(etf, dripData);
     
     // Calculate composite score based on scoreSource
     let compositeScore = 0;
@@ -131,7 +131,7 @@ export const buildAIPortfolio = async (
       badge,
       badgeLabel,
       badgeColor,
-      isEstimated: !etf.total_return_1y, // Mark as estimated if missing key data
+      isEstimated: !etf.total_return_1y && !dripData?.[etf.ticker]?.drip52wPercent, // Mark as estimated if missing key data
       category: etf.category || etf.strategy_label || 'Other',
       exchange: etf.exchange || 'N/A'
     };
@@ -180,7 +180,7 @@ function calculateTrendScore(etf: any, priceData: any, dripData?: Record<string,
 }
 
 // Helper function to calculate return score (0-100)
-function calculateReturnScore(etf: any): number {
+function calculateReturnScore(etf: any, dripData?: Record<string, any>): number {
   // Try multiple possible field names and formats
   let totalReturn1Y = etf.total_return_1y || etf.totalReturn1Y || etf.totalReturn || 0;
   
@@ -195,6 +195,23 @@ function calculateReturnScore(etf: any): number {
   }
   
   if (totalReturn1Y === 0 || totalReturn1Y === null || totalReturn1Y === undefined) {
+    // If no total return data, use DRIP 52w as proxy for annual performance
+    const cachedDrip = dripData?.[etf.ticker];
+    if (cachedDrip && cachedDrip.drip52wPercent) {
+      const dripReturn = cachedDrip.drip52wPercent;
+      console.log(`📊 Using DRIP 52w for ${etf.ticker}: ${dripReturn}%`);
+      
+      // Normalize DRIP return: 0% = 50, +20% = 100, -20% = 0
+      return Math.max(0, Math.min(100, 50 + (dripReturn * 2.5)));
+    }
+    
+    // Also try ETF object DRIP data
+    const etfDrip52w = etf.drip_52w || 0;
+    if (etfDrip52w !== 0) {
+      console.log(`📊 Using ETF DRIP 52w for ${etf.ticker}: ${etfDrip52w}%`);
+      return Math.max(0, Math.min(100, 50 + (etfDrip52w * 2.5)));
+    }
+    
     return 10; // Low score for missing data - don't reward lack of performance data
   }
   
