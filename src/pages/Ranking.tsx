@@ -309,19 +309,44 @@ const Ranking = () => {
   // Get current ranking based on active tab (default to tax-free for US users)
   const currentRanked = profile?.country === 'CA' && activeTab === 'taxed' ? rankedTaxed : rankedTaxFree;
   
-  // Store original rankings with fixed positions
+  // Store original rankings with fixed positions based on DRIP score
   const [frozenRankings, setFrozenRankings] = useState<Map<string, number>>(new Map());
   
-  // Update frozen rankings when unfiltered rankings change
+  // Update frozen rankings when unfiltered rankings change - sort by actual DRIP score
   useEffect(() => {
     if (currentRanked.length > 0 && !searchQuery.trim()) {
+      // Create a score-sorted version for frozen rankings
+      const scoreBasedRanking = [...currentRanked].sort((a, b) => {
+        const getDripSum = (etf: ScoredETF): number => {
+          const dripData = activeTab === 'taxed' && profile?.country === 'CA' ? dripDataTaxed : dripDataTaxFree;
+          
+          const getDripPercent = (ticker: string, period: '4w' | '13w' | '26w' | '52w'): number => {
+            const tickerData = dripData?.[ticker];
+            if (tickerData) {
+              const percentKey = `drip${period}Percent`;
+              if (typeof tickerData[percentKey] === 'number') {
+                return tickerData[percentKey];
+              }
+            }
+            return 0;
+          };
+          
+          return getDripPercent(etf.ticker, "4w") + 
+                 getDripPercent(etf.ticker, "13w") + 
+                 getDripPercent(etf.ticker, "26w") + 
+                 getDripPercent(etf.ticker, "52w");
+        };
+        
+        return getDripSum(b) - getDripSum(a); // Highest score first
+      });
+      
       const newFrozenRankings = new Map<string, number>();
-      currentRanked.forEach((etf, index) => {
+      scoreBasedRanking.forEach((etf, index) => {
         newFrozenRankings.set(etf.ticker, index + 1);
       });
       setFrozenRankings(newFrozenRankings);
     }
-  }, [currentRanked, searchQuery]);
+  }, [currentRanked, searchQuery, activeTab, profile?.country, dripDataTaxFree, dripDataTaxed]);
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (dummy prices only)
