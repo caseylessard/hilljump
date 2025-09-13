@@ -346,7 +346,7 @@ const Ranking = () => {
       });
       setFrozenRankings(newFrozenRankings);
     }
-  }, [currentRanked, searchQuery, activeTab, profile?.country, dripDataTaxFree, dripDataTaxed]);
+  }, [currentRanked, activeTab, profile?.country, dripDataTaxFree, dripDataTaxed]);
   
   const filtered: ScoredETF[] = useMemo(() => {
     // Filter out ETFs with invalid data (dummy prices only)
