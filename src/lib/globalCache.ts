@@ -396,7 +396,7 @@ export const refreshDRIPData = async (tickers: string[], taxPreferences?: any): 
         taxPrefs: {
           country: taxPreferences?.country || 'US',
           withholdingTax: taxPreferences?.enabled || false,
-          taxRate: (taxPreferences?.rate || 0.15) * 100
+          taxRate: taxPreferences?.rate || 0.15  // Pass as decimal, not percentage
         }
       }
     });
