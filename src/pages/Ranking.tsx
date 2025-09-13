@@ -548,7 +548,7 @@ const Ranking = () => {
                 {isLoading && <div>• Fetching ETF list from database...</div>}
                 {pricesLoading && <div>• Loading current prices ({loadingProgress.prices.current}/{loadingProgress.prices.total})</div>}
                 {scoresLoading && <div>• Loading scoring data...</div>}
-                {dripLoading && <div>• Calculating DRIP returns...</div>}
+                {dripLoading && <div>• Calculating DRIP returns with tax preferences...</div>}
                 {rsiLoading && <div>• Fetching trend signals...</div>}
                 {Object.keys(distributions).length === 0 && etfs.length > 0 && <div>• Loading distribution history...</div>}
                 {!isLoading && !pricesLoading && !scoresLoading && !dripLoading && <div>• Finalizing rankings...</div>}

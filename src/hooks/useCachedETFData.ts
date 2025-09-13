@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { getCachedData, getCachedETFPrices, getCachedETFScoring, getCachedDividendData } from '@/lib/cache';
 import { 
   getCachedGlobalETFs, 
@@ -183,7 +184,9 @@ export const useCachedScoring = (preferences: any, country?: string) => {
 };
 
 export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: string, enabled: boolean, rate: number }) => {
-  return useQuery({
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const query = useQuery({
     queryKey: ["cached-drip", tickers.sort().join(','), JSON.stringify(taxPreferences)],
     queryFn: async () => {
       if (tickers.length === 0) return {};
@@ -192,7 +195,13 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
       // This ensures both enabling and disabling tax triggers recalculation
       if (taxPreferences) {
         console.log('🔄 Tax preferences provided, forcing fresh DRIP calculation...', taxPreferences);
-        return refreshDRIPData(tickers, taxPreferences);
+        setIsRefreshing(true);
+        try {
+          const result = await refreshDRIPData(tickers, taxPreferences);
+          return result;
+        } finally {
+          setIsRefreshing(false);
+        }
       }
       
       return getCachedGlobalDRIP(tickers, taxPreferences);
@@ -204,6 +213,11 @@ export const useCachedDRIP = (tickers: string[], taxPreferences?: { country: str
     refetchOnWindowFocus: false, // Don't auto-refetch on focus
     refetchInterval: false, // Don't auto-refresh - only manual refresh
   });
+
+  return {
+    ...query,
+    isLoading: query.isLoading || isRefreshing
+  };
 };
 
 export const useRefreshDRIP = () => {
