@@ -159,6 +159,20 @@ const Portfolio = () => {
       // Calculate combined score: 70% DRIP + 30% RSI
       combinedScore = 0.7 * dripPosition + 0.3 * rsiPosition;
       
+      // Calculate position based on combined score (same as Rankings page)
+      let position: number;
+      if (combinedScore >= 0.6) {
+        position = 2; // Strong Buy
+      } else if (combinedScore >= 0.2) {
+        position = 1; // Buy
+      } else if (combinedScore >= -0.2) {
+        position = 0; // Hold
+      } else if (combinedScore >= -0.6) {
+        position = -1; // Sell
+      } else {
+        position = -2; // Strong Sell
+      }
+      
       return {
         ...etf,
         totalReturn1Y: etf.total_return_1y,
@@ -174,15 +188,15 @@ const Portfolio = () => {
         polygonSupported: etf.polygon_supported,
         twelveSymbol: etf.twelve_symbol,
         eodhSymbol: etf.eodhd_symbol,
-        // Add ranking score data with real calculations
+        // Add ranking score data with real calculations (matching Rankings page)
         compositeScore: score?.composite_score || 0,
         returnScore: score?.return_score || 0,
         yieldScore: score?.yield_score || 0,
         riskScore: score?.risk_score || 0,
-        // Real trend and return scores from calculations
-        trendScore: combinedScore * 100, // Convert to 0-100 scale for display
-        ret1yScore: score?.return_score || 0, // Use real return score
-        position: combinedScore >= 0.6 ? 2 : combinedScore >= 0.2 ? 1 : combinedScore >= -0.2 ? 0 : combinedScore >= -0.6 ? -1 : -2
+        // Real trend and return scores from Rankings calculations
+        trendScore: position, // Use the position directly as trend mark (same as Rankings)
+        ret1yScore: (score?.return_score || 0) * 100, // Convert to 0-100 scale for display
+        position: position // Same position calculation as Rankings page
       };
     });
   }, [etfData, storedScores, cachedDripData, rsiSignals]);
