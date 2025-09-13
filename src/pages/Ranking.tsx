@@ -89,8 +89,8 @@ const Ranking = () => {
   const { profile } = useUserProfile();
   const { data: etfs = [], isLoading, error } = useCachedETFs();
 
-  // Get tax country from profile, fallback to US
-  const taxCountry = profile?.country === 'CA' ? 'CA' : 'US';
+  // Get tax country from profile, fallback to Canada for non-authenticated users
+  const taxCountry = profile?.country === 'US' ? 'US' : 'CA';
 
   // Get tickers for data queries - memoized to prevent infinite loops
   const tickers = useMemo(() => etfs.map(e => e.ticker), [etfs]);
@@ -522,8 +522,8 @@ const Ranking = () => {
 
       <main className="container grid gap-8 pb-16">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
-          {/* Tab Navigation - Only show for Canadian users */}
-          {profile?.country === 'CA' ? (
+          {/* Tab Navigation - Show for all users, default to Canada behavior for non-authenticated */}
+          {(profile?.country === 'CA' || !profile) ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="taxfree">Tax-Free</TabsTrigger>

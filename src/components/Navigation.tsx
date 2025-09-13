@@ -3,23 +3,51 @@ import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navigation = () => {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const { isAdmin } = useAdmin();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const navItems = [
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session?.user);
+    };
+    
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Base navigation items - always visible
+  const baseNavItems = [
     { href: "/", label: "Home" },
-    { href: "/ranking", label: "Income" },
+    { href: "/ranking", label: "Income" }
+  ];
+
+  // Auth-only navigation items
+  const authOnlyNavItems = [
     { href: "/portfolio", label: "Portfolio" }, 
     { href: "/bots", label: "Bots" },
     { href: "/breakout", label: "Breakout" },
     { href: "/options", label: "Options" },
     { href: "/crypto", label: "Crypto" }
   ];
+
+  // Build final nav items based on auth status
+  const navItems = isAuthenticated 
+    ? [...baseNavItems, ...authOnlyNavItems]
+    : baseNavItems;
 
   // Add admin link for admin users
   if (isAdmin) {
