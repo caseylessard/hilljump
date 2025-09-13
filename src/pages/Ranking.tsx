@@ -556,7 +556,7 @@ const Ranking = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="container mx-auto px-4 py-8">
+        <div className="w-full max-w-none px-4 py-8">
           <div className="text-center">
             {isLoading ? 'Loading ETF data...' : `Error: ${error}`}
           </div>
@@ -570,7 +570,7 @@ const Ranking = () => {
       <Navigation />
       
       <main className="w-full min-w-0">
-        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 w-full min-w-0">
+        <div className="w-full max-w-none px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 min-w-0">
           <section className="w-full min-w-0">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="w-full sm:w-auto min-w-0">
@@ -698,7 +698,7 @@ const Ranking = () => {
            </DialogContent>
          </Dialog>
 
-         <div className="container mx-auto px-2 sm:px-4 pb-4">
+         <div className="w-full max-w-none px-2 sm:px-4 pb-4">
            <p className="text-muted-foreground text-xs">Not investment advice.</p>
            
            {/* Admin debugging section simplified */}
