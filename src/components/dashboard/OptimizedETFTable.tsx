@@ -149,7 +149,7 @@ const DRIPCell = memo(({
   const percent = tickerData[percentKey];
   const dollar = tickerData[dollarKey];
   
-  if (percent === undefined || percent === 0) return <span>—</span>;
+  if (percent === undefined || percent === null) return <span>—</span>;
   
   const up = percent >= 0;
   return (
