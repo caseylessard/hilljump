@@ -380,11 +380,8 @@ export const OptimizedETFTable = ({
     };
     
     const getDripSum = (ticker: string): number => {
-      // Create a unique cache key that includes the DRIP data source to ensure different tabs have different caches
-      const cacheKey = `${ticker}_${Object.keys(cachedDripData).length}_${taxedScoring}`;
-      if (dripSumCache.has(cacheKey)) {
-        return dripSumCache.get(cacheKey)!;
-      }
+      // Force fresh calculation for debugging by adding timestamp to cache key
+      const cacheKey = `${ticker}_${Object.keys(cachedDripData).length}_${taxedScoring}_${Date.now()}`;
       
       // Get individual DRIP percentages using the same logic as the individual columns
       const drip4w = getDripPercent(ticker, "4w");
