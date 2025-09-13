@@ -101,7 +101,72 @@ export const useCachedYields = (tickers: string[]) => {
   });
 };
 
-// Removed stored score functions - now using fresh calculations
+export const useCachedStoredScores = (tickers: string[], weights: any, country = 'CA') => {
+  const { isAdmin } = useAdmin();
+  
+  return useQuery({
+    queryKey: ["stored-scores", tickers.sort().join(','), JSON.stringify(weights), country],
+    queryFn: async () => {
+      if (tickers.length === 0) return {};
+      
+      console.log('📊 Loading stored scores for', tickers.length, 'tickers...');
+      
+      try {
+        const { data, error } = await supabase
+          .from('etf_scores')
+          .select('ticker, composite_score, return_score, yield_score, risk_score, weights, updated_at')
+          .in('ticker', tickers)
+          .eq('country', country);
+        
+        if (error) {
+          console.warn('❌ Failed to fetch stored scores:', error);
+          return {};
+        }
+        
+        const storedScores: Record<string, any> = {};
+        data?.forEach(score => {
+          storedScores[score.ticker] = {
+            compositeScore: score.composite_score,
+            returnScore: score.return_score,
+            yieldScore: score.yield_score,
+            riskScore: score.risk_score,
+            weights: score.weights,
+            updatedAt: score.updated_at
+          };
+        });
+        
+        console.log(`✅ Loaded ${Object.keys(storedScores).length} stored scores`);
+        return storedScores;
+        
+      } catch (error) {
+        console.error('❌ Stored scores fetch failed:', error);
+        return {};
+      }
+    },
+    enabled: tickers.length > 0,
+    staleTime: 60 * 60 * 1000, // 1 hour cache - always use stored data unless very old
+    gcTime: 24 * 60 * 60 * 1000, // Keep in memory for 1 day
+    placeholderData: (previousData) => previousData, // Show stale data while loading
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useRefreshScores = () => {
+  return useMutation({
+    mutationFn: async ({ tickers, weights, country }: { tickers: string[], weights: any, country: string }) => {
+      console.log('🔄 Triggering fresh score calculation...');
+      
+      const { data, error } = await supabase.functions.invoke('hourly-score-updater');
+      
+      if (error) {
+        throw new Error(`Score refresh failed: ${error.message}`);
+      }
+      
+      return data;
+    }
+  });
+};
 
 export const useCachedScoring = (preferences: any, country?: string) => {
   const { isAdmin } = useAdmin();
