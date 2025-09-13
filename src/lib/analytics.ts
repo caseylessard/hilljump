@@ -27,7 +27,7 @@ export const trackEvent = (
 
 export const trackPageView = (pagePath: string, pageTitle?: string) => {
   if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('config', import.meta.env.VITE_GOOGLE_ANALYTICS_MEASUREMENT_ID, {
+    window.gtag('config', 'G-FZKVTN8VEQ', {
       page_path: pagePath,
       page_title: pageTitle,
     });
