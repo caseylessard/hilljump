@@ -556,7 +556,7 @@ const Ranking = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="w-full max-w-none px-4 py-8">
+        <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             {isLoading ? 'Loading ETF data...' : `Error: ${error}`}
           </div>
@@ -569,9 +569,9 @@ const Ranking = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <main className="w-full min-w-0">
-        <div className="w-full max-w-none px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 min-w-0">
-          <section className="w-full min-w-0">
+      <main className="w-full max-w-full overflow-hidden">
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 w-full max-w-full">
+          <section className="w-full">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="w-full sm:w-auto min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-bold text-primary">ETF Rankings</h1>
@@ -589,7 +589,7 @@ const Ranking = () => {
             {/* Only show tabs for Canadian users and non-authenticated users */}
             {(profile?.country === 'CA' || !profile) ? (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 w-full">
-                <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="taxfree" className="text-xs sm:text-sm px-2 sm:px-3">
                     {isMobile ? "Tax-Free" : "Tax-Free Account"}
                   </TabsTrigger>
@@ -698,7 +698,7 @@ const Ranking = () => {
            </DialogContent>
          </Dialog>
 
-         <div className="w-full max-w-none px-2 sm:px-4 pb-4">
+         <div className="container mx-auto px-2 sm:px-4 pb-4">
            <p className="text-muted-foreground text-xs">Not investment advice.</p>
            
            {/* Admin debugging section simplified */}
