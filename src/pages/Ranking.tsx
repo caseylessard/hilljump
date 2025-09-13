@@ -314,7 +314,7 @@ const Ranking = () => {
   
   // Update frozen rankings when unfiltered rankings change - sort by actual DRIP score
   useEffect(() => {
-    if (currentRanked.length > 0 && !searchQuery.trim()) {
+    if (currentRanked.length > 0) {
       // Create a score-sorted version for frozen rankings
       const scoreBasedRanking = [...currentRanked].sort((a, b) => {
         const getDripSum = (etf: ScoredETF): number => {
