@@ -8,8 +8,8 @@ const corsHeaders = {
 
 const log = (msg: string) => console.log(`[import-complete-etfs] ${msg}`)
 
-// Helper function to parse a single CSV line correctly
-function splitCSVLine(line: string): string[] {
+// Helper function to parse a single TSV line correctly
+function splitTSVLine(line: string): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -27,8 +27,8 @@ function splitCSVLine(line: string): string[] {
         // Toggle quotes
         inQuotes = !inQuotes;
       }
-    } else if (char === ',' && !inQuotes) {
-      // End of field
+    } else if (char === '\t' && !inQuotes) {
+      // End of field (tab-separated)
       result.push(current.trim());
       current = '';
     } else {
@@ -97,9 +97,9 @@ serve(async (req) => {
 
     log('Starting complete ETF data replacement...')
 
-    // Parse CSV
+    // Parse CSV (actually TSV - tab separated)
     const lines = csvData.trim().split('\n')
-    const headers = splitCSVLine(lines[0])
+    const headers = splitTSVLine(lines[0])
     const dataRows = lines.slice(1)
 
     log(`Found ${headers.length} columns in header: [${headers.join(', ')}]`)
@@ -107,7 +107,7 @@ serve(async (req) => {
     
     // Debug: show first few rows structure
     for (let i = 0; i < Math.min(3, dataRows.length); i++) {
-      const row = splitCSVLine(dataRows[i])
+      const row = splitTSVLine(dataRows[i])
       log(`Row ${i + 1} sample: ${row.length} columns - [${row.slice(0, 3).join(', ')}...]`)
     }
 
@@ -133,7 +133,7 @@ serve(async (req) => {
     // Process each row
     for (let i = 0; i < dataRows.length; i++) {
       try {
-        const row = splitCSVLine(dataRows[i])
+        const row = splitTSVLine(dataRows[i])
         if (row.length !== headers.length) {
           log(`Row ${i + 1}: Column count mismatch. Expected ${headers.length}, got ${row.length}`)
           errorCount++
@@ -147,8 +147,13 @@ serve(async (req) => {
         }
 
         const tickerIndex = getColumnIndex('ticker')
+        const nameIndex = getColumnIndex('name')
+        const underlyingIndex = getColumnIndex('underlying')
         const fundIndex = getColumnIndex('fund')
-        const exchangeIndex = getColumnIndex('exchange')
+        const strategyIndex = getColumnIndex('strategy')
+        const industryIndex = getColumnIndex('industry')
+        const yfTickerIndex = getColumnIndex('yf_ticker')
+        const distributionCadenceIndex = getColumnIndex('distribution_cadence')
         
         // Validate required fields
         if (tickerIndex === -1) {
@@ -164,20 +169,19 @@ serve(async (req) => {
           continue
         }
 
-        // Map CSV columns to database columns
+        // Map TSV columns to database columns based on your headers
         const etf = {
           ticker: ticker,
-          provider_group: row[getColumnIndex('provider')] || null,
-          manager: row[getColumnIndex('manager')] || null,
-          exchange: row[getColumnIndex('exchange')] || 'US', // Default to US if missing
-          country: row[getColumnIndex('country')] || null,
-          currency: row[getColumnIndex('currency')] || 'USD',
-          underlying: row[getColumnIndex('underlying')] || null,
-          active: row[getColumnIndex('active')] === '1' || row[getColumnIndex('active')]?.toLowerCase() === 'true',
-          name: row[fundIndex] || ticker, // Use fund as name, fallback to ticker
+          name: row[nameIndex] || row[fundIndex] || ticker, // Use name, fallback to fund, then ticker
+          underlying: row[underlyingIndex] || null,
           fund: row[fundIndex] || null,
-          strategy: row[getColumnIndex('strategy')] || null,
-          industry: row[getColumnIndex('industry')] || null,
+          strategy: row[strategyIndex] || null,
+          industry: row[industryIndex] || null,
+          distribution_frequency: row[distributionCadenceIndex] || null,
+          exchange: 'US', // Default to US since not in your format
+          country: 'US', // Default to US since not in your format
+          currency: 'USD', // Default to USD since not in your format
+          active: true, // Default to active since not in your format
           // Set default values for required fields
           expense_ratio: 0.01, // Default 1%
           volatility_1y: 15, // Default 15%
