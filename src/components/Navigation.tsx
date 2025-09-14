@@ -76,7 +76,7 @@ const Navigation = () => {
                     <Button key={item.href} variant="ghost" asChild className="justify-start font-roboto text-sm">
                       <a href={item.href} onClick={() => setIsOpen(false)} className="flex items-center gap-3">
                         <i className={`fi ${item.icon} text-base`}></i>
-                        <span className="md:inline">{item.label}</span>
+                        <span>{item.label}</span>
                       </a>
                     </Button>
                   ))}
@@ -100,8 +100,8 @@ const Navigation = () => {
           {navItems.map((item) => (
             <Button key={item.href} variant="ghost" asChild className="font-roboto text-sm">
               <a href={item.href} className="flex items-center gap-2">
-                <i className={`fi ${item.icon} text-base md:hidden lg:inline`}></i>
-                <span className="hidden md:inline lg:inline">{item.label}</span>
+                <i className={`fi ${item.icon} text-base lg:hidden`}></i>
+                <span className="hidden lg:inline">{item.label}</span>
               </a>
             </Button>
           ))}
