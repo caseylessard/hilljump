@@ -892,7 +892,7 @@ export const OptimizedETFTable = ({
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-sm text-muted-foreground">1Y Return</div>
+                      <div className="text-sm text-muted-foreground">52W Return</div>
                       <div className="font-semibold">
                         {selected.totalReturn1Y ? constants.formatPct(selected.totalReturn1Y, 1) : "—"}
                       </div>

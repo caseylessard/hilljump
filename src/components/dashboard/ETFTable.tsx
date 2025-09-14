@@ -694,7 +694,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 <DistributionHistory ticker={selected.ticker} />
                 <div className={`mt-4 grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
                   <div>
-                    <div className="text-sm text-muted-foreground">1Y Total Return</div>
+                    <div className="text-sm text-muted-foreground">52W Total Return</div>
                     <div className="text-lg font-medium">{selected.totalReturn1Y ? formatPct(selected.totalReturn1Y, 1) : "—"}</div>
                   </div>
                   <div>
@@ -706,11 +706,11 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                     <div className="text-lg font-medium">{selected.expenseRatio ? formatPct(selected.expenseRatio, 2) : "—"}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">Volatility (1Y)</div>
+                    <div className="text-sm text-muted-foreground">Volatility (52W)</div>
                     <div className="text-lg font-medium">{selected.volatility1Y ? formatPct(selected.volatility1Y, 1) : "—"}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">Max Drawdown (1Y)</div>
+                    <div className="text-sm text-muted-foreground">Max Drawdown (52W)</div>
                     <div className="text-lg font-medium">{selected.maxDrawdown1Y ? formatPct(selected.maxDrawdown1Y, 1) : "—"}</div>
                   </div>
                   <div>
