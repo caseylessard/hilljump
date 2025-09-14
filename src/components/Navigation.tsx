@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, DollarSign, TrendingUp, Settings, Bitcoin, UserCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,16 +32,16 @@ const Navigation = () => {
   // Base navigation items - always visible
   const baseNavItems = [
     { href: "/", label: "Home", icon: "fi-rr-home" },
-    { href: "/ranking", label: "Income", icon: "uic-calendar-dollar" }
+    { href: "/ranking", label: "Income", icon: "lucide", lucideIcon: DollarSign }
   ];
 
   // Auth-only navigation items
   const authOnlyNavItems = [
     { href: "/portfolio", label: "Portfolio", icon: "fi-rr-briefcase" }, 
     { href: "/bots", label: "Bots", icon: "fi-rr-robot" },
-    { href: "/breakout", label: "Breakout", icon: "uic-chart-bar-trend-up" },
-    { href: "/options", label: "Options", icon: "uic-trading" },
-    { href: "/crypto", label: "Crypto", icon: "uic-crypto-circle" }
+    { href: "/breakout", label: "Breakout", icon: "lucide", lucideIcon: TrendingUp },
+    { href: "/options", label: "Options", icon: "lucide", lucideIcon: Settings },
+    { href: "/crypto", label: "Crypto", icon: "lucide", lucideIcon: Bitcoin }
   ];
 
   // Build final nav items based on auth status
@@ -51,7 +51,7 @@ const Navigation = () => {
 
   // Add admin link for admin users
   if (isAdmin) {
-    navItems.push({ href: "/admin", label: "Admin", icon: "uic-user-id" });
+    navItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: UserCheck });
   }
 
   if (isMobile) {
@@ -75,7 +75,11 @@ const Navigation = () => {
                   {navItems.map((item) => (
                     <Button key={item.href} variant="ghost" asChild className="justify-start font-roboto text-sm">
                       <a href={item.href} onClick={() => setIsOpen(false)} className="flex items-center gap-3">
-                        <i className={`${item.icon.startsWith('uic-') ? `uic ${item.icon}` : `fi ${item.icon}`} text-base`}></i>
+                        {item.icon === "lucide" ? (
+                          <item.lucideIcon className="h-4 w-4" />
+                        ) : (
+                          <i className={`fi ${item.icon} text-base`}></i>
+                        )}
                         <span>{item.label}</span>
                       </a>
                     </Button>
@@ -100,7 +104,11 @@ const Navigation = () => {
           {navItems.map((item) => (
             <Button key={item.href} variant="ghost" asChild className="font-roboto text-sm">
               <a href={item.href} className="flex items-center gap-2">
-                <i className={`${item.icon.startsWith('uic-') ? `uic ${item.icon}` : `fi ${item.icon}`} text-base lg:hidden`}></i>
+                {item.icon === "lucide" ? (
+                  <item.lucideIcon className="h-4 w-4 lg:hidden" />
+                ) : (
+                  <i className={`fi ${item.icon} text-base lg:hidden`}></i>
+                )}
                 <span className="hidden lg:inline">{item.label}</span>
               </a>
             </Button>
