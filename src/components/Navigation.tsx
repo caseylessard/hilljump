@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, DollarSign, TrendingUp, ChartCandlestick, Bitcoin, UserCheck, Home, Briefcase, Bot } from "lucide-react";
+import { Menu, DollarSign, TrendingUp, ChartCandlestick, Bitcoin, LockKeyhole, Home, Briefcase, Bot } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +51,7 @@ const Navigation = () => {
 
   // Add admin link for admin users
   if (isAdmin) {
-    navItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: UserCheck });
+    navItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: LockKeyhole });
   }
 
   if (isMobile) {
