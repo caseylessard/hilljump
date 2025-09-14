@@ -32,16 +32,16 @@ const Navigation = () => {
   // Base navigation items - always visible
   const baseNavItems = [
     { href: "/", label: "Home", icon: "uic uic-round-outline-regular uic-home" },
-    { href: "/ranking", label: "Income", icon: "uic uic-round-outline-regular uic-calendar-dollar" }
+    { href: "/ranking", label: "Income", icon: "uic uic-round-outline-regular uic-dollar" }
   ];
 
   // Auth-only navigation items
   const authOnlyNavItems = [
     { href: "/portfolio", label: "Portfolio", icon: "uic uic-round-outline-regular uic-briefcase" }, 
     { href: "/bots", label: "Bots", icon: "uic uic-round-outline-regular uic-robot" },
-    { href: "/breakout", label: "Breakout", icon: "uic uic-round-outline-regular uic-chart-bar-trend-up" },
-    { href: "/options", label: "Options", icon: "uic uic-round-outline-regular uic-trading" },
-    { href: "/crypto", label: "Crypto", icon: "uic uic-round-outline-regular uic-crypto-circle" }
+    { href: "/breakout", label: "Breakout", icon: "uic uic-round-outline-regular uic-chart-line" },
+    { href: "/options", label: "Options", icon: "uic uic-round-outline-regular uic-settings" },
+    { href: "/crypto", label: "Crypto", icon: "uic uic-round-outline-regular uic-bitcoin" }
   ];
 
   // Build final nav items based on auth status
@@ -51,7 +51,7 @@ const Navigation = () => {
 
   // Add admin link for admin users
   if (isAdmin) {
-    navItems.push({ href: "/admin", label: "Admin", icon: "uic uic-round-outline-regular uic-user-id" });
+    navItems.push({ href: "/admin", label: "Admin", icon: "uic uic-round-outline-regular uic-user" });
   }
 
   if (isMobile) {
