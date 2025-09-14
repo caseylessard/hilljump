@@ -31,17 +31,17 @@ const Navigation = () => {
 
   // Base navigation items - always visible
   const baseNavItems = [
-    { href: "/", label: "Home", icon: "uic uic-round-outline-regular uic-home" },
-    { href: "/ranking", label: "Income", icon: "uic uic-round-outline-regular uic-calendar-dollar" }
+    { href: "/", label: "Home", icon: "fi-rr-home" },
+    { href: "/ranking", label: "Income", icon: "fi-rr-stats" }
   ];
 
   // Auth-only navigation items
   const authOnlyNavItems = [
-    { href: "/portfolio", label: "Portfolio", icon: "uic uic-round-outline-regular uic-briefcase" }, 
-    { href: "/bots", label: "Bots", icon: "uic uic-round-outline-regular uic-robot" },
-    { href: "/breakout", label: "Breakout", icon: "uic uic-round-outline-regular uic-chart-bar-trend-up" },
-    { href: "/options", label: "Options", icon: "uic uic-round-outline-regular uic-trading" },
-    { href: "/crypto", label: "Crypto", icon: "uic uic-round-outline-regular uic-crypto-circle" }
+    { href: "/portfolio", label: "Portfolio", icon: "fi-rr-briefcase" }, 
+    { href: "/bots", label: "Bots", icon: "fi-rr-robot" },
+    { href: "/breakout", label: "Breakout", icon: "fi-rr-trending-up" },
+    { href: "/options", label: "Options", icon: "fi-rr-menu-dots" },
+    { href: "/crypto", label: "Crypto", icon: "fi-rr-coin" }
   ];
 
   // Build final nav items based on auth status
@@ -51,7 +51,7 @@ const Navigation = () => {
 
   // Add admin link for admin users
   if (isAdmin) {
-    navItems.push({ href: "/admin", label: "Admin", icon: "uic uic-round-outline-regular uic-user-id" });
+    navItems.push({ href: "/admin", label: "Admin", icon: "fi-rr-shield" });
   }
 
   if (isMobile) {
@@ -75,7 +75,7 @@ const Navigation = () => {
                   {navItems.map((item) => (
                     <Button key={item.href} variant="ghost" asChild className="justify-start font-roboto text-sm">
                       <a href={item.href} onClick={() => setIsOpen(false)} className="flex items-center gap-3">
-                        <i className={`${item.icon} text-base`}></i>
+                        <i className={`fi ${item.icon} text-base`}></i>
                         <span>{item.label}</span>
                       </a>
                     </Button>
@@ -100,7 +100,7 @@ const Navigation = () => {
           {navItems.map((item) => (
             <Button key={item.href} variant="ghost" asChild className="font-roboto text-sm">
               <a href={item.href} className="flex items-center gap-2">
-                <i className={`${item.icon} text-base lg:hidden`}></i>
+                <i className={`fi ${item.icon} text-base lg:hidden`}></i>
                 <span className="hidden lg:inline">{item.label}</span>
               </a>
             </Button>
