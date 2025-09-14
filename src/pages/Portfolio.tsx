@@ -25,6 +25,7 @@ const Portfolio = () => {
     scoreSource: "blend" as ScoreSource,   // trend, ret1y, or blend
     weighting: "return" as WeightingMethod, // equal, return, or risk_parity
     maxWeight: 0.25,                   // Maximum weight per ETF (25%)
+    minWeight: 0.01,                   // Minimum weight per ETF (1%)
     minTradingDays: 60                // Minimum trading history required (reduced for better coverage)
   });
 
@@ -254,6 +255,7 @@ const Portfolio = () => {
           scoreSource: preferences.scoreSource,
           weighting: preferences.weighting,
           maxWeight: preferences.maxWeight,
+          minWeight: preferences.minWeight,
           capital: portfolioSize,
           roundShares: true
         }, cachedDripData || {});
@@ -278,7 +280,7 @@ const Portfolio = () => {
     return () => {
       isCancelled = true;
     };
-  }, [etfs, cachedPrices, cachedDripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minTradingDays, portfolioSize]);
+  }, [etfs, cachedPrices, cachedDripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minWeight, preferences.minTradingDays, portfolioSize]);
 
   // Portfolio allocations are now calculated within the AI portfolio builder
   const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
@@ -442,6 +444,23 @@ const Portfolio = () => {
                   className="mb-2"
                 />
                 <p className="text-xs text-muted-foreground">Maximum allocation to any single ETF</p>
+              </div>
+
+              {/* Min Weight */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium">Min Weight per ETF</label>
+                  <Badge variant="secondary">{(preferences.minWeight * 100).toFixed(1)}%</Badge>
+                </div>
+                <Slider
+                  value={[preferences.minWeight * 100]}
+                  onValueChange={([value]) => setPreferences(p => ({ ...p, minWeight: value / 100 }))}
+                  min={0.5}
+                  max={5}
+                  step={0.1}
+                  className="mb-2"
+                />
+                <p className="text-xs text-muted-foreground">Minimum allocation to ensure diversification</p>
               </div>
             </CardContent>
           </Card>

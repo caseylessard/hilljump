@@ -69,6 +69,7 @@ export const buildAIPortfolio = async (
     scoreSource: ScoreSource;
     weighting: WeightingMethod;
     maxWeight: number;
+    minWeight?: number;
     capital: number;
     roundShares: boolean;
     pastperfMode?: PastPerfMode;
@@ -205,7 +206,7 @@ export const buildAIPortfolio = async (
   console.log(`📊 Selected top ${chosen.length} ETFs from ${validResults.length} candidates`);
 
   // Build weights
-  const weights = buildWeights(chosen, options.weighting, options.maxWeight);
+  const weights = buildWeights(chosen, options.weighting, options.maxWeight, options.minWeight);
   
   // Create portfolio ETFs with allocations
   const portfolioETFs: AIPortfolioETF[] = chosen.map((etf, i) => {
@@ -272,6 +273,9 @@ export const buildAIPortfolio = async (
 
   const totalWeight = portfolioETFs.reduce((sum, etf) => sum + etf.weight, 0);
   console.log(`✅ Portfolio built: ${portfolioETFs.length} positions, total weight: ${(totalWeight * 100).toFixed(1)}%`);
+
+  // Sort portfolio by allocation percentage (highest to lowest)
+  portfolioETFs.sort((a, b) => b.weight - a.weight);
 
   return portfolioETFs;
 };
@@ -500,7 +504,7 @@ function scaleSafe(values: number[]): number[] {
   return scale0to100(filledValues);
 }
 
-function capAndNormalize(weights: number[], maxWeight?: number): number[] {
+function capAndNormalize(weights: number[], maxWeight?: number, minWeight: number = 0.01): number[] {
   let w = [...weights];
   
   // Set negative weights to 0
@@ -512,8 +516,32 @@ function capAndNormalize(weights: number[], maxWeight?: number): number[] {
     return new Array(w.length).fill(1.0 / w.length);
   }
   
-  // Normalize
+  // Normalize first
   w = w.map(weight => weight / sum);
+  
+  // Apply minimum weight constraint
+  const needsMinimum = w.filter(weight => weight < minWeight && weight > 0).length;
+  if (needsMinimum > 0) {
+    // Calculate how much weight we need to redistribute
+    const minimumTotal = needsMinimum * minWeight;
+    const currentLowWeights = w.filter(weight => weight < minWeight && weight > 0).reduce((acc, weight) => acc + weight, 0);
+    const redistributeAmount = minimumTotal - currentLowWeights;
+    
+    // Take from weights above minimum to cover the shortfall
+    const aboveMinimum = w.filter(weight => weight >= minWeight);
+    const aboveMinimumTotal = aboveMinimum.reduce((acc, weight) => acc + weight, 0);
+    
+    if (aboveMinimumTotal > redistributeAmount) {
+      w = w.map(weight => {
+        if (weight < minWeight && weight > 0) {
+          return minWeight;
+        } else if (weight >= minWeight) {
+          return weight - (weight / aboveMinimumTotal) * redistributeAmount;
+        }
+        return weight;
+      });
+    }
+  }
   
   // Apply max weight cap if specified
   if (maxWeight !== undefined && maxWeight > 0 && maxWeight < 1) {
@@ -549,7 +577,7 @@ function capAndNormalize(weights: number[], maxWeight?: number): number[] {
   return w;
 }
 
-function buildWeights(etfs: any[], method: WeightingMethod, maxWeight?: number): number[] {
+function buildWeights(etfs: any[], method: WeightingMethod, maxWeight?: number, minWeight?: number): number[] {
   if (etfs.length === 0) return [];
   
   let baseWeights: number[];
@@ -582,5 +610,5 @@ function buildWeights(etfs: any[], method: WeightingMethod, maxWeight?: number):
       throw new Error(`Unknown weighting method: ${method}`);
   }
   
-  return capAndNormalize(baseWeights, maxWeight);
+  return capAndNormalize(baseWeights, maxWeight, minWeight || 0.01);
 }
