@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, DollarSign, TrendingUp, Settings, Bitcoin, UserCheck, Home, Briefcase, Bot } from "lucide-react";
+import { Menu, DollarSign, TrendingUp, ChartCandlestick, Bitcoin, UserCheck, Home, Briefcase, Bot } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +40,7 @@ const Navigation = () => {
     { href: "/portfolio", label: "Portfolio", icon: "lucide", lucideIcon: Briefcase }, 
     { href: "/bots", label: "Bots", icon: "lucide", lucideIcon: Bot },
     { href: "/breakout", label: "Breakout", icon: "lucide", lucideIcon: TrendingUp },
-    { href: "/options", label: "Options", icon: "lucide", lucideIcon: Settings },
+    { href: "/options", label: "Options", icon: "lucide", lucideIcon: ChartCandlestick },
     { href: "/crypto", label: "Crypto", icon: "lucide", lucideIcon: Bitcoin }
   ];
 
