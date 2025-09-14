@@ -12,6 +12,8 @@ import jpmorganLogo from "@/assets/logos/jpmorgan.png";
 import amplifyLogo from "@/assets/logos/amplify.png";
 import roundhillLogo from "@/assets/logos/roundhill.svg";
 
+const hilljumpLogo = "/lovable-uploads/hilljumpbanner.png";
+
 type Props = {
   items: ScoredETF[];
   live?: Record<string, LivePrice>;
@@ -145,7 +147,7 @@ export const MobileETFTable = ({
 
   // Position indicator component
   const PositionIndicator = ({ position }: { position?: number }) => {
-    if (position === undefined) return null;
+    if (position === undefined || position === null) return <span className="text-xs text-muted-foreground">Unknown</span>;
     
     const getPositionDetails = (pos: number) => {
       if (pos === 2) return { color: "bg-emerald-500", label: "Strong Buy", icon: ArrowUpRight };
@@ -213,87 +215,90 @@ export const MobileETFTable = ({
                   </div>
                   
                   <div className="flex items-center gap-2 sm:gap-3 lg:gap-2">
-                    {logoUrl && (
-                      <img 
-                        src={logoUrl} 
-                        alt={manager} 
-                        className="w-6 h-6 sm:w-8 sm:h-8 lg:w-6 lg:h-6 rounded object-contain bg-white"
-                      />
-                    )}
+                    <img 
+                      src={logoUrl || hilljumpLogo} 
+                      alt={logoUrl ? manager : "Hilljump"} 
+                      className="w-6 h-6 sm:w-8 sm:h-8 lg:w-6 lg:h-6 rounded object-contain bg-white"
+                    />
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-lg sm:text-xl lg:text-lg">{displayTicker(etf.ticker)}</span>
                         <span className="text-sm sm:text-base lg:text-sm">{countryFlag(etf)}</span>
                       </div>
                       <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
-                        {etf.strategyLabel || manager}
+                        {etf.fund || etf.name}
+                      </div>
+                      <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
+                        {etf.underlying && etf.strategy ? `${etf.underlying} • ${etf.strategy}` : (etf.underlying || etf.strategy || etf.strategyLabel)}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  {(() => {
-                    const liveItem = live[etf.ticker];
-                    let price = liveItem?.price;
-                    const cp = liveItem?.changePercent;
-                    
-                    // If no live price, get from cached prices or ETF current_price
-                    if (price == null) {
-                      const cachedPrice = cachedPrices[etf.ticker];
-                      if (cachedPrice) {
-                        if (typeof cachedPrice === 'number') {
-                          price = cachedPrice;
-                        } else if (typeof cachedPrice === 'object' && 'price' in cachedPrice && typeof cachedPrice.price === 'number') {
-                          price = cachedPrice.price;
+                <div className="flex items-center gap-2">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    #{rank} of {items.length}
+                  </div>
+                  <div className="text-right">
+                    {(() => {
+                      const liveItem = live[etf.ticker];
+                      let price = liveItem?.price;
+                      const cp = liveItem?.changePercent;
+                      
+                      // If no live price, get from cached prices or ETF current_price
+                      if (price == null) {
+                        const cachedPrice = cachedPrices[etf.ticker];
+                        if (cachedPrice) {
+                          if (typeof cachedPrice === 'number') {
+                            price = cachedPrice;
+                          } else if (typeof cachedPrice === 'object' && 'price' in cachedPrice && typeof cachedPrice.price === 'number') {
+                            price = cachedPrice.price;
+                          }
+                        }
+                        
+                        if (price == null && etf.current_price) {
+                          if (typeof etf.current_price === 'number') {
+                            price = etf.current_price;
+                          } else if (typeof etf.current_price === 'object' && 'price' in etf.current_price && typeof (etf.current_price as any).price === 'number') {
+                            price = (etf.current_price as any).price;
+                          }
                         }
                       }
                       
-                      if (price == null && etf.current_price) {
-                        if (typeof etf.current_price === 'number') {
-                          price = etf.current_price;
-                        } else if (typeof etf.current_price === 'object' && 'price' in etf.current_price && typeof (etf.current_price as any).price === 'number') {
-                          price = (etf.current_price as any).price;
-                        }
+                      if (price == null) return "—";
+                      const up = (cp ?? 0) >= 0;
+                      
+                      // Get price update date from cached prices
+                      const cachedPrice = cachedPrices[etf.ticker];
+                      let priceDate = null;
+                      if (cachedPrice && typeof cachedPrice === 'object' && 'priceUpdatedAt' in cachedPrice) {
+                        priceDate = (cachedPrice as any).priceUpdatedAt;
                       }
-                    }
-                    
-                    if (price == null) return "—";
-                    const up = (cp ?? 0) >= 0;
-                    
-                    // Get price update date from cached prices
-                    const cachedPrice = cachedPrices[etf.ticker];
-                    let priceDate = null;
-                    if (cachedPrice && typeof cachedPrice === 'object' && 'priceUpdatedAt' in cachedPrice) {
-                      priceDate = (cachedPrice as any).priceUpdatedAt;
-                    }
-                    const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
-                    
-                    return (
-                      <div className="inline-flex flex-col items-end leading-tight">
-                        <span className="font-semibold">${price.toFixed(2)}</span>
-                        <div className="text-xs space-y-0">
-                          {cp != null && (
-                            <div className={up ? "text-emerald-600" : "text-red-600"}>
-                              {up ? "+" : ""}{cp.toFixed(2)}%
-                            </div>
-                          )}
-                          {dateStr && (
-                            <div className="text-muted-foreground">
-                              {dateStr}
-                            </div>
-                          )}
+                      const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
+                      
+                      return (
+                        <div className="inline-flex flex-col items-end leading-tight">
+                          <span className="font-semibold">${price.toFixed(2)}</span>
+                          <div className="text-xs space-y-0">
+                            {cp != null && (
+                              <div className={up ? "text-emerald-600" : "text-red-600"}>
+                                {up ? "+" : ""}{cp.toFixed(2)}%
+                              </div>
+                            )}
+                            {dateStr && (
+                              <div className="text-muted-foreground">
+                                {dateStr}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })()}
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Score: {dripSum.toFixed(1)}
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
 
-              {/* Position indicator */}
+              {/* Buy/Sell Signal */}
               <div className="flex justify-between items-center">
                 <PositionIndicator position={etf.position} />
               </div>
