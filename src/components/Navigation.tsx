@@ -31,17 +31,17 @@ const Navigation = () => {
 
   // Base navigation items - always visible
   const baseNavItems = [
-    { href: "/", label: "Home" },
-    { href: "/ranking", label: "Income" }
+    { href: "/", label: "Home", icon: "fi-rr-home" },
+    { href: "/ranking", label: "Income", icon: "fi-rr-stats" }
   ];
 
   // Auth-only navigation items
   const authOnlyNavItems = [
-    { href: "/portfolio", label: "Portfolio" }, 
-    { href: "/bots", label: "Bots" },
-    { href: "/breakout", label: "Breakout" },
-    { href: "/options", label: "Options" },
-    { href: "/crypto", label: "Crypto" }
+    { href: "/portfolio", label: "Portfolio", icon: "fi-rr-briefcase" }, 
+    { href: "/bots", label: "Bots", icon: "fi-rr-robot" },
+    { href: "/breakout", label: "Breakout", icon: "fi-rr-trending-up" },
+    { href: "/options", label: "Options", icon: "fi-rr-menu-dots" },
+    { href: "/crypto", label: "Crypto", icon: "fi-rr-coin" }
   ];
 
   // Build final nav items based on auth status
@@ -51,7 +51,7 @@ const Navigation = () => {
 
   // Add admin link for admin users
   if (isAdmin) {
-    navItems.push({ href: "/admin", label: "Admin" });
+    navItems.push({ href: "/admin", label: "Admin", icon: "fi-rr-shield" });
   }
 
   if (isMobile) {
@@ -74,8 +74,9 @@ const Navigation = () => {
                 <nav className="flex flex-col gap-4 mt-8" aria-label="Primary">
                   {navItems.map((item) => (
                     <Button key={item.href} variant="ghost" asChild className="justify-start font-roboto text-sm">
-                      <a href={item.href} onClick={() => setIsOpen(false)}>
-                        {item.label}
+                      <a href={item.href} onClick={() => setIsOpen(false)} className="flex items-center gap-3">
+                        <i className={`fi ${item.icon} text-base`}></i>
+                        <span className="md:inline">{item.label}</span>
                       </a>
                     </Button>
                   ))}
@@ -98,7 +99,10 @@ const Navigation = () => {
         <nav className="flex items-center gap-2" aria-label="Primary">
           {navItems.map((item) => (
             <Button key={item.href} variant="ghost" asChild className="font-roboto text-sm">
-              <a href={item.href}>{item.label}</a>
+              <a href={item.href} className="flex items-center gap-2">
+                <i className={`fi ${item.icon} text-base md:hidden lg:inline`}></i>
+                <span className="hidden md:inline lg:inline">{item.label}</span>
+              </a>
             </Button>
           ))}
           <UserBadge />
