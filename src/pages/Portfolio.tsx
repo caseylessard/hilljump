@@ -387,20 +387,23 @@ const Portfolio = () => {
               {/* Score Source */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Scoring Method</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['trend', 'ret1y', 'blend'] as ScoreSource[]).map(method => (
+                <div className="grid grid-cols-2 gap-2">
+                  {(['trend', 'ret1y', 'pastperf', 'blend'] as ScoreSource[]).map(method => (
                     <Button
                       key={method}
                       variant={preferences.scoreSource === method ? "default" : "outline"}
                       size="sm"
                       onClick={() => setPreferences(p => ({ ...p, scoreSource: method }))}
                     >
-                      {method === 'trend' ? 'Trend' : method === 'ret1y' ? '1Y Return' : 'Blend'}
+                      {method === 'trend' ? 'Trend' : 
+                       method === 'ret1y' ? '1Y Return' : 
+                       method === 'pastperf' ? 'Past Perf' :
+                       'Blend'}
                     </Button>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Trend: Ladder-Delta momentum • 1Y Return: Annual performance • Blend: 70% trend + 30% return
+                  Trend: Ladder-Delta momentum • 1Y Return: Annual performance • Past Perf: Non-overlapping rungs • Blend: 70% trend + 30% return
                 </p>
               </div>
 
