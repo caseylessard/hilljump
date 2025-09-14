@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { useBulkETFData, useBulkRSISignals } from "@/hooks/useBulkETFData";
@@ -13,7 +16,8 @@ import { scoreETFsWithPrefs } from "@/lib/scoring";
 import { buildAIPortfolio, type AIPortfolioETF, type WeightingMethod, type ScoreSource } from "@/lib/aiPortfolio";
 import Navigation from "@/components/Navigation";
 import { RefreshButton } from "@/components/RefreshButton";
-import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart } from "lucide-react";
+import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart, Plus, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Portfolio = () => {
   // Get user profile for country-specific data
@@ -31,6 +35,27 @@ const Portfolio = () => {
 
   const [portfolioSize, setPortfolioSize] = useState(10000); // $10k default
   const [selectedETFs, setSelectedETFs] = useState<AIPortfolioETF[]>([]);
+
+  // Current portfolio management
+  const [currentPortfolio, setCurrentPortfolio] = useState<{ticker: string; shares: number; id?: string}[]>([]);
+  const [newPosition, setNewPosition] = useState({ ticker: '', shares: '' });
+  const [rebalanceRecommendations, setRebalanceRecommendations] = useState<any[]>([]);
+  const { toast } = useToast();
+
+  // Load user's current portfolio positions
+  const { data: portfolioPositions } = useQuery({
+    queryKey: ['portfolioPositions', profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data, error } = await supabase
+        .from('portfolio_positions')
+        .select('*')
+        .eq('user_id', profile.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile?.id
+  });
 
   // First get all available ETF tickers
   const { data: allTickersData = [] } = useQuery({
@@ -282,6 +307,145 @@ const Portfolio = () => {
     };
   }, [etfs, cachedPrices, cachedDripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minWeight, preferences.minTradingDays, portfolioSize]);
 
+  // Update current portfolio when data loads
+  useEffect(() => {
+    if (portfolioPositions) {
+      setCurrentPortfolio(portfolioPositions.map(p => ({
+        ticker: p.ticker,
+        shares: Number(p.shares),
+        id: p.id
+      })));
+    }
+  }, [portfolioPositions]);
+
+  // Portfolio management functions
+  const addPosition = async () => {
+    if (!profile?.id || !newPosition.ticker || !newPosition.shares) return;
+    
+    const shares = Number(newPosition.shares);
+    if (shares <= 0) {
+      toast({ title: "Invalid shares", description: "Please enter a positive number of shares" });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('portfolio_positions')
+        .insert({
+          user_id: profile.id,
+          ticker: newPosition.ticker.toUpperCase(),
+          shares
+        });
+
+      if (error) throw error;
+      
+      setCurrentPortfolio(prev => [...prev, { 
+        ticker: newPosition.ticker.toUpperCase(), 
+        shares 
+      }]);
+      setNewPosition({ ticker: '', shares: '' });
+      toast({ title: "Position added", description: `Added ${shares} shares of ${newPosition.ticker.toUpperCase()}` });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to add position" });
+    }
+  };
+
+  const removePosition = async (index: number) => {
+    const position = currentPortfolio[index];
+    if (!profile?.id || !position) return;
+
+    try {
+      if (position.id) {
+        const { error } = await supabase
+          .from('portfolio_positions')
+          .delete()
+          .eq('id', position.id);
+        if (error) throw error;
+      }
+
+      setCurrentPortfolio(prev => prev.filter((_, i) => i !== index));
+      toast({ title: "Position removed", description: `Removed ${position.ticker}` });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove position" });
+    }
+  };
+
+  // Calculate rebalancing recommendations
+  const calculateRebalancing = () => {
+    if (!resolvedPortfolio.length || !currentPortfolio.length || !cachedPrices) return;
+
+    const recommendations: any[] = [];
+    const currentValue = currentPortfolio.reduce((total, pos) => {
+      const price = cachedPrices[pos.ticker]?.price || 0;
+      return total + (pos.shares * price);
+    }, 0);
+
+    if (currentValue === 0) return;
+
+    // Current allocations
+    const currentAllocations = currentPortfolio.map(pos => {
+      const price = cachedPrices[pos.ticker]?.price || 0;
+      const value = pos.shares * price;
+      return {
+        ticker: pos.ticker,
+        shares: pos.shares,
+        value,
+        currentWeight: value / currentValue,
+        price
+      };
+    });
+
+    // Target allocations from AI portfolio
+    const targetAllocations = resolvedPortfolio.map(etf => ({
+      ticker: etf.ticker,
+      targetWeight: etf.weight,
+      targetValue: etf.weight * currentValue,
+      price: etf.current_price
+    }));
+
+    // Generate buy/sell recommendations
+    targetAllocations.forEach(target => {
+      const current = currentAllocations.find(c => c.ticker === target.ticker);
+      const currentShares = current?.shares || 0;
+      const targetShares = Math.round(target.targetValue / target.price);
+      const difference = targetShares - currentShares;
+
+      if (Math.abs(difference) > 0) {
+        recommendations.push({
+          ticker: target.ticker,
+          action: difference > 0 ? 'BUY' : 'SELL',
+          shares: Math.abs(difference),
+          currentShares,
+          targetShares,
+          price: target.price,
+          value: Math.abs(difference) * target.price
+        });
+      }
+    });
+
+    // Handle positions not in target portfolio (should sell)
+    currentAllocations.forEach(current => {
+      const inTarget = targetAllocations.find(t => t.ticker === current.ticker);
+      if (!inTarget && current.shares > 0) {
+        recommendations.push({
+          ticker: current.ticker,
+          action: 'SELL',
+          shares: current.shares,
+          currentShares: current.shares,
+          targetShares: 0,
+          price: current.price,
+          value: current.value
+        });
+      }
+    });
+
+    setRebalanceRecommendations(recommendations);
+  };
+
+  useEffect(() => {
+    calculateRebalancing();
+  }, [resolvedPortfolio, currentPortfolio, cachedPrices]);
+
   // Portfolio allocations are now calculated within the AI portfolio builder
   const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
   const totalSpent = resolvedPortfolio.reduce((sum, item) => sum + (item.allocRounded || 0), 0);
@@ -466,101 +630,263 @@ const Portfolio = () => {
           </Card>
         </div>
 
-        {/* Portfolio Results */}
+        {/* Portfolio Results - Now with Tabs */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>AI Portfolio Recommendations</CardTitle>
+              <CardTitle>Portfolio Management</CardTitle>
               <p className="text-sm text-muted-foreground">
-                {resolvedPortfolio.length} positions • ${portfolioSize.toLocaleString()} • ${totalSpent.toLocaleString()} allocated • ${cashLeft.toLocaleString()} cash
+                AI recommendations and portfolio rebalancing tools
               </p>
-              {resolvedPortfolio.some(etf => etf.isEstimated) && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-2">
-                  <p className="text-sm text-orange-800">
-                    ⚠️ Some ETFs use estimated data due to insufficient historical prices. 
-                    These are heavily penalized in scoring but may still appear if few alternatives exist.
-                  </p>
-                </div>
-              )}
             </CardHeader>
             <CardContent>
-              {etfsLoading || portfolioLoading || pricesLoading || dripLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p>Building AI portfolio...</p>
-                </div>
-              ) : resolvedPortfolio.length > 0 ? (
-                <div className="space-y-4">
-                  {resolvedPortfolio.map((etf, index) => (
-                    <div key={etf.ticker} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline">{etf.ticker}</Badge>
-                          <span className="font-medium text-sm">{etf.name}</span>
-                          {etf.badge && (
-                            <Badge 
-                              variant="secondary" 
-                              className={`text-xs ${
-                                etf.badgeColor === 'green' ? 'bg-emerald-100 text-emerald-800' :
-                                etf.badgeColor === 'red' ? 'bg-red-100 text-red-800' :
-                                etf.badgeColor === 'orange' ? 'bg-orange-100 text-orange-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}
-                            >
-                              {etf.badge}
-                            </Badge>
-                          )}
-                          {etf.isEstimated && (
-                            <Badge variant="destructive" className="text-xs">
-                              ⚠️ Estimated
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {etf.category} • Trend: {etf.trendScore.toFixed(1)} • Return: {etf.ret1yScore.toFixed(1)}
+              <Tabs defaultValue="ai-recommendations" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="ai-recommendations">AI Recommendations</TabsTrigger>
+                  <TabsTrigger value="current-portfolio">Current Portfolio</TabsTrigger>
+                  <TabsTrigger value="rebalancing">Rebalancing</TabsTrigger>
+                </TabsList>
+
+                {/* AI Recommendations Tab */}
+                <TabsContent value="ai-recommendations" className="mt-6">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">
+                        {resolvedPortfolio.length} positions • ${portfolioSize.toLocaleString()} • ${totalSpent.toLocaleString()} allocated • ${cashLeft.toLocaleString()} cash
+                      </p>
+                    </div>
+                    {resolvedPortfolio.some(etf => etf.isEstimated) && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                        <p className="text-sm text-orange-800">
+                          ⚠️ Some ETFs use estimated data due to insufficient historical prices. 
+                          These are heavily penalized in scoring but may still appear if few alternatives exist.
                         </p>
-                        {etf.badgeLabel && (
-                          <p className="text-xs text-muted-foreground">{etf.badgeLabel}</p>
-                        )}
                       </div>
-                      <div className="text-right">
-                        <div className="font-medium">{(etf.weight * 100).toFixed(1)}%</div>
-                        <div className="text-sm text-muted-foreground">
-                          ${(etf.allocRounded || 0).toLocaleString()} • {etf.shares} shares
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          ${etf.lastPrice.toFixed(2)}/share
+                    )}
+
+                    {etfsLoading || portfolioLoading || pricesLoading || dripLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p>Building AI portfolio...</p>
+                      </div>
+                    ) : resolvedPortfolio.length > 0 ? (
+                      <div className="space-y-4">
+                        {resolvedPortfolio.map((etf, index) => (
+                          <div key={etf.ticker} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline">{etf.ticker}</Badge>
+                                <span className="font-medium text-sm">{etf.name}</span>
+                                {etf.badge && (
+                                  <Badge 
+                                    variant="secondary" 
+                                    className={`text-xs ${
+                                      etf.badgeColor === 'green' ? 'bg-emerald-100 text-emerald-800' :
+                                      etf.badgeColor === 'red' ? 'bg-red-100 text-red-800' :
+                                      etf.badgeColor === 'orange' ? 'bg-orange-100 text-orange-800' :
+                                      'bg-yellow-100 text-yellow-800'
+                                    }`}
+                                  >
+                                    {etf.badge}
+                                  </Badge>
+                                )}
+                                {etf.isEstimated && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    ⚠️ Estimated
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {etf.category} • Trend: {etf.trendScore.toFixed(1)} • Return: {etf.ret1yScore.toFixed(1)}
+                              </p>
+                              {etf.badgeLabel && (
+                                <p className="text-xs text-muted-foreground">{etf.badgeLabel}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium">{(etf.weight * 100).toFixed(1)}%</div>
+                              <div className="text-sm text-muted-foreground">
+                                ${(etf.allocRounded || 0).toLocaleString()} • {etf.shares} shares
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                ${etf.lastPrice.toFixed(2)}/share
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <div className="pt-4 border-t">
+                          <div className="text-sm text-muted-foreground mb-2">
+                            Scoring: {preferences.scoreSource} • Weighting: {preferences.weighting} • Max: {(preferences.maxWeight * 100)}%
+                          </div>
+                          <Button className="w-full" onClick={exportToCSV}>
+                            Export AI Portfolio to CSV
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  
-                  <div className="pt-4 border-t">
-                    <div className="text-sm text-muted-foreground mb-2">
-                      Scoring: {preferences.scoreSource} • Weighting: {preferences.weighting} • Max: {(preferences.maxWeight * 100)}%
-                    </div>
-                    <Button className="w-full" onClick={exportToCSV}>
-                      Export AI Portfolio to CSV
-                    </Button>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">
+                          No ETFs found with sufficient data ({preferences.minTradingDays}+ trading days preferred).
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Try reducing minimum trading days to include more ETFs with available data.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setPreferences(p => ({ ...p, minTradingDays: Math.max(30, p.minTradingDays - 30) }))}
+                          className="mt-4"
+                        >
+                          Reduce to {Math.max(30, preferences.minTradingDays - 30)} Days
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  No ETFs found with sufficient data ({preferences.minTradingDays}+ trading days preferred).
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Try reducing minimum trading days to include more ETFs with available data.
-                </p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setPreferences(p => ({ ...p, minTradingDays: Math.max(30, p.minTradingDays - 30) }))}
-                  className="mt-4"
-                >
-                  Reduce to {Math.max(30, preferences.minTradingDays - 30)} Days
-                </Button>
-                </div>
-              )}
+                </TabsContent>
+
+                {/* Current Portfolio Tab */}
+                <TabsContent value="current-portfolio" className="mt-6">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">Your Current Holdings</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {currentPortfolio.length} positions
+                      </p>
+                    </div>
+
+                    {/* Add new position */}
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex gap-4 items-end">
+                          <div className="flex-1">
+                            <Label htmlFor="ticker">Ticker</Label>
+                            <Input
+                              id="ticker"
+                              placeholder="e.g., TSLY"
+                              value={newPosition.ticker}
+                              onChange={(e) => setNewPosition(prev => ({ ...prev, ticker: e.target.value.toUpperCase() }))}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <Label htmlFor="shares">Shares</Label>
+                            <Input
+                              id="shares"
+                              type="number"
+                              placeholder="100"
+                              value={newPosition.shares}
+                              onChange={(e) => setNewPosition(prev => ({ ...prev, shares: e.target.value }))}
+                            />
+                          </div>
+                          <Button onClick={addPosition}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Position
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Current positions */}
+                    {currentPortfolio.length > 0 ? (
+                      <div className="space-y-2">
+                        {currentPortfolio.map((position, index) => {
+                          const price = cachedPrices?.[position.ticker]?.price || 0;
+                          const value = position.shares * price;
+                          return (
+                            <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline">{position.ticker}</Badge>
+                                  <span className="font-medium">{position.shares} shares</span>
+                                </div>
+                                {price > 0 && (
+                                  <p className="text-sm text-muted-foreground">
+                                    ${price.toFixed(2)}/share • ${value.toLocaleString()} total value
+                                  </p>
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removePosition(index)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                        <p className="text-muted-foreground">No positions added yet</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Add your current holdings to get rebalancing recommendations
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* Rebalancing Tab */}
+                <TabsContent value="rebalancing" className="mt-6">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">Portfolio Rebalancing</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {rebalanceRecommendations.length} recommendations
+                      </p>
+                    </div>
+
+                    {rebalanceRecommendations.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <p className="text-sm text-blue-800">
+                            💡 Based on your current portfolio and AI recommendations, here are suggested trades to optimize your allocation:
+                          </p>
+                        </div>
+
+                        {rebalanceRecommendations.map((rec, index) => (
+                          <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant={rec.action === 'BUY' ? 'default' : 'secondary'}>
+                                  {rec.action}
+                                </Badge>
+                                <span className="font-medium">{rec.ticker}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  {rec.shares} shares
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Current: {rec.currentShares} shares → Target: {rec.targetShares} shares
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium">${rec.value.toLocaleString()}</div>
+                              <div className="text-sm text-muted-foreground">
+                                ${rec.price.toFixed(2)}/share
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="pt-4 border-t">
+                          <p className="text-xs text-muted-foreground">
+                            These recommendations assume you'll use the current total value of your portfolio. 
+                            Always consider transaction costs and tax implications before trading.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                        <p className="text-muted-foreground">No rebalancing needed</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Add your current portfolio positions to see rebalancing recommendations
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
