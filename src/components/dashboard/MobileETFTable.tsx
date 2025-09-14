@@ -187,7 +187,7 @@ export const MobileETFTable = ({
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-3">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-3 etf-table">
       {items.map((etf, index) => {
         const rank = frozenRankings.get(etf.ticker) || index + 1;
         const manager = getFundManager(etf);

@@ -618,7 +618,7 @@ export const OptimizedETFTable = ({
 
   return (
     <Card className="p-4 overflow-x-auto">
-      <Table>
+      <Table className="etf-table">
         <TableCaption>All high-yield dividend ETFs ranked by risk-aware total return. Live data where available.</TableCaption>
         <TableHeader>
           <TableRow>

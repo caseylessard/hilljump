@@ -126,6 +126,11 @@ All colors MUST be HSL.
   .font-vt323 {
     font-family: 'VT323', monospace !important;
   }
+
+  /* ETF Tables use regular Roboto */
+  .etf-table, .etf-table * {
+    font-family: 'Roboto', sans-serif !important;
+  }
 }
 
 /* Additional design tokens and utilities */
