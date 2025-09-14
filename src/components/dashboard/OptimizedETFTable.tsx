@@ -442,6 +442,14 @@ export const OptimizedETFTable = ({
   
   // Helper functions (memoized)
   const helperFunctions = useMemo(() => ({
+    // Safe number formatting function
+    safeToFixed: (value: any, digits: number = 2): string => {
+      if (value === null || value === undefined || value === '') return "—";
+      const num = typeof value === 'number' ? value : Number(value);
+      if (isNaN(num)) return "—";
+      return num.toFixed(digits);
+    },
+    
     countryFlag: (etf: ScoredETF) => {
       const currency = etf.currency || 'USD';
       return currency === 'CAD' ? "🇨🇦" : "🇺🇸";
@@ -882,7 +890,7 @@ export const OptimizedETFTable = ({
                     <div className="text-center">
                       <div className="text-sm text-muted-foreground">Current Price</div>
                       <div className="font-semibold">
-                        {selected.current_price ? `$${selected.current_price.toFixed(2)}` : "—"}
+                        {selected.current_price ? `$${helperFunctions.safeToFixed(selected.current_price, 2)}` : "—"}
                       </div>
                     </div>
                     <div className="text-center">
