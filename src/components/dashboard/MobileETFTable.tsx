@@ -12,7 +12,7 @@ import jpmorganLogo from "@/assets/logos/jpmorgan.png";
 import amplifyLogo from "@/assets/logos/amplify.png";
 import roundhillLogo from "@/assets/logos/roundhill.svg";
 
-const hilljumpLogo = "/lovable-uploads/hilljumpbanner.png";
+const hilljumpLogo = "/lovable-uploads/hilljump.png";
 
 type Props = {
   items: ScoredETF[];
@@ -236,9 +236,6 @@ export const MobileETFTable = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="text-xs font-medium text-muted-foreground">
-                    #{rank} of {items.length}
-                  </div>
                   <div className="text-right">
                     {(() => {
                       const liveItem = live[etf.ticker];
