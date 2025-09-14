@@ -855,31 +855,23 @@ export const OptimizedETFTable = ({
                       <p className="text-sm text-muted-foreground">{helperFunctions.getFundManager(selected)}</p>
                     </div>
                   </div>
-                  
-                  <button
-                    onClick={() => navigateToETF('next')}
-                    className="flex items-center justify-center w-8 h-8 rounded-full bg-muted hover:bg-muted/80"
-                    aria-label="Next ETF"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
                 </div>
-                
+                  
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={() => navigateToETF('next')}
                   className="flex items-center justify-center w-8 h-8 rounded-full bg-muted hover:bg-muted/80"
-                  aria-label="Close"
+                  aria-label="Next ETF"
                 >
-                  <X className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Fund, Strategy, and Underlying Info */}
               <div className="text-sm text-muted-foreground space-y-1">
                 <div className="flex gap-4 flex-wrap">
-                  {selected.fund && <span><strong>Fund:</strong> {selected.fund}</span>}
-                  {selected.strategy && <span><strong>Strategy:</strong> {selected.strategy}</span>}
-                  {selected.underlying && <span><strong>Underlying:</strong> {selected.underlying}</span>}
+                  <span><strong>Fund:</strong> {selected.name || 'Unknown'}</span>
+                  <span><strong>Strategy:</strong> {selected.strategyLabel || selected.category || 'Unknown'}</span>
+                  <span><strong>Underlying:</strong> {selected.underlying || constants.UNDERLYING_MAP[selected.ticker as keyof typeof constants.UNDERLYING_MAP] || 'Unknown'}</span>
                 </div>
               </div>
 
