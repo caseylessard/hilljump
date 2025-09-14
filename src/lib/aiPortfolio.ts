@@ -77,6 +77,7 @@ export const buildAIPortfolio = async (
   dripData?: Record<string, any>
 ): Promise<AIPortfolioETF[]> => {
   console.log(`🎯 Building AI portfolio with ${etfs.length} ETFs, source: ${options.scoreSource}, weighting: ${options.weighting}`);
+  console.log(`⚖️ Weight constraints: min=${((options.minWeight || 0.01) * 100).toFixed(1)}%, max=${(options.maxWeight * 100).toFixed(1)}%`);
 
   if (etfs.length === 0) {
     console.warn('No ETFs provided to buildAIPortfolio');
@@ -505,6 +506,9 @@ function scaleSafe(values: number[]): number[] {
 }
 
 function capAndNormalize(weights: number[], maxWeight?: number, minWeight: number = 0.01): number[] {
+  console.log(`🔧 capAndNormalize: minWeight=${(minWeight * 100).toFixed(1)}%, maxWeight=${maxWeight ? (maxWeight * 100).toFixed(1) + '%' : 'none'}`);
+  console.log(`📊 Input weights:`, weights.map(w => (w * 100).toFixed(1) + '%').join(', '));
+  
   let w = [...weights];
   
   // Set negative weights to 0
@@ -518,10 +522,13 @@ function capAndNormalize(weights: number[], maxWeight?: number, minWeight: numbe
   
   // Normalize first
   w = w.map(weight => weight / sum);
+  console.log(`📊 After normalization:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
   
   // Apply minimum weight constraint
   const needsMinimum = w.filter(weight => weight < minWeight && weight > 0).length;
   if (needsMinimum > 0) {
+    console.log(`⬆️ ${needsMinimum} positions need minimum weight boost to ${(minWeight * 100).toFixed(1)}%`);
+    
     // Calculate how much weight we need to redistribute
     const minimumTotal = needsMinimum * minWeight;
     const currentLowWeights = w.filter(weight => weight < minWeight && weight > 0).reduce((acc, weight) => acc + weight, 0);
@@ -540,6 +547,7 @@ function capAndNormalize(weights: number[], maxWeight?: number, minWeight: numbe
         }
         return weight;
       });
+      console.log(`📊 After minimum weight adjustment:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
     }
   }
   
@@ -574,6 +582,7 @@ function capAndNormalize(weights: number[], maxWeight?: number, minWeight: numbe
     }
   }
   
+  console.log(`✅ Final weights:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
   return w;
 }
 
