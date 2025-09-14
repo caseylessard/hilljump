@@ -32,16 +32,16 @@ const Navigation = () => {
   // Base navigation items - always visible
   const baseNavItems = [
     { href: "/", label: "Home", icon: "fi-rr-home" },
-    { href: "/ranking", label: "Income", icon: "fi-rr-stats" }
+    { href: "/ranking", label: "Income", icon: "fi-rr-calendar-dollar" }
   ];
 
   // Auth-only navigation items
   const authOnlyNavItems = [
     { href: "/portfolio", label: "Portfolio", icon: "fi-rr-briefcase" }, 
     { href: "/bots", label: "Bots", icon: "fi-rr-robot" },
-    { href: "/breakout", label: "Breakout", icon: "fi-rr-trending-up" },
-    { href: "/options", label: "Options", icon: "fi-rr-menu-dots" },
-    { href: "/crypto", label: "Crypto", icon: "fi-rr-coin" }
+    { href: "/breakout", label: "Breakout", icon: "fi-rr-chart-bar-trend-up" },
+    { href: "/options", label: "Options", icon: "fi-rr-trading" },
+    { href: "/crypto", label: "Crypto", icon: "fi-rr-crypto-circle" }
   ];
 
   // Build final nav items based on auth status
@@ -51,7 +51,7 @@ const Navigation = () => {
 
   // Add admin link for admin users
   if (isAdmin) {
-    navItems.push({ href: "/admin", label: "Admin", icon: "fi-rr-shield" });
+    navItems.push({ href: "/admin", label: "Admin", icon: "fi-rr-user-id" });
   }
 
   if (isMobile) {
