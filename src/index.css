@@ -110,6 +110,7 @@ All colors MUST be HSL.
 @layer components {
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Jersey 15', cursive !important;
+    font-weight: normal !important;
   }
   
   .font-jersey {

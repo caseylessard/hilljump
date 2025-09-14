@@ -76,7 +76,7 @@ const Home = () => {
                   <Badge variant="secondary" className="mb-3 sm:mb-4 text-xs sm:text-sm">
                     {contentLoading ? 'Loading...' : content.hero_badge_text}
                   </Badge>
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-jersey font-bold tracking-tight leading-tight">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-jersey tracking-tight leading-tight">
                     {contentLoading ? (
                       'Loading...'
                     ) : content.hero_title.includes('Income Investors') ? (
@@ -118,7 +118,7 @@ const Home = () => {
         <section className="py-12 sm:py-16 lg:py-20 bg-muted/30">
           <div className="container px-4 sm:px-6 lg:px-8">
             <div className="text-center space-y-3 sm:space-y-4 mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-jersey font-bold">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-jersey">
                 {contentLoading ? 'Loading...' : content.features_title}
               </h2>
               <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
@@ -132,7 +132,7 @@ const Home = () => {
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4">
                     <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-jersey font-semibold mb-2">{feature.title}</h3>
+                  <h3 className="text-lg sm:text-xl font-jersey mb-2">{feature.title}</h3>
                   <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{feature.description}</p>
                 </Card>
               ))}
@@ -145,7 +145,7 @@ const Home = () => {
           <div className="container px-4 sm:px-6 lg:px-8">
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
               <Card className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-jersey font-semibold mb-3">Income Rankings</h3>
+                <h3 className="text-lg sm:text-xl font-jersey mb-3">Income Rankings</h3>
                 <p className="text-sm sm:text-base text-muted-foreground mb-4 leading-relaxed">
                   Discover top-performing income ETFs ranked by total return with risk adjustments.
                 </p>
@@ -155,7 +155,7 @@ const Home = () => {
               </Card>
               
               <Card className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-jersey font-semibold mb-3">Portfolio Tracker</h3>
+                <h3 className="text-lg sm:text-xl font-jersey mb-3">Portfolio Tracker</h3>
                 <p className="text-sm sm:text-base text-muted-foreground mb-4 leading-relaxed">
                   Track your positions, monitor performance, and optimize your income strategy.
                 </p>
@@ -165,7 +165,7 @@ const Home = () => {
               </Card>
               
               <Card className="p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
-                <h3 className="text-lg sm:text-xl font-jersey font-semibold mb-3">Market Alerts</h3>
+                <h3 className="text-lg sm:text-xl font-jersey mb-3">Market Alerts</h3>
                 <p className="text-sm sm:text-base text-muted-foreground mb-4 leading-relaxed">
                   Stay informed with daily market alerts and trading opportunities.
                 </p>
