@@ -82,7 +82,7 @@ const Home = () => {
                     ) : content.hero_title.includes('Income Investors') ? (
                       <>
                         {content.hero_title.split('Income Investors')[0]}
-                        <span className="text-primary">Income Investors</span>
+                        <span className="font-vt323">Income Investors</span>
                       </>
                     ) : (
                       content.hero_title
