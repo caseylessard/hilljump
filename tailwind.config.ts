@@ -21,8 +21,8 @@ export default {
       fontFamily: {
         'jersey': ['Jersey 15', 'cursive'],
         'vt323': ['VT323', 'monospace'],
-        'roboto': ['Roboto', 'sans-serif'],
-        'sans': ['Roboto', 'sans-serif'],
+        'roboto': ['Roboto Mono', 'monospace'],
+        'sans': ['Roboto Mono', 'monospace'],
       },
 			colors: {
 				border: 'hsl(var(--border))',

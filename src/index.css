@@ -104,14 +104,14 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-roboto;
-    font-family: 'Roboto', sans-serif !important;
+    font-family: 'Roboto Mono', monospace !important;
   }
 }
 
 @layer components {
-  /* Force Roboto on all text elements */
+  /* Force Roboto Mono on all text elements */
   p, span, div, button, input, textarea, label {
-    font-family: 'Roboto', sans-serif !important;
+    font-family: 'Roboto Mono', monospace !important;
   }
   
   h1, h2, h3, h4, h5, h6 {
