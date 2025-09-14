@@ -14,7 +14,7 @@ const defaultContent: HomepageContent = {
   hero_badge_text: 'Welcome to HillJump',
   hero_title: 'Smart ETF Analysis for Income Investors',
   hero_description: 'Make informed investment decisions with our comprehensive ETF rankings, real-time market data, and advanced portfolio analysis tools.',
-  hero_image_url: '/lovable-uploads/4dff6720-7418-49b2-a73f-7417a6feb921.png',
+  hero_image_url: '/lovable-uploads/hilljumpbanner.png',
   features_title: 'Everything You Need for Smart Investing',
   features_description: 'Our platform combines cutting-edge analysis with intuitive tools to help you build a winning income portfolio.'
 };
