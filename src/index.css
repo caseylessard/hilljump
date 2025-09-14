@@ -109,7 +109,15 @@ All colors MUST be HSL.
 
 @layer components {
   h1, h2, h3, h4, h5, h6 {
-    @apply font-jersey !important;
+    font-family: 'Jersey 15', cursive !important;
+  }
+  
+  .font-jersey {
+    font-family: 'Jersey 15', cursive !important;
+  }
+  
+  .font-vt323 {
+    font-family: 'VT323', monospace !important;
   }
 }
 
