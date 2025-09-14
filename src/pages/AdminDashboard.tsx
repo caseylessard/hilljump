@@ -64,24 +64,24 @@ const AdminDashboard = () => {
     <div>
       <Navigation />
       
-      <main className="container py-8">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">System management and data administration</p>
+      <main className="container py-4 md:py-8 px-4 md:px-6">
+        <div className="space-y-4 md:space-y-6">
+          <div className="px-2 md:px-0">
+            <h1 className="text-2xl md:text-3xl font-bold">Admin Dashboard</h1>
+            <p className="text-sm md:text-base text-muted-foreground">System management and data administration</p>
           </div>
 
-          <Tabs defaultValue="data" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="data">Data Management</TabsTrigger>
-              <TabsTrigger value="dividends">Dividends</TabsTrigger>
-              <TabsTrigger value="pricing">Pricing</TabsTrigger>
-              <TabsTrigger value="alerts">Alerts & Tests</TabsTrigger>
-              <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+          <Tabs defaultValue="data" className="space-y-4 md:space-y-6 px-2 md:px-0">
+            <TabsList className="grid w-full grid-cols-5 md:grid-cols-5 sm:grid-cols-2 overflow-x-auto">
+              <TabsTrigger value="data" className="text-xs sm:text-sm">Data</TabsTrigger>
+              <TabsTrigger value="dividends" className="text-xs sm:text-sm">Dividends</TabsTrigger>
+              <TabsTrigger value="pricing" className="text-xs sm:text-sm">Pricing</TabsTrigger>
+              <TabsTrigger value="alerts" className="text-xs sm:text-sm">Alerts</TabsTrigger>
+              <TabsTrigger value="monitoring" className="text-xs sm:text-sm">Monitor</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="data" className="space-y-6">
-              <div className="grid gap-6">
+            <TabsContent value="data" className="space-y-4 md:space-y-6">
+              <div className="grid gap-4 md:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>ETF Data Management</CardTitle>
@@ -106,8 +106,8 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="dividends" className="space-y-6">
-              <div className="grid gap-6">
+            <TabsContent value="dividends" className="space-y-4 md:space-y-6">
+              <div className="grid gap-4 md:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Dividend Data Operations</CardTitle>
@@ -143,8 +143,8 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="pricing" className="space-y-6">
-              <div className="grid gap-6">
+            <TabsContent value="pricing" className="space-y-4 md:space-y-6">
+              <div className="grid gap-4 md:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Price Testing & Updates</CardTitle>
@@ -181,8 +181,8 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="alerts" className="space-y-6">
-              <div className="grid gap-6">
+            <TabsContent value="alerts" className="space-y-4 md:space-y-6">
+              <div className="grid gap-4 md:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Market Alerts & Testing</CardTitle>
@@ -197,8 +197,8 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="monitoring" className="space-y-6">
-              <div className="grid gap-6">
+            <TabsContent value="monitoring" className="space-y-4 md:space-y-6">
+              <div className="grid gap-4 md:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>System Monitoring</CardTitle>

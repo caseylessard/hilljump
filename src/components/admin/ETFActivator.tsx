@@ -25,20 +25,21 @@ export const ETFActivator = () => {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('activate-etfs', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      // Direct database update instead of edge function
+      const { error, count } = await supabase
+        .from('etfs')
+        .update({ active: true })
+        .eq('active', false);
 
       if (error) {
         throw error;
       }
 
-      setResult(data);
+      const message = `Successfully activated ${count || 0} ETFs`;
+      setResult({ success: true, message, activatedCount: count || 0 });
       toast({
         title: "ETFs Activated",
-        description: data.message,
+        description: message,
       });
 
     } catch (error) {
@@ -56,17 +57,17 @@ export const ETFActivator = () => {
   };
 
   return (
-    <Card className="w-full max-w-2xl">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Activate Imported ETFs</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-lg md:text-xl">Activate Imported ETFs</CardTitle>
+        <CardDescription className="text-sm md:text-base">
           Activate all ETFs that were imported but set to inactive by default.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {result && (
           <Alert variant={result.success ? "default" : "destructive"}>
-            <AlertDescription>
+            <AlertDescription className="text-sm md:text-base">
               {result.message}
               {result.activatedCount !== undefined && (
                 <span className="font-medium"> ({result.activatedCount} ETFs activated)</span>
@@ -75,18 +76,19 @@ export const ETFActivator = () => {
           </Alert>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button 
             onClick={handleActivateETFs}
             disabled={isLoading}
             variant="default"
+            className="w-full sm:w-auto text-sm md:text-base"
           >
             {isLoading ? 'Activating...' : 'Activate All Inactive ETFs'}
           </Button>
         </div>
 
         <Alert>
-          <AlertDescription>
+          <AlertDescription className="text-sm md:text-base">
             This will set all inactive ETFs to active status so they appear in the main ETF tables.
           </AlertDescription>
         </Alert>
