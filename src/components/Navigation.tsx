@@ -58,7 +58,7 @@ const Navigation = () => {
     return (
       <header className="border-b">
         <div className="container flex items-center justify-between py-4">
-        <a href="/" className="flex items-center gap-2 font-vt323 font-bold text-lg tracking-tight" aria-label="HillJump home">
+        <a href="/" className="flex items-center gap-2 font-vt323 font-bold text-xl tracking-tight" aria-label="HillJump home">
           <img src="/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png" alt="HillJump Logo" className="w-8 h-8" />
           HillJump
         </a>
@@ -73,7 +73,7 @@ const Navigation = () => {
               <SheetContent side="right" className="w-64">
                 <nav className="flex flex-col gap-4 mt-8" aria-label="Primary">
                   {navItems.map((item) => (
-                    <Button key={item.href} variant="ghost" asChild className="justify-start font-vt323">
+                    <Button key={item.href} variant="ghost" asChild className="justify-start font-vt323 text-base">
                       <a href={item.href} onClick={() => setIsOpen(false)}>
                         {item.label}
                       </a>
@@ -91,13 +91,13 @@ const Navigation = () => {
   return (
     <header className="border-b">
       <div className="container flex items-center justify-between py-4">
-        <a href="/" className="flex items-center gap-2 font-vt323 font-bold text-lg tracking-tight" aria-label="HillJump home">
+        <a href="/" className="flex items-center gap-2 font-vt323 font-bold text-xl tracking-tight" aria-label="HillJump home">
           <img src="/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png" alt="HillJump Logo" className="w-8 h-8" />
           HillJump
         </a>
         <nav className="flex items-center gap-2" aria-label="Primary">
           {navItems.map((item) => (
-            <Button key={item.href} variant="ghost" asChild className="font-vt323">
+            <Button key={item.href} variant="ghost" asChild className="font-vt323 text-base">
               <a href={item.href}>{item.label}</a>
             </Button>
           ))}
