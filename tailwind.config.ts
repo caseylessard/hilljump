@@ -18,10 +18,12 @@ export default {
 			}
 		},
 		extend: {
-			fontFamily: {
-				'jersey': ['Jersey 15', 'cursive'],
-				'vt323': ['VT323', 'monospace'],
-			},
+      fontFamily: {
+        'jersey': ['Jersey 15', 'cursive'],
+        'vt323': ['VT323', 'monospace'],
+        'roboto': ['Roboto', 'sans-serif'],
+        'sans': ['Roboto', 'sans-serif'],
+      },
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
