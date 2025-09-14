@@ -209,9 +209,20 @@ export const buildAIPortfolio = async (
   // Build weights
   const weights = buildWeights(chosen, options.weighting, options.maxWeight, options.minWeight);
   
+  // Filter out ETFs with zero weights to create a cleaner portfolio
+  const nonZeroIndices = weights
+    .map((weight, index) => ({ weight, index }))
+    .filter(item => item.weight > 0)
+    .map(item => item.index);
+  
+  const filteredChosen = nonZeroIndices.map(i => chosen[i]);
+  const filteredWeights = nonZeroIndices.map(i => weights[i]);
+  
+  console.log(`🎯 Final portfolio: ${filteredChosen.length} positions after removing zero weights`);
+  
   // Create portfolio ETFs with allocations
-  const portfolioETFs: AIPortfolioETF[] = chosen.map((etf, i) => {
-    const weight = weights[i];
+  const portfolioETFs: AIPortfolioETF[] = filteredChosen.map((etf, i) => {
+    const weight = filteredWeights[i];
     const alloc_dollars = weight * options.capital;
     const shares = options.roundShares 
       ? Math.floor(alloc_dollars / etf.last_price_adj)
@@ -524,30 +535,32 @@ function capAndNormalize(weights: number[], maxWeight?: number, minWeight: numbe
   w = w.map(weight => weight / sum);
   console.log(`📊 After normalization:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
   
-  // Apply minimum weight constraint
-  const needsMinimum = w.filter(weight => weight < minWeight && weight > 0).length;
-  if (needsMinimum > 0) {
-    console.log(`⬆️ ${needsMinimum} positions need minimum weight boost to ${(minWeight * 100).toFixed(1)}%`);
+  // Apply minimum weight constraint - now apply to ALL positions
+  const positionsNeedingMin = w.length; // Apply minimum to all positions
+  if (positionsNeedingMin > 0) {
+    const currentBelowMin = w.filter(weight => weight < minWeight);
     
-    // Calculate how much weight we need to redistribute
-    const minimumTotal = needsMinimum * minWeight;
-    const currentLowWeights = w.filter(weight => weight < minWeight && weight > 0).reduce((acc, weight) => acc + weight, 0);
-    const redistributeAmount = minimumTotal - currentLowWeights;
-    
-    // Take from weights above minimum to cover the shortfall
-    const aboveMinimum = w.filter(weight => weight >= minWeight);
-    const aboveMinimumTotal = aboveMinimum.reduce((acc, weight) => acc + weight, 0);
-    
-    if (aboveMinimumTotal > redistributeAmount) {
-      w = w.map(weight => {
-        if (weight < minWeight && weight > 0) {
-          return minWeight;
-        } else if (weight >= minWeight) {
-          return weight - (weight / aboveMinimumTotal) * redistributeAmount;
+    if (currentBelowMin.length > 0) {
+      console.log(`⬆️ ${currentBelowMin.length} positions need minimum weight boost to ${(minWeight * 100).toFixed(1)}%`);
+      
+      // Set all positions to at least minimum weight
+      const totalMinRequired = w.length * minWeight;
+      
+      if (totalMinRequired <= 1.0) {
+        // If we can fit all minimums, redistribute properly
+        w = w.map(weight => Math.max(weight, minWeight));
+        
+        // Normalize to ensure sum = 1
+        const sumAfterMin = w.reduce((acc, weight) => acc + weight, 0);
+        if (sumAfterMin > 1.0) {
+          // Scale down proportionally if we exceed 100%
+          w = w.map(weight => weight / sumAfterMin);
         }
-        return weight;
-      });
-      console.log(`📊 After minimum weight adjustment:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
+        
+        console.log(`📊 After minimum weight adjustment:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
+      } else {
+        console.log(`⚠️ Cannot fit ${w.length} positions with ${(minWeight * 100).toFixed(1)}% minimum (would need ${(totalMinRequired * 100).toFixed(1)}%)`);
+      }
     }
   }
   
