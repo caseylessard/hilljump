@@ -173,7 +173,7 @@ serve(async (req) => {
           country: row[getColumnIndex('country')] || null,
           currency: row[getColumnIndex('currency')] || 'USD',
           underlying: row[getColumnIndex('underlying')] || null,
-          active: row[getColumnIndex('active')] === '1' || row[getColumnIndex('active')]?.toLowerCase() === 'true',
+          active: getColumnIndex('active') >= 0 ? (row[getColumnIndex('active')] === '1' || row[getColumnIndex('active')]?.toLowerCase() === 'true') : true, // Default to active if no active column
           name: row[fundIndex] || ticker, // Use fund as name, fallback to ticker
           fund: row[fundIndex] || null,
           strategy: row[getColumnIndex('strategy')] || null,

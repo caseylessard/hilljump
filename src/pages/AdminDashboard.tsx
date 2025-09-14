@@ -18,6 +18,7 @@ import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
 import { DividendDuplicateCleanup } from "@/components/admin/DividendDuplicateCleanup";
 import { ETFDataImport } from "@/components/admin/ETFDataImport";
 import { ETFDataExport } from "@/components/admin/ETFDataExport";
+import { ETFActivator } from "@/components/admin/ETFActivator";
 import { DividendDataImport } from "@/components/admin/DividendDataImport";
 import { BulkDividendFetcher } from "@/components/admin/BulkDividendFetcher";
 import { DataUpdater } from "@/components/admin/DataUpdater";
@@ -87,6 +88,7 @@ const AdminDashboard = () => {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <ETFDataImport />
+                    <ETFActivator />
                     <ETFDataExport />
                     <ETFEditor />
                     <ETFMetadataFetcher />
