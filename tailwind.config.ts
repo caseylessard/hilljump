@@ -20,6 +20,7 @@ export default {
 		extend: {
 			fontFamily: {
 				'jersey': ['Jersey 15', 'cursive'],
+				'vt323': ['VT323', 'monospace'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
