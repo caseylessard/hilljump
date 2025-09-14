@@ -815,7 +815,7 @@ export const OptimizedETFTable = ({
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selected && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => navigateToETF('prev')}
@@ -827,21 +827,24 @@ export const OptimizedETFTable = ({
                   
                   <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12 bg-muted flex items-center justify-center">
-                      <AvatarFallback className="text-sm font-bold">
-                        {selectedRank}
-                      </AvatarFallback>
+                      {(() => {
+                        const logo = helperFunctions.getManagerLogo(selected);
+                        return logo ? (
+                          <img src={logo} alt="Manager logo" className="h-8 w-8 object-contain rounded-full" />
+                        ) : (
+                          <AvatarFallback className="text-sm font-bold">
+                            {selectedRank}
+                          </AvatarFallback>
+                        );
+                      })()}
                     </Avatar>
                     
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-xl font-semibold">{helperFunctions.displayTicker(selected.ticker)}</h3>
                         <span>{helperFunctions.countryFlag(selected)}</span>
-                        {(() => {
-                          const logo = helperFunctions.getManagerLogo(selected);
-                          return logo ? <img src={logo} alt="Manager logo" className="h-6 w-auto" /> : null;
-                        })()}
                       </div>
-                      <p className="text-sm text-muted-foreground">{helperFunctions.getEtfDescription(selected)}</p>
+                      <p className="text-sm text-muted-foreground">{helperFunctions.getFundManager(selected)}</p>
                     </div>
                   </div>
                   
@@ -862,61 +865,49 @@ export const OptimizedETFTable = ({
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              
-              <Tabs value={range} onValueChange={setRange} className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="1W">1 Week</TabsTrigger>
-                  <TabsTrigger value="1M">1 Month</TabsTrigger>
-                  <TabsTrigger value="3M">3 Months</TabsTrigger>
-                  <TabsTrigger value="1Y">1 Year</TabsTrigger>
-                </TabsList>
-                <TabsContent value="1W" className="mt-4">
-                  <DistributionHistory ticker={selected.ticker} />
-                </TabsContent>
-                <TabsContent value="1M" className="mt-4">
-                  <DistributionHistory ticker={selected.ticker} />
-                </TabsContent>
-                <TabsContent value="3M" className="mt-4">
-                  <DistributionHistory ticker={selected.ticker} />
-                </TabsContent>
-                <TabsContent value="1Y" className="mt-4">
-                  <DistributionHistory ticker={selected.ticker} />
-                </TabsContent>
-              </Tabs>
-              
-              <div className={`mt-4 grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
-                <div>
-                  <div className="text-sm text-muted-foreground">1Y Total Return</div>
-                  <div className="text-lg font-medium">{selected.totalReturn1Y ? constants.formatPct(selected.totalReturn1Y, 1) : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">AV</div>
-                  <div className="text-lg font-medium">{selected.avgVolume ? constants.fmtCompact.format(selected.avgVolume) : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Expense Ratio</div>
-                  <div className="text-lg font-medium">{selected.expenseRatio ? constants.formatPct(selected.expenseRatio, 2) : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Volatility (1Y)</div>
-                  <div className="text-lg font-medium">{selected.volatility1Y ? constants.formatPct(selected.volatility1Y, 1) : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Max Drawdown (1Y)</div>
-                  <div className="text-lg font-medium">{selected.maxDrawdown1Y ? constants.formatPct(selected.maxDrawdown1Y, 1) : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">AUM</div>
-                  <div className="text-lg font-medium">{selected.aum ? new Intl.NumberFormat("en", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(selected.aum) : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Risk Score</div>
-                  <div className="text-lg font-medium">{Math.round(selected.riskScore * 100)}%</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Vol: {Math.round(selected.volNorm * 100)}% | Drawdown: {Math.round(selected.drawdownNorm * 100)}%
-                  </div>
+
+              {/* Fund, Strategy, and Underlying Info */}
+              <div className="text-sm text-muted-foreground space-y-1">
+                <div className="flex gap-4 flex-wrap">
+                  {selected.fund && <span><strong>Fund:</strong> {selected.fund}</span>}
+                  {selected.strategy && <span><strong>Strategy:</strong> {selected.strategy}</span>}
+                  {selected.underlying && <span><strong>Underlying:</strong> {selected.underlying}</span>}
                 </div>
               </div>
+
+              {/* Simple Stats Box */}
+              <Card>
+                <div className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-sm text-muted-foreground">Current Price</div>
+                      <div className="font-semibold">
+                        {selected.current_price ? `$${selected.current_price.toFixed(2)}` : "—"}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm text-muted-foreground">Yield (TTM)</div>
+                      <div className="font-semibold">
+                        {selected.yieldTTM ? constants.formatPct(selected.yieldTTM, 1) : "—"}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm text-muted-foreground">1Y Return</div>
+                      <div className="font-semibold">
+                        {selected.totalReturn1Y ? constants.formatPct(selected.totalReturn1Y, 1) : "—"}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm text-muted-foreground">DRIP Score</div>
+                      <div className="font-semibold">
+                        {lookupTables.getDripSum(selected.ticker).toFixed(1)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+              
+              <DistributionHistory ticker={selected.ticker} />
             </div>
           )}
         </DialogContent>
