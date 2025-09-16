@@ -25,7 +25,6 @@ import { DataUpdater } from "@/components/admin/DataUpdater";
 import { DividendDataMonitor } from "@/components/admin/DividendDataMonitor";
 import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
 import { HistoricalPriceImport } from "@/components/admin/HistoricalPriceImport";
-import { EnhancedDividendUpdater } from "@/components/admin/EnhancedDividendUpdater";
 // QuickETFTest component removed
 import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
 import ETFMetadataFetcher from "@/components/admin/ETFMetadataFetcher";
@@ -115,7 +114,6 @@ const AdminDashboard = () => {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <RefreshDividendData />
-                    <EnhancedDividendUpdater />
                     <BulkDividendFetcher />
                     <DividendDataImport />
                     <ManualDividendEntry />
