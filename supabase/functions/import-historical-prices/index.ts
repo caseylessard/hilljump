@@ -41,33 +41,41 @@ serve(async (req) => {
     const header = lines[0].toLowerCase()
     console.log('📊 CSV header:', header)
 
-    // Validate CSV format - expect: ticker,date,close
-    const expectedColumns = ['ticker', 'date', 'close']
+    // Validate CSV format - expect: ticker,date,close (minimum) plus optional OHLCV fields
     const headerColumns = header.split(',').map(col => col.trim())
     
     // Find column indices (flexible column order)
     const columnIndices = {
       ticker: -1,
       date: -1,
-      close: -1
+      open: -1,
+      high: -1,
+      low: -1,
+      close: -1,
+      adj_close: -1,
+      volume: -1
     }
 
     for (let i = 0; i < headerColumns.length; i++) {
-      const col = headerColumns[i]
+      const col = headerColumns[i].toLowerCase()
       if (col.includes('ticker') || col === 'symbol') columnIndices.ticker = i
       else if (col.includes('date')) columnIndices.date = i
-      else if (col.includes('close') && !col.includes('adj')) columnIndices.close = i
-      else if (col.includes('price')) columnIndices.close = i
+      else if (col === 'open') columnIndices.open = i
+      else if (col === 'high') columnIndices.high = i
+      else if (col === 'low') columnIndices.low = i
+      else if (col === 'close' && !col.includes('adj')) columnIndices.close = i
+      else if (col.includes('adj') && col.includes('close')) columnIndices.adj_close = i
+      else if (col.includes('volume')) columnIndices.volume = i
+      else if (col.includes('price') && !col.includes('adj')) columnIndices.close = i
     }
 
-    // Check if we found all required columns
-    const missingColumns = Object.entries(columnIndices)
-      .filter(([_, index]) => index === -1)
-      .map(([col, _]) => col)
+    // Check if we found required columns (ticker, date, close are mandatory)
+    const requiredColumns = ['ticker', 'date', 'close']
+    const missingColumns = requiredColumns.filter(col => columnIndices[col] === -1)
 
     if (missingColumns.length > 0) {
       return new Response(JSON.stringify({ 
-        error: `Missing required columns: ${missingColumns.join(', ')}. Expected: ticker, date, close (or price)`,
+        error: `Missing required columns: ${missingColumns.join(', ')}. Expected: ticker, date, close. Optional: open, high, low, adj close, volume`,
         foundColumns: headerColumns
       }), {
         status: 400,
@@ -103,9 +111,14 @@ serve(async (req) => {
         const ticker = columns[columnIndices.ticker]?.toUpperCase()
         const dateStr = columns[columnIndices.date]
         const closeStr = columns[columnIndices.close]
+        const openStr = columnIndices.open >= 0 ? columns[columnIndices.open] : null
+        const highStr = columnIndices.high >= 0 ? columns[columnIndices.high] : null
+        const lowStr = columnIndices.low >= 0 ? columns[columnIndices.low] : null
+        const adjCloseStr = columnIndices.adj_close >= 0 ? columns[columnIndices.adj_close] : null
+        const volumeStr = columnIndices.volume >= 0 ? columns[columnIndices.volume] : null
 
         if (!ticker || !dateStr || !closeStr) {
-          console.warn(`⚠️ Skipping line ${i + 1} - missing data: ${line}`)
+          console.warn(`⚠️ Skipping line ${i + 1} - missing required data: ${line}`)
           errors++
           continue
         }
@@ -125,23 +138,47 @@ serve(async (req) => {
           date = parsedDate.toISOString().slice(0, 10)
         }
 
-        // Validate and parse price
+        // Validate and parse prices
         const closePrice = parseFloat(closeStr)
         if (isNaN(closePrice) || closePrice <= 0) {
-          console.warn(`⚠️ Invalid price on line ${i + 1}: ${closeStr}`)
+          console.warn(`⚠️ Invalid close price on line ${i + 1}: ${closeStr}`)
           errors++
           continue
+        }
+
+        // Parse optional fields
+        const openPrice = openStr ? parseFloat(openStr) : null
+        const highPrice = highStr ? parseFloat(highStr) : null
+        const lowPrice = lowStr ? parseFloat(lowStr) : null
+        const adjClose = adjCloseStr ? parseFloat(adjCloseStr) : null
+        const volume = volumeStr ? parseInt(volumeStr) : null
+
+        // Validate optional numeric fields
+        if (openStr && (isNaN(openPrice) || openPrice <= 0)) {
+          console.warn(`⚠️ Invalid open price on line ${i + 1}: ${openStr}`)
+        }
+        if (highStr && (isNaN(highPrice) || highPrice <= 0)) {
+          console.warn(`⚠️ Invalid high price on line ${i + 1}: ${highStr}`)
+        }
+        if (lowStr && (isNaN(lowPrice) || lowPrice <= 0)) {
+          console.warn(`⚠️ Invalid low price on line ${i + 1}: ${lowStr}`)
+        }
+        if (adjCloseStr && (isNaN(adjClose) || adjClose <= 0)) {
+          console.warn(`⚠️ Invalid adjusted close on line ${i + 1}: ${adjCloseStr}`)
+        }
+        if (volumeStr && (isNaN(volume) || volume < 0)) {
+          console.warn(`⚠️ Invalid volume on line ${i + 1}: ${volumeStr}`)
         }
 
         const record = {
           ticker,
           date,
           close_price: closePrice,
-          open_price: null,
-          high_price: null,
-          low_price: null,
-          volume: null,
-          adjusted_close: null
+          open_price: openPrice && !isNaN(openPrice) && openPrice > 0 ? openPrice : null,
+          high_price: highPrice && !isNaN(highPrice) && highPrice > 0 ? highPrice : null,
+          low_price: lowPrice && !isNaN(lowPrice) && lowPrice > 0 ? lowPrice : null,
+          volume: volume && !isNaN(volume) && volume >= 0 ? volume : null,
+          adjusted_close: adjClose && !isNaN(adjClose) && adjClose > 0 ? adjClose : null
         }
 
         batch.push(record)

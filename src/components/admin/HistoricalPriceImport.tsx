@@ -64,11 +64,11 @@ export function HistoricalPriceImport() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-sm text-muted-foreground space-y-2">
-          <p>Upload a CSV file with historical price data. Expected format:</p>
+          <p>Upload a CSV file with historical price data. Required: ticker, date, close. Optional: open, high, low, adj close, volume</p>
           <code className="block bg-muted p-2 rounded text-xs">
-            ticker,date,close<br/>
-            XYLD,2024-01-01,45.23<br/>
-            QYLD,2024-01-01,17.89
+            ticker,date,open,high,low,close,adj close,volume<br/>
+            XYLD,2024-01-01,45.50,46.20,45.10,45.23,45.20,1000000<br/>
+            QYLD,2024-01-01,17.95,18.10,17.85,17.89,17.87,850000
           </code>
         </div>
 
