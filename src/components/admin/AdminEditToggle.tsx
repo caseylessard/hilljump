@@ -7,7 +7,6 @@ import { SEOSettings } from "./SEOSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdmin } from "@/hooks/useAdmin";
 import { DRIPCacheManager } from "./DRIPCacheManager";
-import { ETFDataFixer } from "./ETFDataFixer";
 
 export const AdminEditToggle = () => {
   const { isAdmin, loading } = useAdmin();
@@ -34,11 +33,10 @@ export const AdminEditToggle = () => {
           <DialogTitle>Admin Content Editor</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="homepage" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="homepage">Homepage Content</TabsTrigger>
             <TabsTrigger value="seo">SEO Settings</TabsTrigger>
             <TabsTrigger value="drip">DRIP Cache</TabsTrigger>
-            <TabsTrigger value="fixes">ETF Fixes</TabsTrigger>
           </TabsList>
           <TabsContent value="homepage" className="space-y-4">
             <HomepageEditor />
@@ -48,9 +46,6 @@ export const AdminEditToggle = () => {
           </TabsContent>
           <TabsContent value="drip" className="space-y-4">
             <DRIPCacheManager />
-          </TabsContent>
-          <TabsContent value="fixes" className="space-y-4">
-            <ETFDataFixer />
           </TabsContent>
         </Tabs>
       </DialogContent>

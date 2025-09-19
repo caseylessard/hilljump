@@ -28,6 +28,7 @@ import { HistoricalPriceImport } from "@/components/admin/HistoricalPriceImport"
 // QuickETFTest component removed
 import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
 import ETFMetadataFetcher from "@/components/admin/ETFMetadataFetcher";
+import { ETFDataFixer } from "@/components/admin/ETFDataFixer";
 
 const AdminDashboard = () => {
   const { isAdmin, loading } = useAdmin();
@@ -87,6 +88,7 @@ const AdminDashboard = () => {
                     <CardTitle>ETF Data Management</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    <ETFDataFixer />
                     <ETFDataImport />
                     <ETFActivator />
                     <ETFDataExport />
