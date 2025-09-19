@@ -25,6 +25,7 @@ import { DataUpdater } from "@/components/admin/DataUpdater";
 import { DividendDataMonitor } from "@/components/admin/DividendDataMonitor";
 import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
 import { HistoricalPriceImport } from "@/components/admin/HistoricalPriceImport";
+import { AutoHistoricalPriceFetcher } from "@/components/admin/AutoHistoricalPriceFetcher";
 // QuickETFTest component removed
 import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
 import ETFMetadataFetcher from "@/components/admin/ETFMetadataFetcher";
@@ -174,9 +175,7 @@ const AdminDashboard = () => {
                     <CardTitle>Historical Data</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="text-center py-4 text-muted-foreground">
-                      Historical price testing consolidated into import tools
-                    </div>
+                    <AutoHistoricalPriceFetcher />
                     <HistoricalPriceImport />
                   </CardContent>
                 </Card>
