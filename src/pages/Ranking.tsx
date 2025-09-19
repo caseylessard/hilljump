@@ -118,10 +118,15 @@ const Ranking = () => {
       
       const taxedData: any = {};
       
+      // Create a map of ETF data for quick lookup
+      const etfMap = new Map(etfs.map(etf => [etf.ticker, etf]));
+      
       // Process each ticker's tax-free data and apply 15% tax to US funds only
       Object.entries(dripDataTaxFree).forEach(([ticker, data]: [string, any]) => {
-        // Check if this is a US fund (doesn't end with .TO)
-        const isUSFund = !ticker.endsWith('.TO');
+        const etf = etfMap.get(ticker);
+        
+        // Check if this is a US fund based on currency (USD = US fund, CAD = Canadian fund)
+        const isUSFund = etf?.currency === 'USD';
         
         if (isUSFund && data) {
           // Apply 15% tax reduction to US fund dividends
@@ -141,7 +146,7 @@ const Ranking = () => {
             taxApplied: '15% on US dividends'
           };
         } else {
-          // Canadian funds (.TO) keep original data - no withholding tax
+          // Canadian funds (CAD currency) keep original data - no withholding tax
           taxedData[ticker] = {
             ...data,
             taxApplied: 'No tax on Canadian funds'
@@ -149,13 +154,16 @@ const Ranking = () => {
         }
       });
       
-      console.log(`🏦 Applied 15% tax to ${Object.keys(taxedData).filter(t => !t.endsWith('.TO')).length} US funds`);
-      console.log(`🍁 No tax applied to ${Object.keys(taxedData).filter(t => t.endsWith('.TO')).length} Canadian funds`);
+      const usFunds = Object.keys(taxedData).filter(t => etfMap.get(t)?.currency === 'USD');
+      const cadFunds = Object.keys(taxedData).filter(t => etfMap.get(t)?.currency === 'CAD');
+      
+      console.log(`🏦 Applied 15% tax to ${usFunds.length} US funds (USD currency)`);
+      console.log(`🍁 No tax applied to ${cadFunds.length} Canadian funds (CAD currency)`);
       
       setDripDataTaxed(taxedData);
       setDripLoadingTaxed(false);
     }
-  }, [activeTab, dripDataTaxFree, dripDataTaxed, profile?.country]);
+  }, [activeTab, dripDataTaxFree, dripDataTaxed, profile?.country, etfs]);
 
   // Debug DRIP data being passed to table
   useEffect(() => {
