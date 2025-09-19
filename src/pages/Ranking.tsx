@@ -583,7 +583,7 @@ const Ranking = () => {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          placeholder="Search by ticker or underlying..."
+                          placeholder="Search ticker/underlying"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="pl-10 pr-8 w-64"
@@ -616,7 +616,7 @@ const Ranking = () => {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
-                        placeholder="Search by ticker or underlying..."
+                         placeholder="Search ticker/underlying"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10 pr-8"
@@ -728,7 +728,7 @@ const Ranking = () => {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          placeholder="Search by ticker or underlying..."
+                           placeholder="Search ticker/underlying"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="pl-10 pr-8 w-64"
@@ -761,7 +761,7 @@ const Ranking = () => {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
-                        placeholder="Search by ticker or underlying..."
+                         placeholder="Search ticker/underlying"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10 pr-8"
@@ -876,7 +876,7 @@ const Ranking = () => {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
-                        placeholder="Search by ticker or underlying..."
+                         placeholder="Search ticker/underlying"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10 pr-8 w-64"
@@ -936,7 +936,7 @@ const Ranking = () => {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
-                        placeholder="Search by ticker or underlying..."
+                         placeholder="Search ticker/underlying"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10 pr-8 w-72"
@@ -969,7 +969,7 @@ const Ranking = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Search by ticker or underlying..."
+                      placeholder="Search ticker/underlying"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10 pr-8"
