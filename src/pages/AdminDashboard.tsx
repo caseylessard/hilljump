@@ -6,9 +6,6 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Navigate } from "react-router-dom";
 
 // Import admin components
-// Test components removed - functionality consolidated
-import MstyEodhdTest from "@/components/admin/MstyEodhdTest";
-import ComprehensiveEodhdTest from "@/components/admin/ComprehensiveEodhdTest";
 import { DividendSystemTest } from "@/components/admin/DividendSystemTest";
 import { ETFEditor } from "@/components/admin/ETFEditor";
 import { DistributionEditor } from "@/components/admin/DistributionEditor";
@@ -26,8 +23,6 @@ import { DividendDataMonitor } from "@/components/admin/DividendDataMonitor";
 import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
 import { HistoricalPriceImport } from "@/components/admin/HistoricalPriceImport";
 import { AutoHistoricalPriceFetcher } from "@/components/admin/AutoHistoricalPriceFetcher";
-// QuickETFTest component removed
-import TestCanadianPrices from "@/components/admin/TestCanadianPrices";
 import ETFMetadataFetcher from "@/components/admin/ETFMetadataFetcher";
 import { ETFDataFixer } from "@/components/admin/ETFDataFixer";
 
@@ -148,28 +143,6 @@ const AdminDashboard = () => {
 
             <TabsContent value="pricing" className="space-y-4 md:space-y-6">
               <div className="grid gap-4 md:gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Price Testing & Updates</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="text-center py-4 text-muted-foreground">
-                      Price testing components consolidated into data management tools
-                    </div>
-                    <TestCanadianPrices />
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Data Source Tests</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <MstyEodhdTest />
-                    <ComprehensiveEodhdTest />
-                  </CardContent>
-                </Card>
-                
                 <Card>
                   <CardHeader>
                     <CardTitle>Historical Data</CardTitle>
