@@ -13,11 +13,12 @@ import DailyAlertsTestSuite from "@/components/admin/DailyAlertsTestSuite";
 import { RefreshDividendData } from "@/components/RefreshDividendData";
 import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
 import { DividendDuplicateCleanup } from "@/components/admin/DividendDuplicateCleanup";
+import { BulkDividendFetcher } from "@/components/admin/BulkDividendFetcher";
+import { AutoDividendFetcher } from "@/components/admin/AutoDividendFetcher";
 import { ETFDataImport } from "@/components/admin/ETFDataImport";
 import { ETFDataExport } from "@/components/admin/ETFDataExport";
 import { ETFActivator } from "@/components/admin/ETFActivator";
 import { DividendDataImport } from "@/components/admin/DividendDataImport";
-import { BulkDividendFetcher } from "@/components/admin/BulkDividendFetcher";
 import { DataUpdater } from "@/components/admin/DataUpdater";
 import { DividendDataMonitor } from "@/components/admin/DividendDataMonitor";
 import { DividendDataViewer } from "@/components/admin/DividendDataViewer";
@@ -111,6 +112,7 @@ const AdminDashboard = () => {
                     <CardTitle>Dividend Data Operations</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    <AutoDividendFetcher />
                     <RefreshDividendData />
                     <BulkDividendFetcher />
                     <DividendDataImport />
