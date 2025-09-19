@@ -226,10 +226,10 @@ export const MobileETFTable = ({
                         <span className="text-sm sm:text-base lg:text-sm">{countryFlag(etf)}</span>
                       </div>
                       <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
-                        {etf.fund || etf.name}
+                        {manager}
                       </div>
                       <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
-                        {etf.underlying && etf.strategy ? `${etf.underlying} • ${etf.strategy}` : (etf.underlying || etf.strategy || etf.strategyLabel)}
+                        {etf.underlying || etf.name}
                       </div>
                     </div>
                   </div>
