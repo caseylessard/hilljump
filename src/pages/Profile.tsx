@@ -500,6 +500,16 @@ const Profile = () => {
                   <Button variant="outline" onClick={refreshSubscription} size="sm">Refresh</Button>
                   <Button onClick={manageSubscription} size="sm">Manage</Button>
                   <Button variant="outline" onClick={resetPassword} size="sm">Reset Password</Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      window.location.href = '/';
+                    }}
+                    size="sm"
+                  >
+                    Log Out
+                  </Button>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
