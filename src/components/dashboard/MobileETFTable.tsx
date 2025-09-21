@@ -24,6 +24,7 @@ type Props = {
   frozenRankings?: Map<string, number>;
   persistentRanking?: Array<{ticker: string, rank: number, score: number, updatedAt: number}>;
   onSelectETF?: (etf: ScoredETF, rank: number) => void;
+  previewMode?: boolean;
 };
 
 export const MobileETFTable = ({ 
@@ -35,7 +36,8 @@ export const MobileETFTable = ({
   cachedPrices = {},
   frozenRankings = new Map(),
   persistentRanking = [],
-  onSelectETF 
+  onSelectETF,
+  previewMode = false
 }: Props) => {
   // Create original ranking lookup for persistent rank numbers
   const originalRankMap = useMemo(() => {
@@ -199,11 +201,17 @@ export const MobileETFTable = ({
         const price = liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0);
         const dripSum = getDripSum(etf.ticker);
         
+        // Preview mode: blur out ranks 1-3 and 11+
+        const shouldBlur = previewMode && (index <= 2 || index >= 10);
+        
         return (
           <Card 
             key={etf.ticker} 
-            className="p-4 sm:p-6 lg:p-4 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => onSelectETF?.(etf, rank)}
+            className={`p-4 sm:p-6 lg:p-4 cursor-pointer hover:shadow-md transition-shadow ${shouldBlur ? "opacity-30 blur-sm pointer-events-none" : ""}`}
+            onClick={() => {
+              if (shouldBlur) return; // Prevent clicks on blurred cards
+              onSelectETF?.(etf, rank);
+            }}
           >
             <CardContent className="p-0 space-y-3 sm:space-y-4 lg:space-y-3">
               {/* Header row */}

@@ -25,6 +25,8 @@ import { RefreshDataButton } from '@/components/RefreshDataButton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { MobileETFTable } from '@/components/dashboard/MobileETFTable';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Lock } from 'lucide-react';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -631,56 +633,74 @@ const Ranking = () => {
                       )}
                     </div>
                   </div>
-                </div>
+                 </div>
 
-                {/* Desktop: Full table */}
-                <div className="hidden lg:block">
-                  <OptimizedETFTable
-                    items={filtered} 
-                    live={cachedPrices}
-                    distributions={distributions}
-                    cachedDripData={dripDataTaxFree || {}}
-                    rsiSignals={rsiSignals || {}}
-                    originalRanking={currentRanked}
-                    persistentRanking={persistentRanking}
-                    allowSorting={isSubscribed || isAdmin}
-                    cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankings}
-                  />
-                </div>
-                
-                {/* Tablet: Enhanced mobile cards */}
-                <div className="hidden md:block lg:hidden">
-                  <MobileETFTable
-                    items={filtered}
-                    distributions={distributions}
-                    cachedDripData={dripDataTaxFree || {}}
-                    originalRanking={currentRanked}
-                    cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankings}
-                    persistentRanking={persistentRanking}
-                    onSelectETF={(etf, rank) => {
-                      console.log('Selected ETF:', etf, 'Rank:', rank);
-                    }}
-                  />
-                </div>
-                
-                {/* Mobile: Compact cards */}
-                <div className="block md:hidden">
-                  <MobileETFTable
-                    items={filtered}
-                    distributions={distributions}
-                    cachedDripData={dripDataTaxFree || {}}
-                    originalRanking={currentRanked}
-                    cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankings}
-                    persistentRanking={persistentRanking}
-                    onSelectETF={(etf, rank) => {
-                      // Handle ETF selection for mobile detail view if needed
-                      console.log('Selected ETF:', etf, 'Rank:', rank);
-                    }}
-                  />
-                </div>
+                 {/* Authentication Alert for Non-authenticated Users */}
+                 {!profile && (
+                   <Alert className="mb-4 border-primary/20 bg-primary/5">
+                     <Lock className="h-4 w-4" />
+                     <AlertDescription>
+                       <div className="flex items-center justify-between">
+                         <span>Sign in to view complete rankings. Preview shows positions 4-10 only.</span>
+                         <Button variant="outline" size="sm" onClick={() => window.location.href = '/auth'}>
+                           Sign In
+                         </Button>
+                       </div>
+                     </AlertDescription>
+                   </Alert>
+                 )}
+
+                 {/* Desktop: Full table */}
+                 <div className="hidden lg:block">
+                   <OptimizedETFTable
+                     items={filtered} 
+                     live={cachedPrices}
+                     distributions={distributions}
+                     cachedDripData={dripDataTaxFree || {}}
+                     rsiSignals={rsiSignals || {}}
+                     originalRanking={currentRanked}
+                     persistentRanking={persistentRanking}
+                     allowSorting={isSubscribed || isAdmin}
+                     cachedPrices={cachedPrices}
+                     frozenRankings={frozenRankings}
+                     previewMode={!profile}
+                   />
+                 </div>
+                 
+                 {/* Tablet: Enhanced mobile cards */}
+                 <div className="hidden md:block lg:hidden">
+                   <MobileETFTable
+                     items={filtered}
+                     distributions={distributions}
+                     cachedDripData={dripDataTaxFree || {}}
+                     originalRanking={currentRanked}
+                     cachedPrices={cachedPrices}
+                     frozenRankings={frozenRankings}
+                     persistentRanking={persistentRanking}
+                     previewMode={!profile}
+                     onSelectETF={(etf, rank) => {
+                       console.log('Selected ETF:', etf, 'Rank:', rank);
+                     }}
+                   />
+                 </div>
+                 
+                 {/* Mobile: Compact cards */}
+                 <div className="block md:hidden">
+                   <MobileETFTable
+                     items={filtered}
+                     distributions={distributions}
+                     cachedDripData={dripDataTaxFree || {}}
+                     originalRanking={currentRanked}
+                     cachedPrices={cachedPrices}
+                     frozenRankings={frozenRankings}
+                     persistentRanking={persistentRanking}
+                     previewMode={!profile}
+                     onSelectETF={(etf, rank) => {
+                       // Handle ETF selection for mobile detail view if needed
+                       console.log('Selected ETF:', etf, 'Rank:', rank);
+                     }}
+                   />
+                 </div>
               </TabsContent>
 
               <TabsContent value="taxed" className="space-y-4">
@@ -775,58 +795,76 @@ const Ranking = () => {
                         </button>
                       )}
                     </div>
-                  </div>
-                </div>
+                   </div>
+                 </div>
+                 
+                 {/* Authentication Alert for Non-authenticated Users */}
+                 {!profile && (
+                   <Alert className="mb-4 border-primary/20 bg-primary/5">
+                     <Lock className="h-4 w-4" />
+                     <AlertDescription>
+                       <div className="flex items-center justify-between">
+                         <span>Sign in to view complete rankings. Preview shows positions 4-10 only.</span>
+                         <Button variant="outline" size="sm" onClick={() => window.location.href = '/auth'}>
+                           Sign In
+                         </Button>
+                       </div>
+                     </AlertDescription>
+                   </Alert>
+                 )}
 
-                {/* Desktop: Full table */}
-                <div className="hidden lg:block">
-                  <OptimizedETFTable
-                    items={filtered} 
-                    live={cachedPrices}
-                    distributions={distributions}
-                    cachedDripData={dripDataTaxed || {}}
-                    rsiSignals={rsiSignals || {}}
-                    originalRanking={currentRanked}
-                    persistentRanking={persistentRanking}
-                    allowSorting={isSubscribed || isAdmin}
-                    cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankings}
-                    taxedScoring={true}
-                  />
-                </div>
-                
-                {/* Tablet: Enhanced mobile cards */}
-                <div className="hidden md:block lg:hidden">
-                  <MobileETFTable
-                    items={filtered}
-                    distributions={distributions}
-                    cachedDripData={dripDataTaxed || {}}
-                    originalRanking={currentRanked}
-                    cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankings}
-                    persistentRanking={persistentRanking}
-                    onSelectETF={(etf, rank) => {
-                      console.log('Selected ETF:', etf, 'Rank:', rank);
-                    }}
-                  />
-                </div>
-                
-                {/* Mobile: Compact cards */}
-                <div className="block md:hidden">
-                  <MobileETFTable
-                    items={filtered}
-                    distributions={distributions}
-                    cachedDripData={dripDataTaxed || {}}
-                    originalRanking={currentRanked}
-                    cachedPrices={cachedPrices}
-                    frozenRankings={frozenRankings}
-                    persistentRanking={persistentRanking}
-                    onSelectETF={(etf, rank) => {
-                      // Handle ETF selection for mobile detail view if needed
-                      console.log('Selected ETF:', etf, 'Rank:', rank);
-                    }}
-                  />
-                </div>
+                 {/* Desktop: Full table */}
+                 <div className="hidden lg:block">
+                   <OptimizedETFTable
+                     items={filtered} 
+                     live={cachedPrices}
+                     distributions={distributions}
+                     cachedDripData={dripDataTaxed || {}}
+                     rsiSignals={rsiSignals || {}}
+                     originalRanking={currentRanked}
+                     persistentRanking={persistentRanking}
+                     allowSorting={isSubscribed || isAdmin}
+                     cachedPrices={cachedPrices}
+                     frozenRankings={frozenRankings}
+                     taxedScoring={true}
+                     previewMode={!profile}
+                   />
+                 </div>
+                 
+                 {/* Tablet: Enhanced mobile cards */}
+                 <div className="hidden md:block lg:hidden">
+                   <MobileETFTable
+                     items={filtered}
+                     distributions={distributions}
+                     cachedDripData={dripDataTaxed || {}}
+                     originalRanking={currentRanked}
+                     cachedPrices={cachedPrices}
+                     frozenRankings={frozenRankings}
+                     persistentRanking={persistentRanking}
+                     previewMode={!profile}
+                     onSelectETF={(etf, rank) => {
+                       console.log('Selected ETF:', etf, 'Rank:', rank);
+                     }}
+                   />
+                 </div>
+                 
+                 {/* Mobile: Compact cards */}
+                 <div className="block md:hidden">
+                   <MobileETFTable
+                     items={filtered}
+                     distributions={distributions}
+                     cachedDripData={dripDataTaxed || {}}
+                     originalRanking={currentRanked}
+                     cachedPrices={cachedPrices}
+                     frozenRankings={frozenRankings}
+                     persistentRanking={persistentRanking}
+                     previewMode={!profile}
+                     onSelectETF={(etf, rank) => {
+                       // Handle ETF selection for mobile detail view if needed
+                       console.log('Selected ETF:', etf, 'Rank:', rank);
+                     }}
+                   />
+                 </div>
               </TabsContent>
             </Tabs>
           ) : (
@@ -986,6 +1024,21 @@ const Ranking = () => {
                 </div>
               </div>
 
+              {/* Authentication Alert for Non-authenticated Users */}
+              {!profile && (
+                <Alert className="mb-4 border-primary/20 bg-primary/5">
+                  <Lock className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="flex items-center justify-between">
+                      <span>Sign in to view complete rankings. Preview shows positions 4-10 only.</span>
+                      <Button variant="outline" size="sm" onClick={() => window.location.href = '/auth'}>
+                        Sign In
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
           {/* Desktop: Full table */}
           <div className="hidden lg:block">
             <OptimizedETFTable
@@ -999,6 +1052,7 @@ const Ranking = () => {
               allowSorting={isSubscribed || isAdmin}
               cachedPrices={cachedPrices}
               frozenRankings={frozenRankings}
+              previewMode={!profile}
             />
           </div>
           
@@ -1012,6 +1066,7 @@ const Ranking = () => {
               cachedPrices={cachedPrices}
               frozenRankings={frozenRankings}
               persistentRanking={persistentRanking}
+              previewMode={!profile}
               onSelectETF={(etf, rank) => {
                 console.log('Selected ETF:', etf, 'Rank:', rank);
               }}
@@ -1028,6 +1083,7 @@ const Ranking = () => {
               cachedPrices={cachedPrices}
               frozenRankings={frozenRankings}
               persistentRanking={persistentRanking}
+              previewMode={!profile}
               onSelectETF={(etf, rank) => {
                 // Handle ETF selection for mobile detail view if needed
                 console.log('Selected ETF:', etf, 'Rank:', rank);

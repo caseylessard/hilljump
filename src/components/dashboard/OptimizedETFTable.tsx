@@ -33,6 +33,7 @@ type Props = {
   cachedPrices?: Record<string, any>;
   frozenRankings?: Map<string, number>;
   taxedScoring?: boolean;
+  previewMode?: boolean;
 };
 
   // Updated ranking change indicator to show actual position changes
@@ -265,7 +266,8 @@ export const OptimizedETFTable = ({
   persistentRanking = [],
   cachedPrices = {},
   frozenRankings = new Map(),
-  taxedScoring = false
+  taxedScoring = false,
+  previewMode = false
 }: Props) => {
   // Debug DRIP data being passed to table
   console.log('🎯 OptimizedETFTable Debug:', {
@@ -710,11 +712,15 @@ export const OptimizedETFTable = ({
             const ret1w = (Math.pow(1 + daily, 7) - 1) * 100;
             const ret28d = liveItem?.totalReturn28dPercent ?? ret28dFallback;
             
+            // Preview mode: blur out ranks 1-3 and 11+
+            const shouldBlur = previewMode && (idx <= 2 || idx >= 10);
+            
             return (
               <TableRow
                 key={etf.ticker}
-                className={idx < 3 ? "font-semibold cursor-pointer hover:bg-accent" : "cursor-pointer hover:bg-accent"}
+                className={`${idx < 3 ? "font-semibold" : ""} cursor-pointer hover:bg-accent ${shouldBlur ? "opacity-30 blur-sm pointer-events-none" : ""}`}
                 onClick={() => { 
+                  if (shouldBlur) return; // Prevent clicks on blurred rows
                   const originalRank = lookupTables.originalRankMap.get(etf.ticker) || idx + 1;
                   setSelected(etf); 
                   setSelectedRank(originalRank); 
