@@ -105,7 +105,7 @@ const Home = () => {
               
               <Card className="overflow-hidden order-first lg:order-last">
                 <img 
-                  src={`${content.hero_image_url}?v=${Date.now()}`} 
+                  src={content.hero_image_url} 
                   alt="Investment platform visualization showing market data and analysis tools" 
                   className="w-full h-64 sm:h-80 lg:h-96 object-cover"
                 />
