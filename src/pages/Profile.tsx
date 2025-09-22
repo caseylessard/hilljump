@@ -43,6 +43,8 @@ const Profile = () => {
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<any[]>([]);
+  const [editingPosition, setEditingPosition] = useState<string | null>(null);
+  const [editShares, setEditShares] = useState<number>(0);
   const { isAdmin, loading: adminLoading } = useAdmin();
 
   // SEO
@@ -196,6 +198,43 @@ const Profile = () => {
     const { error } = await supabase.from("portfolio_positions").delete().eq("id", id);
     if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); return; }
     setPositions(prev => prev.filter(p => p.id !== id));
+  };
+
+  const startEdit = (position: Position) => {
+    setEditingPosition(position.id);
+    setEditShares(Number(position.shares));
+  };
+
+  const cancelEdit = () => {
+    setEditingPosition(null);
+    setEditShares(0);
+  };
+
+  const saveEdit = async (id: string, ticker: string) => {
+    if (!userId) return;
+    
+    if (editShares <= 0 || editShares > 1000000 || !isFinite(editShares)) {
+      toast({ title: "Invalid shares", description: "Please enter a valid number of shares (0.01 - 1,000,000)" });
+      return;
+    }
+
+    const { error } = await supabase.from("portfolio_positions").update({ 
+      shares: editShares 
+    }).eq("id", id);
+    
+    if (error) { 
+      toast({ title: "Update failed", description: error.message, variant: "destructive" }); 
+      return; 
+    }
+    
+    // Update local state
+    setPositions(prev => prev.map(p => 
+      p.id === id ? { ...p, shares: editShares } : p
+    ));
+    
+    setEditingPosition(null);
+    setEditShares(0);
+    toast({ title: "Position updated successfully" });
   };
 
   const savePreferences = async () => {
@@ -551,13 +590,41 @@ const Profile = () => {
                         positions.map((p) => {
                           const price = (prices[p.ticker] ?? 0) as number;
                           const value = price * (Number(p.shares) || 0);
+                          const isEditing = editingPosition === p.id;
+                          
                           return (
                             <TableRow key={p.id}>
                               <TableCell>{p.ticker}</TableCell>
-                              <TableCell className="text-right">{Number(p.shares)}</TableCell>
+                              <TableCell className="text-right">
+                                {isEditing ? (
+                                  <Input 
+                                    type="number" 
+                                    value={editShares} 
+                                    onChange={(e) => setEditShares(Number(e.target.value))}
+                                    className="w-20 text-right"
+                                    step="0.01"
+                                  />
+                                ) : (
+                                  Number(p.shares)
+                                )}
+                              </TableCell>
                               <TableCell className="text-right">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
-                              <TableCell className="text-right">{price ? `$${value.toFixed(2)}` : "-"}</TableCell>
-                              <TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button></TableCell>
+                              <TableCell className="text-right">
+                                {price ? `$${(isEditing ? price * editShares : value).toFixed(2)}` : "-"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {isEditing ? (
+                                  <div className="flex gap-1">
+                                    <Button variant="outline" size="sm" onClick={() => saveEdit(p.id, p.ticker)}>Save</Button>
+                                    <Button variant="outline" size="sm" onClick={cancelEdit}>Cancel</Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex gap-1">
+                                    <Button variant="outline" size="sm" onClick={() => startEdit(p)}>Edit</Button>
+                                    <Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button>
+                                  </div>
+                                )}
+                              </TableCell>
                             </TableRow>
                           );
                         })
