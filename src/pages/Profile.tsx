@@ -614,12 +614,12 @@ const Profile = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 {isEditing ? (
-                                  <div className="flex gap-1">
+                                  <div className="flex gap-1 justify-end">
                                     <Button variant="outline" size="sm" onClick={() => saveEdit(p.id, p.ticker)}>Save</Button>
                                     <Button variant="outline" size="sm" onClick={cancelEdit}>Cancel</Button>
                                   </div>
                                 ) : (
-                                  <div className="flex gap-1">
+                                  <div className="flex gap-1 justify-end">
                                     <Button variant="outline" size="sm" onClick={() => startEdit(p)}>Edit</Button>
                                     <Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button>
                                   </div>
