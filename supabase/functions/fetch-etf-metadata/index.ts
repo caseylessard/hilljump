@@ -158,15 +158,36 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Get specific tickers from request body if provided
+    let targetTickers: string[] = [];
+    try {
+      const body = await req.json();
+      if (body?.tickers && Array.isArray(body.tickers)) {
+        targetTickers = body.tickers;
+        console.log(`🎯 Processing specific tickers: ${targetTickers.join(', ')}`);
+      }
+    } catch (e) {
+      console.log('📝 No specific tickers provided, processing all ETFs needing metadata');
+    }
+
     // Get ETFs that need metadata (missing name, category, or summary)
     console.log('📊 Finding ETFs that need metadata');
-    const { data: etfs, error: etfError } = await supabase
+    let query = supabase
       .from('etfs')
       .select('id, ticker, name, category, summary, manager')
-      .eq('active', true)
-      .or('name.is.null,category.is.null,summary.is.null,manager.is.null')
-      .order('ticker')
-      .limit(50); // Process in reasonable batches
+      .eq('active', true);
+    
+    if (targetTickers.length > 0) {
+      // Only process specified tickers
+      query = query.in('ticker', targetTickers);
+    } else {
+      // Process all ETFs that need metadata
+      query = query.or('name.is.null,category.is.null,summary.is.null,manager.is.null')
+        .limit(50); // Process in reasonable batches
+    }
+    
+    query = query.order('ticker');
+    const { data: etfs, error: etfError } = await query;
 
     if (etfError) {
       throw new Error(`Failed to fetch ETFs: ${etfError.message}`);
