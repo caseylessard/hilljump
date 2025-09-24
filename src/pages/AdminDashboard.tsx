@@ -27,6 +27,7 @@ import { AutoHistoricalPriceFetcher } from "@/components/admin/AutoHistoricalPri
 import ETFMetadataFetcher from "@/components/admin/ETFMetadataFetcher";
 import { ETFDataFixer } from "@/components/admin/ETFDataFixer";
 import { ETFOrchestrator } from "@/components/admin/ETFOrchestrator";
+import { StalePriceUpdater } from "@/components/admin/StalePriceUpdater";
 
 const AdminDashboard = () => {
   const { isAdmin, loading } = useAdmin();
@@ -147,6 +148,15 @@ const AdminDashboard = () => {
 
             <TabsContent value="pricing" className="space-y-4 md:space-y-6">
               <div className="grid gap-4 md:gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Price Updates</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <StalePriceUpdater />
+                  </CardContent>
+                </Card>
+                
                 <Card>
                   <CardHeader>
                     <CardTitle>Historical Data</CardTitle>
