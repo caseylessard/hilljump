@@ -69,7 +69,9 @@ export const ETFOrchestrator = () => {
           break;
           
         case 'fetch-enhanced-metadata':
-          result = await supabase.functions.invoke('fetch-etf-metadata');
+          result = await supabase.functions.invoke('fetch-etf-metadata', {
+            body: { tickers: tickerList }
+          });
           break;
           
         case 'activate-etfs':
