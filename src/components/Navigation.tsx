@@ -35,7 +35,7 @@ const Navigation = () => {
     { href: "/ranking", label: "Income", icon: "lucide", lucideIcon: CircleDollarSign }
   ];
 
-  // Auth-only navigation items
+  // Auth-only navigation items (for hamburger menu)
   const authOnlyNavItems = [
     { href: "/portfolio", label: "Portfolio", icon: "lucide", lucideIcon: Briefcase }, 
     { href: "/bots", label: "Bots", icon: "lucide", lucideIcon: Bot },
@@ -44,13 +44,19 @@ const Navigation = () => {
     { href: "/crypto", label: "Crypto", icon: "lucide", lucideIcon: Bitcoin }
   ];
 
-  // Build final nav items based on auth status
+  // Build hamburger nav items (excludes income which is always visible on mobile)
+  const hamburgerNavItems = isAuthenticated 
+    ? authOnlyNavItems
+    : [];
+
+  // Build desktop nav items (includes all items)
   const navItems = isAuthenticated 
     ? [...baseNavItems, ...authOnlyNavItems]
     : baseNavItems;
 
   // Add admin link for admin users
   if (isAdmin) {
+    hamburgerNavItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: LockKeyhole });
     navItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: LockKeyhole });
   }
 
@@ -63,6 +69,11 @@ const Navigation = () => {
           HillJump
         </a>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" asChild>
+              <a href="/ranking" aria-label="Income">
+                <CircleDollarSign className="h-5 w-5" />
+              </a>
+            </Button>
             <UserBadge />
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
@@ -72,7 +83,7 @@ const Navigation = () => {
               </SheetTrigger>
               <SheetContent side="right" className="w-20">
                 <nav className="flex flex-col gap-4 mt-8" aria-label="Primary">
-                  {navItems.map((item) => (
+                  {hamburgerNavItems.map((item) => (
                     <Button key={item.href} variant="ghost" asChild className="justify-center p-3">
                       <a href={item.href} onClick={() => setIsOpen(false)} className="flex items-center" aria-label={item.label}>
                         <item.lucideIcon className="h-5 w-5" />

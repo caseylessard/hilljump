@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { User } from "lucide-react";
 
 function flagEmoji(country: 'US' | 'CA' | undefined) {
   return country === 'US' ? '🇺🇸' : '🇨🇦';
@@ -18,20 +19,23 @@ export const UserBadge = () => {
 
   if (!userId) {
     return (
-      <Button variant="ghost" asChild>
-        <a href="/auth">Profile</a>
+      <Button variant="ghost" size="icon" asChild>
+        <a href="/auth" aria-label="Sign in">
+          <User className="h-5 w-5" />
+        </a>
       </Button>
     );
   }
 
-  const name = profile?.first_name?.trim() || 'Account';
   const flag = flagEmoji(profile?.country as any);
 
   return (
-    <Button variant="ghost" asChild>
+    <Button variant="ghost" size="icon" asChild>
       <a href="/profile" aria-label="Profile">
-        <span className="mr-1" aria-hidden>{flag}</span>
-        <span>{name}</span>
+        <div className="relative">
+          <User className="h-5 w-5" />
+          <span className="absolute -top-1 -right-1 text-xs" aria-hidden>{flag}</span>
+        </div>
       </a>
     </Button>
   );
