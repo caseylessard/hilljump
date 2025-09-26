@@ -70,13 +70,12 @@ const Navigation = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-64">
+              <SheetContent side="right" className="w-20">
                 <nav className="flex flex-col gap-4 mt-8" aria-label="Primary">
                   {navItems.map((item) => (
-                    <Button key={item.href} variant="ghost" asChild className="justify-start font-roboto text-sm">
-                      <a href={item.href} onClick={() => setIsOpen(false)} className="flex items-center gap-3">
-                        <item.lucideIcon className="h-4 w-4" />
-                        <span>{item.label}</span>
+                    <Button key={item.href} variant="ghost" asChild className="justify-center p-3">
+                      <a href={item.href} onClick={() => setIsOpen(false)} className="flex items-center" aria-label={item.label}>
+                        <item.lucideIcon className="h-5 w-5" />
                       </a>
                     </Button>
                   ))}
