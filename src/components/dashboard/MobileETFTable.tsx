@@ -306,6 +306,12 @@ export const MobileETFTable = ({
               {/* Buy/Sell Signal */}
               <div className="flex justify-between items-center">
                 <PositionIndicator position={etf.position} />
+                <div className="text-xs text-muted-foreground">
+                  {distributions[etf.ticker]?.date ? 
+                    `Last: ${format(new Date(distributions[etf.ticker].date), "MM/dd/yy")}` : 
+                    "No distribution"
+                  }
+                </div>
               </div>
 
               {/* DRIP performance grid */}
