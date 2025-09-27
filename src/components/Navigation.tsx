@@ -154,17 +154,20 @@ const Navigation = () => {
             <a href={isAuthenticated ? "/profile" : "/auth"} className="flex items-center gap-2">
               {isAuthenticated ? (
                 <>
-                  <div className="relative lg:hidden">
+                  <div className="relative">
                     <User className="h-4 w-4" />
-                    <span className="absolute -top-1 -right-1 text-xs" aria-hidden>
+                    <span className="absolute -top-1 -right-1 text-xs lg:hidden" aria-hidden>
                       {flagEmoji(profile?.country as any)}
                     </span>
                   </div>
-                  <span className="hidden lg:inline">Profile</span>
+                  <span className="hidden lg:flex lg:items-center lg:gap-2">
+                    <span>{flagEmoji(profile?.country as any)}</span>
+                    <span>{profile?.first_name || profile?.username || "Profile"}</span>
+                  </span>
                 </>
               ) : (
                 <>
-                  <User className="h-4 w-4 lg:h-4 lg:w-4" />
+                  <User className="h-4 w-4" />
                   <span className="hidden lg:inline">Sign In</span>
                 </>
               )}
