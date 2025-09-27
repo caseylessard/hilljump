@@ -467,7 +467,16 @@ const Profile = () => {
             {(subscribed || isAdmin) && (
               <>
                 <Card className="p-4 grid gap-3">
-                  <h2 className="text-lg font-semibold">Portfolio Management</h2>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="font-medium">Portfolio Management</div>
+                      <div className="text-sm text-muted-foreground">Manage your holdings on the Portfolio page</div>
+                    </div>
+                    <Button asChild>
+                      <a href="/portfolio">Go to Portfolio</a>
+                    </Button>
+                  </div>
+                </Card>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
                     <Input type="number" placeholder="Shares" value={shares} onChange={(e) => setShares(Number(e.target.value))} />
