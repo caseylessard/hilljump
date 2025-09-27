@@ -323,7 +323,7 @@ const Portfolio = () => {
 
   // Get actual ranking positions for portfolio tickers
   const getETFRankingPosition = (ticker: string): number | null => {
-    if (!rankedETFs.length) return null;
+    if (!rankedETFs || !rankedETFs.length) return null;
     const index = rankedETFs.findIndex((etf: any) => etf.ticker === ticker);
     return index >= 0 ? index + 1 : null; // Convert to 1-based ranking
   };
@@ -382,7 +382,7 @@ const Portfolio = () => {
 
   // Update current portfolio when data loads and add DRIP scores + ranking positions
   const portfolioWithDRIPScores = useMemo(() => {
-    if (!portfolioPositions || !cachedDripData || !rankedETFs.length) return [];
+    if (!portfolioPositions || !cachedDripData || !rankedETFs || !rankedETFs.length) return [];
     
     const positions = portfolioPositions.map(p => {
       const dripData = calculateDRIPScore(p.ticker);
