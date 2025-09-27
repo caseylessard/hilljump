@@ -11,13 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Loader2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Zap } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
-import { DividendSystemTest } from "@/components/admin/DividendSystemTest";
-import { ETFEditor } from "@/components/admin/ETFEditor";
-import { DistributionEditor } from "@/components/admin/DistributionEditor";
-import DailyAlertsTestSuite from "@/components/admin/DailyAlertsTestSuite";
 import { RefreshDividendData } from "@/components/RefreshDividendData";
 import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
 import { DividendDuplicateCleanup } from "@/components/admin/DividendDuplicateCleanup";
@@ -26,7 +20,6 @@ interface Position { id: string; user_id: string; ticker: string; shares: number
 const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [importing, setImporting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [ticker, setTicker] = useState("");
@@ -377,95 +370,6 @@ const Profile = () => {
     }
   };
 
-  const testSampleStocks = async () => {
-    console.log('Testing WebSocket stream with sample stocks...');
-    
-    // Test stocks: mix of US and Canadian
-    const testTickers = [
-      'AAPL', 'GOOGL', 'MSFT', 'TSLA', 'NVDA', // US stocks
-      'SHOP.TO', 'RY.TO', 'TD.TO', 'CNR.TO', 'WEED.TO' // Canadian stocks
-    ];
-    
-    const results: any[] = [];
-    
-    // Create WebSocket connection
-    const wsUrl = `wss://lyjfwnlindbsbbwjzefh.supabase.co/functions/v1/etf-stream`;
-    const ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      console.log('WebSocket connected for testing');
-      ws.send(JSON.stringify({ type: 'test', tickers: testTickers }));
-    };
-    
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      console.log('Test message received:', message);
-      
-      if (message.type === 'data') {
-        results.push({
-          ticker: message.ticker,
-          country: message.ticker.includes('.TO') ? 'CA' : 'US',
-          data: message.data,
-          timestamp: new Date().toISOString()
-        });
-        setTestResults([...results]);
-      } else if (message.type === 'complete') {
-        ws.close();
-        console.log('Test complete:', results);
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket test error:', error);
-    };
-  };
-
-  const exportEtfs = async () => {
-    try {
-      const columns = [
-        'ticker','name','exchange','category','yield_ttm','total_return_1y','avg_volume','expense_ratio','volatility_1y','max_drawdown_1y','aum','manager','strategy_label','logo_key','country','summary'
-      ];
-      const { data, error } = await supabase
-        .from('etfs')
-        .select(columns.join(','))
-        .order('ticker');
-      if (error) throw error;
-      const esc = (v: any) => {
-        if (v == null) return '';
-        const s = String(v);
-        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-      };
-      const csv = [columns.join(',')]
-        .concat((data || []).map((row: any) => columns.map((c) => esc((row as any)[c])).join(',')))
-        .join('\n');
-      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'etfs_export.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast({ title: 'CSV downloaded', description: `${(data || []).length} ETFs exported` });
-    } catch (e: any) {
-      toast({ title: 'Export failed', description: e.message || String(e), variant: 'destructive' });
-    }
-  };
-
-  const importEtfsFromFile = async (file: File) => {
-    setImporting(true);
-    try {
-      const text = await file.text();
-      const { data, error } = await supabase.functions.invoke('import-etfs', { body: { csv: text } });
-      if (error) throw error;
-      const res: any = data || {};
-      toast({ title: 'Import complete', description: `Inserted ${res.inserted || 0}, updated ${res.updated || 0}` });
-    } catch (e: any) {
-      toast({ title: 'Import failed', description: e.message || String(e), variant: 'destructive' });
-    } finally {
-      setImporting(false);
-    }
-  };
   return (
     <div>
       <Navigation />
@@ -652,135 +556,6 @@ const Profile = () => {
                   <DividendDuplicateCleanup />
                 </div>
               </Card>
-            )}
-
-            {/* Admin Section - ETF Management */}
-            {isAdmin && !adminLoading && (
-              <>
-                <Card className="p-4">
-                  <h2 className="text-lg font-semibold mb-4">Admin Functions</h2>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Admin functions have been moved to the dedicated <a href="/admin" className="text-primary hover:underline">Admin Dashboard</a>
-                    </p>
-                  </div>
-                </Card>
-
-                <Card className="p-4 grid gap-3 mt-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="font-medium">Export/Import ETFs CSV</div>
-                      <div className="text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button onClick={exportEtfs} size="sm" className="text-xs sm:text-sm">Export CSV</Button>
-                      <label className={`cursor-pointer ${importing ? 'pointer-events-none' : ''}`}>
-                        <input 
-                          type="file" 
-                          accept=".csv" 
-                          className="hidden" 
-                          disabled={importing}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) importEtfsFromFile(file);
-                            e.currentTarget.value = '';
-                          }} 
-                        />
-                        <span className={`inline-flex items-center justify-center h-9 px-3 sm:px-4 rounded-md border bg-background gap-2 text-xs sm:text-sm ${importing ? 'opacity-50' : ''}`}>
-                          {importing && <Loader2 className="h-4 w-4 animate-spin" />}
-                          Import CSV
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                </Card>
-
-                <div className="space-y-6">
-                  <h2 className="text-xl sm:text-2xl font-semibold">WebSocket vs Cron Jobs Test</h2>
-                  <div className="text-center space-y-2">
-                    <p className="text-muted-foreground">Test WebSocket streaming vs traditional cron jobs</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                          <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-                          Current Cron Jobs
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="p-3 border rounded-lg">
-                            <div className="font-medium text-sm sm:text-base">dividend-updater-daily</div>
-                            <div className="text-xs sm:text-sm text-muted-foreground">Schedule: 0 6 * * * (Daily at 6 AM)</div>
-                            <Badge variant="outline" className="mt-1 text-xs">Active</Badge>
-                          </div>
-                          <div className="p-3 border rounded-lg">
-                            <div className="font-medium text-sm sm:text-base">fetch-etf-data-every-5min</div>
-                            <div className="text-xs sm:text-sm text-muted-foreground">Schedule: */5 * * * * (Every 5 minutes)</div>
-                            <Badge variant="outline" className="mt-1 text-xs">Active</Badge>
-                          </div>
-                        </div>
-                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                          <p className="text-xs sm:text-sm text-yellow-800">
-                            <strong>Recommendation:</strong> The 5-minute cron job can be removed if WebSocket streaming works reliably.
-                            Keep the daily dividend updater for scheduled maintenance.
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                          <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
-                          WebSocket Test
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <Button onClick={testSampleStocks} className="w-full text-sm sm:text-base">
-                            Test 10 Sample Stocks
-                          </Button>
-                          
-                          {testResults.length > 0 && (
-                            <ScrollArea className="h-48 sm:h-64">
-                              <div className="space-y-2">
-                                {testResults.map((result, index) => (
-                                  <div key={index} className="p-2 border rounded text-xs sm:text-sm">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <Badge variant={result.country === 'US' ? 'default' : 'secondary'} className="text-xs">
-                                          {result.ticker} ({result.country})
-                                        </Badge>
-                                        <div className="mt-1 text-xs text-muted-foreground">
-                                          Price: ${result.data.price?.toFixed(2) || 'N/A'}
-                                          {result.data.yield && ` | Yield: ${result.data.yield.toFixed(2)}%`}
-                                        </div>
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {new Date(result.timestamp).toLocaleTimeString()}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </ScrollArea>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-              <DividendSystemTest />
-                    <div className="text-center py-4 text-muted-foreground">
-                      Price testing components consolidated into admin tools
-                    </div>
-                  </div>
-                </div>
-              </>
             )}
           </>
         )}
