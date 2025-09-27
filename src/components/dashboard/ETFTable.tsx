@@ -377,10 +377,21 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         const sumA = getDripSum(a.ticker);
         const sumB = getDripSum(b.ticker);
         
-        // Sort by DRIP sum descending, then ticker ascending as tiebreaker
-        if (sumA !== sumB) {
-          return sumB - sumA; // descending
+        // Only use DRIP sum if we have meaningful data (not all zeros)
+        const hasValidDripData = sumA !== 0 || sumB !== 0 || Object.keys(dripData).length > 0;
+        
+        if (hasValidDripData && sumA !== sumB) {
+          return sumB - sumA; // descending by DRIP sum
         }
+        
+        // If no DRIP data yet, maintain original ranking order from compositeScore
+        const scoreA = a.compositeScore || 0;
+        const scoreB = b.compositeScore || 0;
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA; // descending by composite score
+        }
+        
+        // Final tiebreaker: alphabetical
         return a.ticker.localeCompare(b.ticker);
       }
       
