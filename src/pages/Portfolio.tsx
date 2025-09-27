@@ -800,12 +800,14 @@ const Portfolio = () => {
                                        <div className="text-xs text-muted-foreground">
                                          {aiRec.targetShares} shares
                                        </div>
-                                       <Badge 
-                                         variant={aiRec.action === 'INCREASE' ? 'default' : 
-                                                 aiRec.action === 'DECREASE' ? 'secondary' : 
-                                                 aiRec.action === 'SELL' ? 'destructive' : 'outline'}
-                                         className="text-xs"
-                                       >
+                                        <Badge 
+                                          variant={aiRec.action === 'INCREASE' ? 'default' : 
+                                                  aiRec.action === 'DECREASE' || aiRec.action === 'SELL' ? 'destructive' : 'outline'}
+                                          className={`text-xs ${
+                                            aiRec.action === 'INCREASE' ? 'bg-green-600 text-white' :
+                                            aiRec.action === 'DECREASE' || aiRec.action === 'SELL' ? 'bg-red-600 text-white' : ''
+                                          }`}
+                                        >
                                          {aiRec.action}
                                        </Badge>
                                        <div className="text-xs text-muted-foreground mt-1" title={aiRec.reason}>
