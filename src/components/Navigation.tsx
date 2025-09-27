@@ -37,7 +37,6 @@ const Navigation = () => {
 
   // Base navigation items - always visible
   const baseNavItems = [
-    { href: "/", label: "Home", icon: "lucide", lucideIcon: Home },
     { href: "/ranking", label: "Income", icon: "lucide", lucideIcon: CircleDollarSign }
   ];
 
