@@ -422,11 +422,11 @@ const Portfolio = () => {
   useEffect(() => {
     setCurrentPortfolio(portfolioWithDRIPScores);
     
-    // Generate AI advice when portfolio data is ready
-    if (portfolioWithDRIPScores.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0 && !aiAdviceLoading) {
+    // Generate AI advice when portfolio data is ready AND DRIP data is complete
+    if (portfolioWithDRIPScores.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0 && !aiAdviceLoading && isDripDataComplete) {
       generateAIAdvice(portfolioWithDRIPScores);
     }
-  }, [portfolioWithDRIPScores.length, Object.keys(cachedPrices).length, aiAdviceLoading]);
+  }, [portfolioWithDRIPScores.length, Object.keys(cachedPrices).length, aiAdviceLoading, isDripDataComplete]);
 
   // Portfolio management functions
   const addOrUpdatePosition = async () => {
@@ -530,7 +530,7 @@ const Portfolio = () => {
     setAiAdviceLoading(true);
     
     try {
-      const aiAdvisor = new AIPortfolioAdvisor(etfData, cachedPrices, frozenRankings);
+      const aiAdvisor = new AIPortfolioAdvisor(etfData, cachedPrices, frozenRankings, getRankForTicker, etfs);
       
       // Convert portfolio positions to AI advisor format
       const portfolioPositions: PortfolioPosition[] = positions.map(p => {

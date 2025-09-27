@@ -51,11 +51,15 @@ export class AIPortfolioAdvisor {
   private etfData: any;
   private cachedPrices: any;
   private frozenRankings: any;
+  private getRankForTicker: (ticker: string) => number | null;
+  private availableETFs: any[];
 
-  constructor(etfData: any, cachedPrices: any, frozenRankings: any) {
+  constructor(etfData: any, cachedPrices: any, frozenRankings: any, getRankForTicker: (ticker: string) => number | null, availableETFs: any[]) {
     this.etfData = etfData;
     this.cachedPrices = cachedPrices;
     this.frozenRankings = frozenRankings;
+    this.getRankForTicker = getRankForTicker;
+    this.availableETFs = availableETFs;
   }
 
   async analyzePortfolio(positions: PortfolioPosition[]): Promise<AIPortfolioAdvice> {
@@ -264,78 +268,53 @@ export class AIPortfolioAdvisor {
     
     console.log('🔍 Looking for new ETF recommendations, excluding:', Array.from(currentTickers));
     
-    // Get top-ranked ETFs not in portfolio
-    try {
-      const tickerList = Array.from(currentTickers).join(',');
+    // Use frozen rankings instead of database query
+    const etfsWithRanking = this.availableETFs
+      .map(etf => ({
+        ticker: etf.ticker,
+        rank_position: this.getRankForTicker(etf.ticker),
+        yield_ttm: etf.yield_ttm,
+        strategy_label: etf.strategy_label,
+        name: etf.name,
+        etfData: etf
+      }))
+      .filter(etf => etf.rank_position !== null && !currentTickers.has(etf.ticker))
+      .sort((a, b) => (a.rank_position! - b.rank_position!))
+      .slice(0, Math.min(10, maxRecommendations * 2));
+
+    console.log('📊 Found', etfsWithRanking.length, 'potential ETF recommendations using frozen rankings');
+
+    // Calculate suggested allocation based on portfolio size and position count
+    const allocationPerNewPosition = Math.min(0.15, totalValue * 0.2 / maxRecommendations / totalValue);
+
+    let addedCount = 0;
+    for (const etf of etfsWithRanking) {
+      if (addedCount >= maxRecommendations) break;
       
-      const { data: topETFs, error } = await supabase
-        .from('etf_rankings')
-        .select('ticker, rank_position')
-        .not('ticker', 'in', `(${tickerList})`)
-        .order('rank_position', { ascending: true })
-        .limit(Math.min(10, maxRecommendations * 2)); // Get extra to filter
-
-      if (error) {
-        console.error('❌ Error fetching ETF rankings:', error);
-        return [];
-      }
-
-      console.log('📊 Found', topETFs?.length || 0, 'potential ETF recommendations');
-
-      // Get additional data for these ETFs
-      if (topETFs && topETFs.length > 0) {
-        const { data: etfDetails } = await supabase
-          .from('etfs')
-          .select('ticker, yield_ttm, strategy_label, name')
-          .in('ticker', topETFs.map(etf => etf.ticker));
-
-        // Calculate suggested allocation based on portfolio size and position count
-        const allocationPerNewPosition = Math.min(0.15, totalValue * 0.2 / maxRecommendations / totalValue);
-
-        let addedCount = 0;
-        for (const etf of topETFs) {
-          if (addedCount >= maxRecommendations) break;
+      const price = this.cachedPrices?.[etf.ticker]?.price || 0;
+      
+      if (price > 0 && etf.yield_ttm) {
+        const targetValue = allocationPerNewPosition * totalValue;
+        const targetShares = Math.floor(targetValue / price);
+        
+        if (targetShares > 0) {
+          recommendations.push({
+            ticker: etf.ticker,
+            targetValue: Math.round(targetValue),
+            targetShares,
+            rankingPosition: etf.rank_position!,
+            yieldTTM: etf.yield_ttm,
+            strategy: etf.strategy_label,
+            reason: `Highly ranked (#${etf.rank_position}) ${etf.strategy_label || 'ETF'} with ${(etf.yield_ttm || 0).toFixed(1)}% yield. Strong addition to portfolio.`,
+            confidence: Math.max(70, 95 - (etf.rank_position! * 5))
+          });
           
-          const details = etfDetails?.find(d => d.ticker === etf.ticker);
-          const price = this.cachedPrices?.[etf.ticker]?.price || 0;
-          
-          if (price > 0) {
-            const targetValue = allocationPerNewPosition * totalValue;
-            const targetShares = Math.floor(targetValue / price);
-            
-            let reason = `Top-ranked ETF (#${etf.rank_position}) not in your portfolio.`;
-            let confidence = 85;
-            
-            if (details) {
-              if (details.yield_ttm && details.yield_ttm > 8) {
-                reason += ` High yield (${details.yield_ttm.toFixed(1)}%).`;
-                confidence += 5;
-              }
-              if (details.strategy_label) {
-                reason += ` Strategy: ${details.strategy_label}.`;
-              }
-            }
-
-            recommendations.push({
-              ticker: etf.ticker,
-              targetValue: Math.round(targetValue),
-              targetShares,
-              reason,
-              confidence,
-              rankingPosition: etf.rank_position,
-              yieldTTM: details?.yield_ttm,
-              strategy: details?.strategy_label
-            });
-            
-            addedCount++;
-          }
+          addedCount++;
         }
       }
-    } catch (error) {
-      console.error('❌ Error generating new ETF recommendations:', error);
     }
 
-    console.log('✅ Generated', recommendations.length, 'ETF recommendations');
+    console.log(`💡 Generated ${recommendations.length} new ETF recommendations using frozen rankings`);
     return recommendations;
   }
 
