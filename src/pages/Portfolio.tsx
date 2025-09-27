@@ -861,106 +861,8 @@ const Portfolio = () => {
                                    )}
                                  </TableCell>
                                </TableRow>
-                             );
-                                <TableCell className="font-bold text-primary">
-                                  {actualRank ? `#${actualRank}` : 'N/A'}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col gap-1">
-                                    <Badge className={dripDisplay.className}>
-                                      {dripDisplay.text}
-                                    </Badge>
-                                    <span className="text-xs text-muted-foreground">
-                                      {dripData.rawScore.toFixed(4)}
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="font-medium">{position.ticker}</TableCell>
-                                <TableCell>
-                                  {isEditing ? (
-                                    <Input
-                                      type="number"
-                                      value={editShares}
-                                      onChange={(e) => setEditShares(Number(e.target.value))}
-                                      className="w-20"
-                                    />
-                                  ) : (
-                                    position.shares.toLocaleString()
-                                  )}
-                                </TableCell>
-                                <TableCell>${price.toFixed(2)}</TableCell>
-                                <TableCell>${value.toLocaleString()}</TableCell>
-                                <TableCell className="text-center">
-                                  {aiAdviceLoading ? (
-                                    <div className="text-muted-foreground text-sm">Loading...</div>
-                                  ) : aiRec ? (
-                                    <div className="space-y-1">
-                                      <div className="font-medium">
-                                        {aiRec.action === 'INCREASE' && '↗️'}
-                                        {aiRec.action === 'DECREASE' && '↘️'}
-                                        {aiRec.action === 'SELL' && '❌'}
-                                        {aiRec.action === 'HOLD' && '➡️'} ${aiRec.targetValue.toLocaleString()}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {aiRec.targetShares} shares
-                                      </div>
-                                      <Badge 
-                                        variant={aiRec.action === 'INCREASE' ? 'default' : 
-                                                aiRec.action === 'DECREASE' ? 'secondary' : 
-                                                aiRec.action === 'SELL' ? 'destructive' : 'outline'}
-                                        className="text-xs"
-                                      >
-                                        {aiRec.action}
-                                      </Badge>
-                                      <div className="text-xs text-muted-foreground mt-1" title={aiRec.reason}>
-                                        {aiRec.confidence}% confidence
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="text-muted-foreground text-sm">-</div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex gap-2">
-                                    {isEditing ? (
-                                      <>
-                                        <Button
-                                          size="sm"
-                                          onClick={() => position.id && saveEdit(position.id, position.ticker)}
-                                        >
-                                          Save
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={cancelEdit}
-                                        >
-                                          Cancel
-                                        </Button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => startEdit(position)}
-                                        >
-                                          Edit
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          onClick={() => removePosition(position)}
-                                        >
-                                          Delete
-                                        </Button>
-                                      </>
-                                    )}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
+                              );
+                           })}
                         </TableBody>
                       </Table>
                     </div>
@@ -968,12 +870,14 @@ const Portfolio = () => {
                         <div className="font-semibold text-lg flex justify-between">
                           <span>Total Portfolio Value:</span>
                           <span>
-                            ${currentPortfolio.reduce((sum, position) => {
-                              const price = cachedPrices?.[position.ticker]?.price || 0;
-                              return sum + (position.shares * price);
-                            }, 0).toLocaleString()}
+                            ${totalValueWithRecommendations.toLocaleString()}
                           </span>
                         </div>
+                        {aiAdvice && aiAdvice.newETFRecommendations.length > 0 && (
+                          <div className="text-sm text-muted-foreground">
+                            Includes ${aiAdvice.newETFRecommendations.reduce((sum, rec) => sum + rec.targetValue, 0).toLocaleString()} in AI recommendations
+                          </div>
+                        )}
                         
                         {aiAdvice && (
                           <div className="bg-muted/30 p-4 rounded-lg">
@@ -1010,55 +914,6 @@ const Portfolio = () => {
                           </div>
                         )}
                       </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* AI New ETF Recommendations */}
-              {aiAdvice && aiAdvice.newETFRecommendations.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>AI Recommends Adding These ETFs</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {aiAdvice.newETFRecommendations.map((rec, index) => (
-                        <div key={rec.ticker} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <div className="font-medium text-lg">{rec.ticker}</div>
-                              {rec.rankingPosition && (
-                                <div className="text-sm text-muted-foreground">Rank: #{rec.rankingPosition}</div>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <div className="font-medium">${rec.targetValue.toLocaleString()}</div>
-                              <div className="text-sm text-muted-foreground">{rec.targetShares} shares</div>
-                            </div>
-                          </div>
-                          
-                          <p className="text-sm text-muted-foreground mb-2">{rec.reason}</p>
-                          
-                          <div className="flex justify-between items-center">
-                            <div className="flex gap-2">
-                              {rec.yieldTTM && (
-                                <Badge variant="outline">
-                                  {rec.yieldTTM.toFixed(1)}% yield
-                                </Badge>
-                              )}
-                              {rec.strategy && (
-                                <Badge variant="secondary">
-                                  {rec.strategy}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {rec.confidence}% confidence
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   </CardContent>
                 </Card>
               )}
