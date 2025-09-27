@@ -203,15 +203,22 @@ export const MobileETFTable = ({
         const price = liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0);
         const dripSum = getDripSum(etf.ticker);
         
-        // Preview mode: blur out ranks 1-3 and 11+
-        const shouldBlur = previewMode && (index <= 2 || index >= 10);
+        // Preview mode: replace sensitive data with placeholders for ranks 1-3 and 11+
+        const shouldObfuscate = previewMode && (index <= 2 || index >= 10);
+        
+        // Create obfuscated data
+        const displayTicker = shouldObfuscate ? "***" : etf.ticker;
+        const displayName = shouldObfuscate ? "Sign in to view premium rankings" : etf.name;
+        const displayPrice = shouldObfuscate ? "***" : price;
+        const displayDripSum = shouldObfuscate ? "***" : dripSum;
+        const displayRank = shouldObfuscate ? "***" : rank;
         
         return (
           <Card 
-            key={etf.ticker} 
-            className={`p-4 sm:p-6 lg:p-4 cursor-pointer hover:shadow-md transition-shadow ${shouldBlur ? "opacity-30 blur-sm pointer-events-none" : ""}`}
+            key={shouldObfuscate ? `obfuscated-${index}` : etf.ticker} 
+            className={`p-4 sm:p-6 lg:p-4 ${shouldObfuscate ? "" : "cursor-pointer hover:shadow-md"} transition-shadow`}
             onClick={() => {
-              if (shouldBlur) return; // Prevent clicks on blurred cards
+              if (shouldObfuscate) return; // Prevent clicks on obfuscated cards
               onSelectETF?.(etf, rank);
             }}
           >
@@ -232,7 +239,7 @@ export const MobileETFTable = ({
                     />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg sm:text-xl lg:text-lg">{displayTicker(etf.ticker)}</span>
+                        <span className="font-bold text-lg sm:text-xl lg:text-lg">{displayTicker}</span>
                         <span className="text-sm sm:text-base lg:text-sm">{countryFlag(etf)}</span>
                       </div>
                       <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">

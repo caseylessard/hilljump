@@ -682,15 +682,25 @@ export const OptimizedETFTable = ({
             const ret1w = (Math.pow(1 + daily, 7) - 1) * 100;
             const ret28d = liveItem?.totalReturn28dPercent ?? ret28dFallback;
             
-            // Preview mode: blur out ranks 1-3 and 11+
-            const shouldBlur = previewMode && (idx <= 2 || idx >= 10);
+            // Calculate DRIP sum for this ticker using lookupTables
+            const dripSum = lookupTables.getDripSum(etf.ticker);
+            
+            // Preview mode: replace sensitive data with placeholders for ranks 1-3 and 11+
+            const shouldObfuscate = previewMode && (idx <= 2 || idx >= 10);
+            
+            // Create obfuscated data
+            const displayTicker = shouldObfuscate ? "***" : etf.ticker;
+            const displayName = shouldObfuscate ? "Sign in to view premium rankings" : etf.name;
+            const displayPrice = shouldObfuscate ? "***" : (liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0));
+            const displayDripSum = shouldObfuscate ? "***" : dripSum;
+            const displayRank = shouldObfuscate ? "***" : idx + 1;
             
             return (
               <TableRow
-                key={etf.ticker}
-                className={`${idx < 3 ? "font-semibold" : ""} cursor-pointer hover:bg-accent ${shouldBlur ? "opacity-30 blur-sm pointer-events-none" : ""}`}
+                key={shouldObfuscate ? `obfuscated-${idx}` : etf.ticker}
+                className={`${idx < 3 ? "font-semibold" : ""} ${shouldObfuscate ? "" : "cursor-pointer hover:bg-accent"}`}
                 onClick={() => { 
-                  if (shouldBlur) return; // Prevent clicks on blurred rows
+                  if (shouldObfuscate) return; // Prevent clicks on obfuscated rows
                   const originalRank = lookupTables.originalRankMap.get(etf.ticker) || idx + 1;
                   setSelected(etf); 
                   setSelectedRank(originalRank); 
@@ -698,75 +708,75 @@ export const OptimizedETFTable = ({
                   setOpen(true); 
                 }}
               >
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono">{displayRank}</span>
+                      {!shouldObfuscate && <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />}
+                    </div>
+                  </TableCell>
                  <TableCell>
-                   <div className="flex items-center gap-2">
-                     <span className="font-mono">{frozenRankings.get(etf.ticker) || idx + 1}</span>
-                     <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />
+                   <div className="inline-flex flex-col">
+                     <span className="inline-flex items-center">
+                       {displayTicker} {!shouldObfuscate && <span className="ml-1" aria-hidden>{helperFunctions.countryFlag(etf)}</span>}
+                     </span>
+                     <span className="text-xs text-muted-foreground">{shouldObfuscate ? "" : helperFunctions.getFundManager(etf)}</span>
                    </div>
                  </TableCell>
-                <TableCell>
-                  <div className="inline-flex flex-col">
-                    <span className="inline-flex items-center">
-                      {helperFunctions.displayTicker(etf.ticker)} <span className="ml-1" aria-hidden>{helperFunctions.countryFlag(etf)}</span>
-                    </span>
-                    <span className="text-xs text-muted-foreground">{helperFunctions.getFundManager(etf)}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <TrendIndicator position={etf.position} />
-                </TableCell>
+                 <TableCell className="text-center">
+                   {shouldObfuscate ? "***" : <TrendIndicator position={etf.position} />}
+                 </TableCell>
+                  <TableCell className="text-right">
+                    {shouldObfuscate ? "***" : (() => {
+                      const price = liveItem?.price;
+                      const cp = liveItem?.changePercent;
+                      
+                      if (price == null) return "—";
+                      const up = (cp ?? 0) >= 0;
+                      
+                      // Get price update date from cached prices
+                      const cachedPrice = cachedPrices[etf.ticker];
+                      const priceDate = cachedPrice?.priceUpdatedAt;
+                      const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
+                      
+                      return (
+                        <div className="inline-flex flex-col items-end leading-tight">
+                          <span>${price.toFixed(2)}</span>
+                          <div className="text-xs space-y-0">
+                            {cp != null && (
+                              <div className={up ? "text-emerald-600" : "text-red-600"}>
+                                {up ? "+" : ""}{cp.toFixed(2)}%
+                              </div>
+                            )}
+                            {dateStr && (
+                              <div className="text-muted-foreground">
+                                {dateStr}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
                  <TableCell className="text-right">
-                   {(() => {
-                     const price = liveItem?.price;
-                     const cp = liveItem?.changePercent;
+                   {shouldObfuscate ? "***" : (() => {
+                     const dist = distributions[etf.ticker];
+                     if (!dist) return "—";
                      
-                     if (price == null) return "—";
-                     const up = (cp ?? 0) >= 0;
+                     const currency = dist.currency || (etf.currency === 'CAD' ? 'CAD' : 'USD');
+                     const symbol = currency === 'CAD' ? 'CA$' : '$';
                      
-                     // Get price update date from cached prices
-                     const cachedPrice = cachedPrices[etf.ticker];
-                     const priceDate = cachedPrice?.priceUpdatedAt;
-                     const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
-                     
+                     const amountStr = `${symbol}${dist.amount.toFixed(3)}`;
+                     const [year, month, day] = dist.date.split('-').map(Number);
+                     const localDate = new Date(year, month - 1, day);
+                     const dateStr = format(localDate, "MM/dd");
                      return (
                        <div className="inline-flex flex-col items-end leading-tight">
-                         <span>${price.toFixed(2)}</span>
-                         <div className="text-xs space-y-0">
-                           {cp != null && (
-                             <div className={up ? "text-emerald-600" : "text-red-600"}>
-                               {up ? "+" : ""}{cp.toFixed(2)}%
-                             </div>
-                           )}
-                           {dateStr && (
-                             <div className="text-muted-foreground">
-                               {dateStr}
-                             </div>
-                           )}
-                         </div>
+                         <span>{amountStr}</span>
+                         <span className="text-muted-foreground text-xs">{dateStr}</span>
                        </div>
                      );
                    })()}
                  </TableCell>
-                <TableCell className="text-right">
-                  {(() => {
-                    const dist = distributions[etf.ticker];
-                    if (!dist) return "—";
-                    
-                    const currency = dist.currency || (etf.currency === 'CAD' ? 'CAD' : 'USD');
-                    const symbol = currency === 'CAD' ? 'CA$' : '$';
-                    
-                    const amountStr = `${symbol}${dist.amount.toFixed(3)}`;
-                    const [year, month, day] = dist.date.split('-').map(Number);
-                    const localDate = new Date(year, month - 1, day);
-                    const dateStr = format(localDate, "MM/dd");
-                    return (
-                      <div className="inline-flex flex-col items-end leading-tight">
-                        <span>{amountStr}</span>
-                        <span className="text-muted-foreground text-xs">{dateStr}</span>
-                      </div>
-                    );
-                  })()}
-                </TableCell>
                 <TableCell className="text-right">
                   <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
                 </TableCell>
