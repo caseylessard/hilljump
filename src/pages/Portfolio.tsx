@@ -332,7 +332,7 @@ const Portfolio = () => {
         const score = storedScores[etf.ticker];
         return {
           ...etf,
-          compositeScore: score?.composite_score || 0
+          compositeScore: score?.compositeScore || 0
         };
       });
 
