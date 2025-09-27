@@ -74,7 +74,6 @@ const Navigation = () => {
                 <CircleDollarSign className="h-5 w-5" />
               </a>
             </Button>
-            <UserBadge />
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Open menu">
@@ -91,6 +90,9 @@ const Navigation = () => {
                       </a>
                     </Button>
                   ))}
+                  <div className="border-t pt-4">
+                    <UserBadge />
+                  </div>
                 </nav>
               </SheetContent>
             </Sheet>
@@ -110,13 +112,16 @@ const Navigation = () => {
         <nav className="flex items-center gap-2" aria-label="Primary">
           {navItems.map((item) => (
             <Button key={item.href} variant="ghost" asChild className="font-roboto text-sm">
-              <a href={item.href} className="flex items-center gap-2">
-                <item.lucideIcon className="h-4 w-4 lg:hidden" />
-                <span className="hidden lg:inline">{item.label}</span>
+              <a href={item.href}>
+                {item.label}
               </a>
             </Button>
           ))}
-          <UserBadge />
+          <Button variant="ghost" asChild className="font-roboto text-sm">
+            <a href={isAuthenticated ? "/profile" : "/auth"}>
+              {isAuthenticated ? "Profile" : "Sign In"}
+            </a>
+          </Button>
         </nav>
       </div>
     </header>
