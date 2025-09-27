@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { ScoredETF, scoreETFs } from '@/lib/scoring';
 import { useCachedETFs, useCachedPrices, useCachedDistributions, useCachedDRIP, useCachedStoredScores } from '@/hooks/useCachedETFData';
-import { useBulkRSISignals } from '@/hooks/useBulkETFData';
+import { useBulkRSISignals, useBulkDividendPredictions } from '@/hooks/useBulkETFData';
 import { Distribution, fetchLatestDistributions } from '@/lib/dividends';
 import { saveCurrentRankings } from '@/hooks/useRankingHistory';
 import { getETFs } from '@/lib/db';
@@ -182,6 +182,9 @@ const Ranking = () => {
   
   // Get RSI signals for trend indicators
   const { data: rsiSignals = {}, isLoading: rsiLoading } = useBulkRSISignals(tickers.slice(0, 50)); // Limit to prevent timeout
+
+  // Get dividend predictions
+  const { data: dividendPredictions = {} } = useBulkDividendPredictions(tickers);
 
   // Helper function to build rankings
   const buildRanking = (etfs: any[], storedScores: any, cachedPrices: any, dripData: any, rsiSignals: any, scenario: string): ScoredETF[] => {
@@ -669,37 +672,39 @@ const Ranking = () => {
                  
                  {/* Tablet: Enhanced mobile cards */}
                  <div className="hidden md:block lg:hidden">
-                   <MobileETFTable
-                     items={filtered}
-                     distributions={distributions}
-                     cachedDripData={dripDataTaxFree || {}}
-                     originalRanking={currentRanked}
-                     cachedPrices={cachedPrices}
-                     frozenRankings={frozenRankings}
-                     persistentRanking={persistentRanking}
-                     previewMode={!profile}
-                     onSelectETF={(etf, rank) => {
-                       console.log('Selected ETF:', etf, 'Rank:', rank);
-                     }}
-                   />
+                    <MobileETFTable
+                      items={filtered}
+                      distributions={distributions}
+                      dividendPredictions={dividendPredictions}
+                      cachedDripData={dripDataTaxFree || {}}
+                      originalRanking={currentRanked}
+                      cachedPrices={cachedPrices}
+                      frozenRankings={frozenRankings}
+                      persistentRanking={persistentRanking}
+                      previewMode={!profile}
+                      onSelectETF={(etf, rank) => {
+                        console.log('Selected ETF:', etf, 'Rank:', rank);
+                      }}
+                    />
                  </div>
                  
                  {/* Mobile: Compact cards */}
                  <div className="block md:hidden">
-                   <MobileETFTable
-                     items={filtered}
-                     distributions={distributions}
-                     cachedDripData={dripDataTaxFree || {}}
-                     originalRanking={currentRanked}
-                     cachedPrices={cachedPrices}
-                     frozenRankings={frozenRankings}
-                     persistentRanking={persistentRanking}
-                     previewMode={!profile}
-                     onSelectETF={(etf, rank) => {
-                       // Handle ETF selection for mobile detail view if needed
-                       console.log('Selected ETF:', etf, 'Rank:', rank);
-                     }}
-                   />
+                    <MobileETFTable
+                      items={filtered}
+                      distributions={distributions}
+                      dividendPredictions={dividendPredictions}
+                      cachedDripData={dripDataTaxFree || {}}
+                      originalRanking={currentRanked}
+                      cachedPrices={cachedPrices}
+                      frozenRankings={frozenRankings}
+                      persistentRanking={persistentRanking}
+                      previewMode={!profile}
+                      onSelectETF={(etf, rank) => {
+                        // Handle ETF selection for mobile detail view if needed
+                        console.log('Selected ETF:', etf, 'Rank:', rank);
+                      }}
+                    />
                  </div>
               </TabsContent>
 
@@ -833,37 +838,39 @@ const Ranking = () => {
                  
                  {/* Tablet: Enhanced mobile cards */}
                  <div className="hidden md:block lg:hidden">
-                   <MobileETFTable
-                     items={filtered}
-                     distributions={distributions}
-                     cachedDripData={dripDataTaxed || {}}
-                     originalRanking={currentRanked}
-                     cachedPrices={cachedPrices}
-                     frozenRankings={frozenRankings}
-                     persistentRanking={persistentRanking}
-                     previewMode={!profile}
-                     onSelectETF={(etf, rank) => {
-                       console.log('Selected ETF:', etf, 'Rank:', rank);
-                     }}
-                   />
+                    <MobileETFTable
+                      items={filtered}
+                      distributions={distributions}
+                      dividendPredictions={dividendPredictions}
+                      cachedDripData={dripDataTaxed || {}}
+                      originalRanking={currentRanked}
+                      cachedPrices={cachedPrices}
+                      frozenRankings={frozenRankings}
+                      persistentRanking={persistentRanking}
+                      previewMode={!profile}
+                      onSelectETF={(etf, rank) => {
+                        console.log('Selected ETF:', etf, 'Rank:', rank);
+                      }}
+                    />
                  </div>
                  
                  {/* Mobile: Compact cards */}
                  <div className="block md:hidden">
-                   <MobileETFTable
-                     items={filtered}
-                     distributions={distributions}
-                     cachedDripData={dripDataTaxed || {}}
-                     originalRanking={currentRanked}
-                     cachedPrices={cachedPrices}
-                     frozenRankings={frozenRankings}
-                     persistentRanking={persistentRanking}
-                     previewMode={!profile}
-                     onSelectETF={(etf, rank) => {
-                       // Handle ETF selection for mobile detail view if needed
-                       console.log('Selected ETF:', etf, 'Rank:', rank);
-                     }}
-                   />
+                    <MobileETFTable
+                      items={filtered}
+                      distributions={distributions}
+                      dividendPredictions={dividendPredictions}
+                      cachedDripData={dripDataTaxed || {}}
+                      originalRanking={currentRanked}
+                      cachedPrices={cachedPrices}
+                      frozenRankings={frozenRankings}
+                      persistentRanking={persistentRanking}
+                      previewMode={!profile}
+                      onSelectETF={(etf, rank) => {
+                        // Handle ETF selection for mobile detail view if needed
+                        console.log('Selected ETF:', etf, 'Rank:', rank);
+                      }}
+                    />
                  </div>
               </TabsContent>
             </Tabs>
@@ -1061,6 +1068,7 @@ const Ranking = () => {
             <MobileETFTable
               items={filtered}
               distributions={distributions}
+              dividendPredictions={dividendPredictions}
               cachedDripData={dripDataTaxFree || {}}
               originalRanking={currentRanked}
               cachedPrices={cachedPrices}
@@ -1078,6 +1086,7 @@ const Ranking = () => {
             <MobileETFTable
               items={filtered}
               distributions={distributions}
+              dividendPredictions={dividendPredictions}
               cachedDripData={dripDataTaxFree || {}}
               originalRanking={currentRanked}
               cachedPrices={cachedPrices}

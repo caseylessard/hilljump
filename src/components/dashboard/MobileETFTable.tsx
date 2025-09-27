@@ -18,6 +18,7 @@ type Props = {
   items: ScoredETF[];
   live?: Record<string, LivePrice>;
   distributions?: Record<string, { amount: number; date: string; currency?: string }>;
+  dividendPredictions?: Record<string, { amount: number; date: string }>;
   cachedDripData?: Record<string, any>;
   originalRanking?: ScoredETF[];
   cachedPrices?: Record<string, any>;
@@ -31,6 +32,7 @@ export const MobileETFTable = ({
   items, 
   live = {}, 
   distributions = {}, 
+  dividendPredictions = {},
   cachedDripData = {}, 
   originalRanking = [],
   cachedPrices = {},
@@ -310,8 +312,8 @@ export const MobileETFTable = ({
                   {distributions[etf.ticker]?.date ? (
                     <>
                       Last {format(new Date(distributions[etf.ticker].date), "MM/dd")}
-                      {(etf as any).nextDistributionDate && (
-                        <>, Next {format(new Date((etf as any).nextDistributionDate), "MM/dd")}</>
+                      {dividendPredictions[etf.ticker]?.date && (
+                        <>, Next {format(new Date(dividendPredictions[etf.ticker].date), "MM/dd")}</>
                       )}
                     </>
                   ) : (
