@@ -423,10 +423,10 @@ const Portfolio = () => {
     setCurrentPortfolio(portfolioWithDRIPScores);
     
     // Generate AI advice when portfolio data is ready
-    if (portfolioWithDRIPScores.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0) {
+    if (portfolioWithDRIPScores.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0 && !aiAdviceLoading) {
       generateAIAdvice(portfolioWithDRIPScores);
     }
-  }, [portfolioWithDRIPScores, cachedPrices]);
+  }, [portfolioWithDRIPScores.length, Object.keys(cachedPrices).length, aiAdviceLoading]);
 
   // Portfolio management functions
   const addOrUpdatePosition = async () => {
@@ -524,9 +524,11 @@ const Portfolio = () => {
 
   // AI Portfolio Advisor
   const generateAIAdvice = async (positions: typeof portfolioWithDRIPScores) => {
-    if (positions.length === 0) return;
+    if (positions.length === 0 || aiAdviceLoading) return;
     
+    console.log('🤖 Generating AI advice for', positions.length, 'positions');
     setAiAdviceLoading(true);
+    
     try {
       const aiAdvisor = new AIPortfolioAdvisor(etfData, cachedPrices, frozenRankings);
       
@@ -547,12 +549,21 @@ const Portfolio = () => {
           strategy: etfDetails?.strategy_label,
           riskScore: etfDetails?.risk_score || 50
         };
-      });
+      }).filter(p => p.currentPrice > 0); // Filter out positions without prices
+      
+      console.log('🔍 Analyzing', portfolioPositions.length, 'valid positions');
+      
+      if (portfolioPositions.length === 0) {
+        console.warn('⚠️ No valid positions to analyze');
+        setAiAdvice(null);
+        return;
+      }
       
       const advice = await aiAdvisor.analyzePortfolio(portfolioPositions);
+      console.log('✅ AI advice generated:', advice);
       setAiAdvice(advice);
     } catch (error) {
-      console.error('Error generating AI advice:', error);
+      console.error('❌ Error generating AI advice:', error);
       setAiAdvice(null);
     } finally {
       setAiAdviceLoading(false);

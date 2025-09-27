@@ -259,16 +259,28 @@ export class AIPortfolioAdvisor {
     const currentTickers = new Set(currentPositions.map(p => p.ticker));
     const recommendations: NewETFRecommendation[] = [];
     
+    // Limit recommendations to prevent infinite loops
+    const maxRecommendations = Math.min(3, Math.max(1, 10 - currentPositions.length));
+    
+    console.log('🔍 Looking for new ETF recommendations, excluding:', Array.from(currentTickers));
+    
     // Get top-ranked ETFs not in portfolio
     try {
+      const tickerList = Array.from(currentTickers).join(',');
+      
       const { data: topETFs, error } = await supabase
         .from('etf_rankings')
         .select('ticker, rank_position')
-        .not('ticker', 'in', `(${Array.from(currentTickers).join(',')})`)
+        .not('ticker', 'in', `(${tickerList})`)
         .order('rank_position', { ascending: true })
-        .limit(10);
+        .limit(Math.min(10, maxRecommendations * 2)); // Get extra to filter
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching ETF rankings:', error);
+        return [];
+      }
+
+      console.log('📊 Found', topETFs?.length || 0, 'potential ETF recommendations');
 
       // Get additional data for these ETFs
       if (topETFs && topETFs.length > 0) {
@@ -278,11 +290,12 @@ export class AIPortfolioAdvisor {
           .in('ticker', topETFs.map(etf => etf.ticker));
 
         // Calculate suggested allocation based on portfolio size and position count
-        const suggestedPositions = Math.min(3, Math.max(1, 12 - currentPositions.length));
-        const allocationPerNewPosition = Math.min(0.15, totalValue * 0.3 / suggestedPositions / totalValue);
+        const allocationPerNewPosition = Math.min(0.15, totalValue * 0.2 / maxRecommendations / totalValue);
 
-        for (let i = 0; i < Math.min(suggestedPositions, topETFs.length); i++) {
-          const etf = topETFs[i];
+        let addedCount = 0;
+        for (const etf of topETFs) {
+          if (addedCount >= maxRecommendations) break;
+          
           const details = etfDetails?.find(d => d.ticker === etf.ticker);
           const price = this.cachedPrices?.[etf.ticker]?.price || 0;
           
@@ -313,13 +326,16 @@ export class AIPortfolioAdvisor {
               yieldTTM: details?.yield_ttm,
               strategy: details?.strategy_label
             });
+            
+            addedCount++;
           }
         }
       }
     } catch (error) {
-      console.error('Error generating new ETF recommendations:', error);
+      console.error('❌ Error generating new ETF recommendations:', error);
     }
 
+    console.log('✅ Generated', recommendations.length, 'ETF recommendations');
     return recommendations;
   }
 
