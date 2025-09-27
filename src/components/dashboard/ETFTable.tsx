@@ -348,6 +348,23 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     return drip4w + drip13w + drip26w + drip52w;
   };
 
+  // Check if DRIP data is fully loaded for meaningful sorting
+  const isDripDataComplete = useMemo(() => {
+    if (Object.keys(dripData).length === 0) return false;
+    
+    // Check if we have data for at least 80% of items and all 4 periods
+    const tickersWithCompleteData = items.filter(item => {
+      const tickerData = dripData[item.ticker];
+      return tickerData && 
+             tickerData.drip4wPercent !== undefined &&
+             tickerData.drip13wPercent !== undefined &&
+             tickerData.drip26wPercent !== undefined &&
+             tickerData.drip52wPercent !== undefined;
+    });
+    
+    return tickersWithCompleteData.length >= (items.length * 0.8);
+  }, [dripData, items]);
+
   const rows = useMemo(() => {
     const getVal = (etf: ScoredETF): number | string => {
       // Look up live data using the full ticker (including .TO for Canadian ETFs)
@@ -377,18 +394,18 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
         const sumA = getDripSum(a.ticker);
         const sumB = getDripSum(b.ticker);
         
-        // Only use DRIP sum if we have meaningful data (not all zeros)
-        const hasValidDripData = sumA !== 0 || sumB !== 0 || Object.keys(dripData).length > 0;
-        
-        if (hasValidDripData && sumA !== sumB) {
-          return sumB - sumA; // descending by DRIP sum
-        }
-        
-        // If no DRIP data yet, maintain original ranking order from compositeScore
-        const scoreA = a.compositeScore || 0;
-        const scoreB = b.compositeScore || 0;
-        if (scoreA !== scoreB) {
-          return scoreB - scoreA; // descending by composite score
+        // Only use DRIP sum if we have complete DRIP data loaded
+        if (isDripDataComplete && (sumA !== 0 || sumB !== 0)) {
+          if (sumA !== sumB) {
+            return sumB - sumA; // descending by DRIP sum
+          }
+        } else {
+          // If DRIP data is incomplete, use stored composite scores to maintain consistent ranking
+          const scoreA = a.compositeScore || 0;
+          const scoreB = b.compositeScore || 0;
+          if (scoreA !== scoreB) {
+            return scoreB - scoreA; // descending by composite score
+          }
         }
         
         // Final tiebreaker: alphabetical
