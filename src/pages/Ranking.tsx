@@ -655,16 +655,17 @@ const Ranking = () => {
 
                  {/* Desktop: Full table */}
                  <div className="hidden lg:block">
-                   <OptimizedETFTable
-                     items={filtered} 
-                     live={cachedPrices}
-                     distributions={distributions}
-                     cachedDripData={dripDataTaxFree || {}}
-                     rsiSignals={rsiSignals || {}}
-                     originalRanking={currentRanked}
-                     persistentRanking={persistentRanking}
-                     allowSorting={isSubscribed || isAdmin}
-                     cachedPrices={cachedPrices}
+                    <OptimizedETFTable
+                      items={filtered} 
+                      live={cachedPrices}
+                      distributions={distributions}
+                      cachedDripData={dripDataTaxFree || {}}
+                      rsiSignals={rsiSignals || {}}
+                      originalRanking={currentRanked}
+                      persistentRanking={persistentRanking}
+                      allowSorting={isSubscribed || isAdmin}
+                      cachedPrices={cachedPrices}
+                      storedScores={storedScores || {}}
                      frozenRankings={frozenRankings}
                      previewMode={!profile}
                    />
@@ -820,16 +821,17 @@ const Ranking = () => {
 
                  {/* Desktop: Full table */}
                  <div className="hidden lg:block">
-                   <OptimizedETFTable
-                     items={filtered} 
-                     live={cachedPrices}
-                     distributions={distributions}
-                     cachedDripData={dripDataTaxed || {}}
-                     rsiSignals={rsiSignals || {}}
-                     originalRanking={currentRanked}
-                     persistentRanking={persistentRanking}
-                     allowSorting={isSubscribed || isAdmin}
-                     cachedPrices={cachedPrices}
+                    <OptimizedETFTable
+                      items={filtered} 
+                      live={cachedPrices}
+                      distributions={distributions}
+                      cachedDripData={dripDataTaxed || {}}
+                      rsiSignals={rsiSignals || {}}
+                      originalRanking={currentRanked}
+                      persistentRanking={persistentRanking}
+                      allowSorting={isSubscribed || isAdmin}
+                      cachedPrices={cachedPrices}
+                      storedScores={storedScores || {}}
                      frozenRankings={frozenRankings}
                      taxedScoring={true}
                      previewMode={!profile}
@@ -1048,16 +1050,17 @@ const Ranking = () => {
 
           {/* Desktop: Full table */}
           <div className="hidden lg:block">
-            <OptimizedETFTable
-              items={filtered} 
-              live={cachedPrices}
-              distributions={distributions}
-              cachedDripData={dripDataTaxFree || {}}
-              rsiSignals={rsiSignals || {}}
-              originalRanking={currentRanked}
-              persistentRanking={persistentRanking}
-              allowSorting={isSubscribed || isAdmin}
-              cachedPrices={cachedPrices}
+             <OptimizedETFTable
+               items={filtered} 
+               live={cachedPrices}
+               distributions={distributions}
+               cachedDripData={dripDataTaxFree || {}}
+               rsiSignals={rsiSignals || {}}
+               originalRanking={currentRanked}
+               persistentRanking={persistentRanking}
+               allowSorting={isSubscribed || isAdmin}
+               cachedPrices={cachedPrices}
+               storedScores={storedScores || {}}
               frozenRankings={frozenRankings}
               previewMode={!profile}
             />

@@ -19,6 +19,7 @@ import Navigation from "@/components/Navigation";
 import { RefreshButton } from "@/components/RefreshButton";
 import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useFrozenRankings } from "@/hooks/useFrozenRankings";
 
 const Portfolio = () => {
   // Get user profile for country-specific data
@@ -230,16 +231,30 @@ const Portfolio = () => {
     });
   }, [etfData, storedScores, cachedDripData, rsiSignals]);
 
-  // Create ranked ETFs using same logic as Rankings page - sort by composite score
-  const rankedETFs = useMemo(() => {
-    if (!etfs.length) return [];
+  // Create ranked ETFs using frozen ranking system
+  const isDripDataComplete = useMemo(() => {
+    if (Object.keys(cachedDripData).length === 0) return false;
     
-    // Sort by composite score (highest first) - EXACT same as Rankings page  
-    const sorted = [...etfs].sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
+    // Check if we have data for at least 80% of items and all 4 periods
+    const tickersWithCompleteData = etfs.filter(etf => {
+      const tickerData = cachedDripData[etf.ticker];
+      return tickerData && 
+             tickerData.drip4wPercent !== undefined &&
+             tickerData.drip13wPercent !== undefined &&
+             tickerData.drip26wPercent !== undefined &&
+             tickerData.drip52wPercent !== undefined;
+    });
     
-    console.log(`✅ Ranked ${sorted.length} ETFs by composite score for Portfolio matching`);
-    return sorted;
-  }, [etfs]);
+    return tickersWithCompleteData.length >= (etfs.length * 0.8);
+  }, [cachedDripData, etfs]);
+  
+  // Use frozen rankings hook for stable position numbers
+  const { frozenRankings, getRankForTicker, sortByFrozenRank } = useFrozenRankings({
+    etfs,
+    dripData: cachedDripData,
+    storedScores,
+    isDripDataComplete
+  });
 
   // SEO setup
   useEffect(() => {
@@ -321,11 +336,9 @@ const Portfolio = () => {
     };
   }, [etfs, cachedPrices, cachedDripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minWeight, preferences.minTradingDays, portfolioSize]);
 
-  // Get actual ranking positions for portfolio tickers
+  // Get actual ranking positions for portfolio tickers using frozen rankings
   const getETFRankingPosition = (ticker: string): number | null => {
-    if (!rankedETFs || !rankedETFs.length) return null;
-    const index = rankedETFs.findIndex((etf: any) => etf.ticker === ticker);
-    return index >= 0 ? index + 1 : null; // Convert to 1-based ranking
+    return getRankForTicker(ticker);
   };
   const calculateDRIPScore = (ticker: string): { score: number; rawScore: number } => {
     const tickerDripData = cachedDripData?.[ticker];
@@ -382,7 +395,7 @@ const Portfolio = () => {
 
   // Update current portfolio when data loads and add DRIP scores + ranking positions
   const portfolioWithDRIPScores = useMemo(() => {
-    if (!portfolioPositions || !cachedDripData || !rankedETFs || !rankedETFs.length) return [];
+    if (!portfolioPositions || !cachedDripData || frozenRankings.size === 0) return [];
     
     const positions = portfolioPositions.map(p => {
       const dripData = calculateDRIPScore(p.ticker);
@@ -397,15 +410,9 @@ const Portfolio = () => {
       };
     });
     
-    // Sort by actual ranking position (lowest number = best rank)
-    return positions.sort((a, b) => {
-      // Handle null positions (put them at the end)
-      if (a.rankingPosition === null && b.rankingPosition === null) return 0;
-      if (a.rankingPosition === null) return 1;
-      if (b.rankingPosition === null) return -1;
-      return a.rankingPosition - b.rankingPosition;
-    });
-  }, [portfolioPositions, cachedDripData, rankedETFs]);
+    // Sort by frozen ranking position using the hook's helper
+    return sortByFrozenRank(positions);
+  }, [portfolioPositions, cachedDripData, frozenRankings, sortByFrozenRank]);
 
   // Update current portfolio when data loads
   useEffect(() => {

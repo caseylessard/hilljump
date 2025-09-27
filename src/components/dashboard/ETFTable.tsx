@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { predictNextDistribution } from "@/lib/dividends";
 import { useCachedDRIP } from "@/hooks/useCachedETFData";
 import { useRankingHistory, type RankingChange } from "@/hooks/useRankingHistory";
+import { useFrozenRankings } from "@/hooks/useFrozenRankings";
 
 import { DistributionHistory } from "@/components/dashboard/DistributionHistory";
 import { ArrowUpRight, ArrowDownRight, X, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from "lucide-react";
@@ -31,9 +32,10 @@ type Props = {
   cachedDripData?: Record<string, any>;
   originalRanking?: ScoredETF[]; // Full original ranking to preserve rank numbers
   cachedPrices?: Record<string, any>; // Add cached prices prop
+  storedScores?: Record<string, any>; // Add stored scores for frozen rankings
 };
 
-export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [], cachedPrices = {} }: Props) => {
+export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [], cachedPrices = {}, storedScores = {} }: Props) => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
@@ -48,14 +50,31 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   // Get ranking history for change indicators
   const { data: rankingChanges = {} } = useRankingHistory(tickers);
   
-  // Create original ranking lookup for persistent rank numbers
+  // Use frozen rankings for stable rank numbers
+  const { frozenRankings, getRankForTicker } = useFrozenRankings({
+    etfs: items,
+    dripData: cachedDripData,
+    storedScores,
+    isDripDataComplete: Object.keys(cachedDripData).length > 0 // Inline check here
+  });
+  
+  // Create original ranking lookup for backward compatibility
   const originalRankMap = useMemo(() => {
     const map = new Map<string, number>();
-    originalRanking.forEach((etf, index) => {
-      map.set(etf.ticker, index + 1);
-    });
+    
+    // Use frozen rankings if available, fall back to original ranking
+    if (frozenRankings.size > 0) {
+      frozenRankings.forEach((rank, ticker) => {
+        map.set(ticker, rank);
+      });
+    } else {
+      originalRanking.forEach((etf, index) => {
+        map.set(etf.ticker, index + 1);
+      });
+    }
+    
     return map;
-  }, [originalRanking]);
+  }, [frozenRankings, originalRanking]);
 
   // Navigation helpers
   const currentIndex = useMemo(() => {
@@ -233,17 +252,14 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     return ticker.replace(/\.(TO|NE)$/, '');
   }
 
-  // Component for ranking change indicator - shows actual position changes vs stored rankings
+  // Component for ranking change indicator - shows actual position changes vs frozen rankings
   const RankingChangeIndicator = ({ ticker, currentRank }: { ticker: string; currentRank: number }) => {
-    // Find the stored persistent ranking for this ticker
-    const persistentRankItem = originalRanking.find(etf => etf.ticker === ticker);
-    if (!persistentRankItem) return null;
-    
-    const storedRank = originalRankMap.get(ticker);
-    if (!storedRank || storedRank === currentRank) return null;
+    // Get the frozen rank for comparison
+    const frozenRank = getRankForTicker(ticker);
+    if (!frozenRank || frozenRank === currentRank) return null;
     
     // Calculate change: positive = improvement (lower rank number)
-    const change = storedRank - currentRank;
+    const change = frozenRank - currentRank;
     
     // Only show meaningful changes (> 1 position, < 20 positions to avoid noise)
     if (Math.abs(change) <= 1 || Math.abs(change) > 20) return null;
@@ -338,6 +354,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     }
   };
 
+  // Check if DRIP data is fully loaded for meaningful sorting
   const getDripSum = (ticker: string): number => {
     const drip4w = getDripPercent(ticker, "4w");
     const drip13w = getDripPercent(ticker, "13w");
@@ -350,11 +367,11 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
 
   // Check if DRIP data is fully loaded for meaningful sorting
   const isDripDataComplete = useMemo(() => {
-    if (Object.keys(dripData).length === 0) return false;
+    if (Object.keys(cachedDripData).length === 0) return false;
     
     // Check if we have data for at least 80% of items and all 4 periods
     const tickersWithCompleteData = items.filter(item => {
-      const tickerData = dripData[item.ticker];
+      const tickerData = cachedDripData[item.ticker];
       return tickerData && 
              tickerData.drip4wPercent !== undefined &&
              tickerData.drip13wPercent !== undefined &&
@@ -363,7 +380,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
     });
     
     return tickersWithCompleteData.length >= (items.length * 0.8);
-  }, [dripData, items]);
+  }, [cachedDripData, items]);
 
   const rows = useMemo(() => {
     const getVal = (etf: ScoredETF): number | string => {
@@ -426,7 +443,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
       return sortDir === "asc" ? an - bn : bn - an;
     };
     return [...items].sort(cmp);
-  }, [items, sortKey, sortDir, live, dripData]);
+  }, [items, sortKey, sortDir, live, cachedDripData, isDripDataComplete]);
 
   return (
     <Card className="p-2 sm:p-4 overflow-x-auto">

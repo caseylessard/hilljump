@@ -34,6 +34,7 @@ type Props = {
   frozenRankings?: Map<string, number>;
   taxedScoring?: boolean;
   previewMode?: boolean;
+  storedScores?: Record<string, any>; // Add stored scores for frozen rankings
 };
 
   // Updated ranking change indicator to show actual position changes
