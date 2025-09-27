@@ -38,7 +38,7 @@ const Portfolio = () => {
   const [selectedETFs, setSelectedETFs] = useState<AIPortfolioETF[]>([]);
 
   // Current portfolio management (for My Portfolio tab)
-  const [currentPortfolio, setCurrentPortfolio] = useState<{ticker: string; shares: number; id?: string; dripScore?: number}[]>([]);
+  const [currentPortfolio, setCurrentPortfolio] = useState<{ticker: string; shares: number; id?: string; dripScore?: number; dripRawScore?: number}[]>([]);
   const [newPosition, setNewPosition] = useState({ ticker: '', shares: '' });
   const [rebalanceRecommendations, setRebalanceRecommendations] = useState<any[]>([]);
   const [editingPosition, setEditingPosition] = useState<string | null>(null);
@@ -311,9 +311,9 @@ const Portfolio = () => {
   }, [etfs, cachedPrices, cachedDripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minWeight, preferences.minTradingDays, portfolioSize]);
 
   // Calculate DRIP score for a position
-  const calculateDRIPScore = (ticker: string): number => {
+  const calculateDRIPScore = (ticker: string): { score: number; rawScore: number } => {
     const tickerDripData = cachedDripData?.[ticker];
-    if (!tickerDripData) return 0;
+    if (!tickerDripData) return { score: 0, rawScore: 0 };
 
     // Extract DRIP percentages (same logic as Rankings)
     const getDripPercent = (period: string) => {
@@ -354,13 +354,13 @@ const Portfolio = () => {
     const condBuy = (ladderDeltaSignalScore > 0.005) && (d1 > 0) && (d2 > 0) && (d3 > 0);
     const condSell = (ladderDeltaSignalScore < 0) || (d1 <= 0);
     
-    // Return DRIP position: 1=Buy, 0=Hold, -1=Sell
+    // Return DRIP position: 1=Buy, 0=Hold, -1=Sell and raw score
     if (condBuy) {
-      return 1;
+      return { score: 1, rawScore: ladderDeltaSignalScore };
     } else if (condSell) {
-      return -1;
+      return { score: -1, rawScore: ladderDeltaSignalScore };
     } else {
-      return 0;
+      return { score: 0, rawScore: ladderDeltaSignalScore };
     }
   };
 
@@ -368,15 +368,26 @@ const Portfolio = () => {
   const portfolioWithDRIPScores = useMemo(() => {
     if (!portfolioPositions || !cachedDripData) return [];
     
-    const positions = portfolioPositions.map(p => ({
-      ticker: p.ticker,
-      shares: Number(p.shares),
-      id: p.id,
-      dripScore: calculateDRIPScore(p.ticker)
-    }));
+    const positions = portfolioPositions.map(p => {
+      const dripData = calculateDRIPScore(p.ticker);
+      return {
+        ticker: p.ticker,
+        shares: Number(p.shares),
+        id: p.id,
+        dripScore: dripData.score,
+        dripRawScore: dripData.rawScore
+      };
+    });
     
-    // Sort by DRIP score (highest first)
-    return positions.sort((a, b) => b.dripScore - a.dripScore);
+    // Sort by raw DRIP score (highest first), then by signal score
+    return positions.sort((a, b) => {
+      // First sort by signal (BUY > HOLD > SELL)
+      if (a.dripScore !== b.dripScore) {
+        return b.dripScore - a.dripScore;
+      }
+      // Then by raw score within same signal
+      return b.dripRawScore - a.dripRawScore;
+    });
   }, [portfolioPositions, cachedDripData]);
 
   // Update current portfolio when data loads
@@ -558,7 +569,8 @@ const Portfolio = () => {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>DRIP Score</TableHead>
+                            <TableHead>Rank</TableHead>
+                            <TableHead>DRIP Signal</TableHead>
                             <TableHead>Ticker</TableHead>
                             <TableHead>Shares</TableHead>
                             <TableHead>Price</TableHead>
@@ -571,7 +583,9 @@ const Portfolio = () => {
                             const price = cachedPrices?.[position.ticker]?.price || 0;
                             const value = position.shares * price;
                             const isEditing = editingPosition === position.id;
-                            const dripScore = (position as any).dripScore || calculateDRIPScore(position.ticker);
+                            const dripData = (position as any).dripScore !== undefined ? 
+                              { score: (position as any).dripScore, rawScore: (position as any).dripRawScore } : 
+                              calculateDRIPScore(position.ticker);
                             
                             // DRIP score styling and text
                             const getDRIPDisplay = (score: number) => {
@@ -580,14 +594,22 @@ const Portfolio = () => {
                               return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
                             };
                             
-                            const dripDisplay = getDRIPDisplay(dripScore);
+                            const dripDisplay = getDRIPDisplay(dripData.score);
                             
                             return (
                               <TableRow key={position.id || index}>
+                                <TableCell className="font-bold text-primary">
+                                  #{index + 1}
+                                </TableCell>
                                 <TableCell>
-                                  <Badge className={dripDisplay.className}>
-                                    {dripDisplay.text}
-                                  </Badge>
+                                  <div className="flex flex-col gap-1">
+                                    <Badge className={dripDisplay.className}>
+                                      {dripDisplay.text}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {dripData.rawScore.toFixed(4)}
+                                    </span>
+                                  </div>
                                 </TableCell>
                                 <TableCell className="font-medium">{position.ticker}</TableCell>
                                 <TableCell>
