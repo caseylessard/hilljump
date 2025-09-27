@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, CircleDollarSign, TrendingUp, ChartCandlestick, Bitcoin, LockKeyhole, Home, Briefcase, Bot, User } from "lucide-react";
+import { Menu, CircleDollarSign, LockKeyhole, Home, Briefcase, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -42,11 +42,7 @@ const Navigation = () => {
 
   // Auth-only navigation items (for hamburger menu)
   const authOnlyNavItems = [
-    { href: "/portfolio", label: "Portfolio", icon: "lucide", lucideIcon: Briefcase }, 
-    { href: "/bots", label: "Bots", icon: "lucide", lucideIcon: Bot },
-    { href: "/breakout", label: "Breakout", icon: "lucide", lucideIcon: TrendingUp },
-    { href: "/options", label: "Options", icon: "lucide", lucideIcon: ChartCandlestick },
-    { href: "/crypto", label: "Crypto", icon: "lucide", lucideIcon: Bitcoin }
+    { href: "/portfolio", label: "Portfolio", icon: "lucide", lucideIcon: Briefcase }
   ];
 
   // Build hamburger nav items (excludes income which is always visible on mobile)
