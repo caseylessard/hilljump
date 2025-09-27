@@ -21,8 +21,6 @@ import DailyAlertsTestSuite from "@/components/admin/DailyAlertsTestSuite";
 import { RefreshDividendData } from "@/components/RefreshDividendData";
 import { ManualDividendEntry } from "@/components/admin/ManualDividendEntry";
 import { DividendDuplicateCleanup } from "@/components/admin/DividendDuplicateCleanup";
-import { SEOSettings } from "@/components/admin/SEOSettings";
-import { HomepageEditor } from "@/components/admin/HomepageEditor";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -643,16 +641,6 @@ const Profile = () => {
               </>
             )}
 
-            {/* Admin Section - SEO & Content Management */}
-            {isAdmin && !adminLoading && (
-              <Card className="p-4">
-                <h2 className="text-lg font-semibold mb-4">Admin - Site Settings</h2>
-                <div className="grid gap-4">
-                  <SEOSettings />
-                  <HomepageEditor />
-                </div>
-              </Card>
-            )}
 
             {/* Admin Section - Dividend Management */}
             {isAdmin && !adminLoading && (

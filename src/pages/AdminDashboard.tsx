@@ -28,6 +28,8 @@ import ETFMetadataFetcher from "@/components/admin/ETFMetadataFetcher";
 import { ETFDataFixer } from "@/components/admin/ETFDataFixer";
 import { ETFOrchestrator } from "@/components/admin/ETFOrchestrator";
 import { StalePriceUpdater } from "@/components/admin/StalePriceUpdater";
+import { SEOSettings } from "@/components/admin/SEOSettings";
+import { HomepageEditor } from "@/components/admin/HomepageEditor";
 
 const AdminDashboard = () => {
   const { isAdmin, loading } = useAdmin();
@@ -72,11 +74,12 @@ const AdminDashboard = () => {
           </div>
 
           <Tabs defaultValue="data" className="space-y-4 md:space-y-6 px-2 md:px-0">
-            <TabsList className="grid w-full grid-cols-5 md:grid-cols-5 sm:grid-cols-2 overflow-x-auto">
+            <TabsList className="grid w-full grid-cols-6 md:grid-cols-6 sm:grid-cols-2 overflow-x-auto">
               <TabsTrigger value="data" className="text-xs sm:text-sm">Data</TabsTrigger>
               <TabsTrigger value="dividends" className="text-xs sm:text-sm">Dividends</TabsTrigger>
               <TabsTrigger value="pricing" className="text-xs sm:text-sm">Pricing</TabsTrigger>
               <TabsTrigger value="alerts" className="text-xs sm:text-sm">Alerts</TabsTrigger>
+              <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>
               <TabsTrigger value="monitoring" className="text-xs sm:text-sm">Monitor</TabsTrigger>
             </TabsList>
 
@@ -180,6 +183,20 @@ const AdminDashboard = () => {
                     <div className="text-center py-4 text-muted-foreground">
                       ETF testing tools consolidated into data management section
                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="settings" className="space-y-4 md:space-y-6">
+              <div className="grid gap-4 md:gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Site Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <SEOSettings />
+                    <HomepageEditor />
                   </CardContent>
                 </Card>
               </div>
