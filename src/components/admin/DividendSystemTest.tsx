@@ -105,10 +105,11 @@ export const DividendSystemTest = () => {
           />
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button 
             onClick={testDividendFetch}
             disabled={testing || !ticker}
+            className="w-full sm:w-auto text-xs sm:text-sm"
           >
             {testing ? 'Testing...' : 'Test Dividend Updater'}
           </Button>
@@ -117,6 +118,7 @@ export const DividendSystemTest = () => {
             onClick={testYahooDirectly}
             disabled={testing || !ticker}
             variant="outline"
+            className="w-full sm:w-auto text-xs sm:text-sm"
           >
             Test Yahoo Direct
           </Button>
