@@ -230,6 +230,17 @@ const Portfolio = () => {
     });
   }, [etfData, storedScores, cachedDripData, rsiSignals]);
 
+  // Create ranked ETFs using same logic as Rankings page - sort by composite score
+  const rankedETFs = useMemo(() => {
+    if (!etfs.length) return [];
+    
+    // Sort by composite score (highest first) - EXACT same as Rankings page  
+    const sorted = [...etfs].sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
+    
+    console.log(`✅ Ranked ${sorted.length} ETFs by composite score for Portfolio matching`);
+    return sorted;
+  }, [etfs]);
+
   // SEO setup
   useEffect(() => {
     document.title = "Portfolio Management — HillJump";
@@ -310,41 +321,9 @@ const Portfolio = () => {
     };
   }, [etfs, cachedPrices, cachedDripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minWeight, preferences.minTradingDays, portfolioSize]);
 
-  // Get the current ETF rankings to find actual positions
-  const { data: rankedETFs, isLoading: rankingsLoading } = useQuery({
-    queryKey: ['etf-rankings', storedScores, cachedDripData],
-    queryFn: async () => {
-      if (!storedScores || Object.keys(storedScores).length === 0) return [];
-      
-      // Build rankings using same logic as Rankings page
-      const scoredETFs = Object.values(etfData).filter((etf: any) => {
-        if (!etf.ticker || ['TEST', 'DEMO', 'SAMPLE'].some(test => etf.ticker.includes(test))) {
-          return false;
-        }
-        if (etf.yield_ttm && etf.yield_ttm > 50) {
-          return false;
-        }
-        if (!etf.current_price || etf.current_price <= 0) {
-          return false;
-        }
-        return true;
-      }).map((etf: any) => {
-        const score = storedScores[etf.ticker];
-        return {
-          ...etf,
-          compositeScore: score?.compositeScore || 0
-        };
-      });
-
-      // Sort by composite score (highest first) - same as Rankings page
-      return scoredETFs.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
-    },
-    enabled: !!storedScores && Object.keys(storedScores).length > 0
-  });
-
   // Get actual ranking positions for portfolio tickers
   const getETFRankingPosition = (ticker: string): number | null => {
-    if (!rankedETFs) return null;
+    if (!rankedETFs.length) return null;
     const index = rankedETFs.findIndex((etf: any) => etf.ticker === ticker);
     return index >= 0 ? index + 1 : null; // Convert to 1-based ranking
   };
@@ -403,7 +382,7 @@ const Portfolio = () => {
 
   // Update current portfolio when data loads and add DRIP scores + ranking positions
   const portfolioWithDRIPScores = useMemo(() => {
-    if (!portfolioPositions || !cachedDripData || !rankedETFs) return [];
+    if (!portfolioPositions || !cachedDripData || !rankedETFs.length) return [];
     
     const positions = portfolioPositions.map(p => {
       const dripData = calculateDRIPScore(p.ticker);
