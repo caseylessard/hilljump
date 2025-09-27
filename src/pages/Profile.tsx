@@ -477,84 +477,12 @@ const Profile = () => {
                     </Button>
                   </div>
                 </Card>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <Input placeholder="Ticker (e.g., AAPL)" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
-                    <Input type="number" placeholder="Shares" value={shares} onChange={(e) => setShares(Number(e.target.value))} />
-                    <Button onClick={addOrUpdate}>Add / Update</Button>
-                  </div>
-                </Card>
-
-                <Card className="p-3 sm:p-4 overflow-x-auto">
-                  <h3 className="text-md font-semibold mb-3">Portfolio Positions</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[15%] text-xs sm:text-sm">Ticker</TableHead>
-                        <TableHead className="text-right w-[15%] text-xs sm:text-sm">Shares</TableHead>
-                        <TableHead className="text-right w-[20%] text-xs sm:text-sm">Price</TableHead>
-                        <TableHead className="text-right w-[25%] text-xs sm:text-sm">Value</TableHead>
-                        <TableHead className="text-right w-[25%] text-xs sm:text-sm">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loading ? (
-                        <TableRow><TableCell colSpan={5} className="text-xs sm:text-sm">Loading...</TableCell></TableRow>
-                      ) : positions.length === 0 ? (
-                        <TableRow><TableCell colSpan={5} className="text-xs sm:text-sm">No positions yet.</TableCell></TableRow>
-                      ) : (
-                        positions.map((p) => {
-                          const price = (prices[p.ticker] ?? 0) as number;
-                          const value = price * (Number(p.shares) || 0);
-                          const isEditing = editingPosition === p.id;
-                          
-                          return (
-                            <TableRow key={p.id}>
-                              <TableCell className="text-xs sm:text-sm font-medium">{p.ticker}</TableCell>
-                              <TableCell className="text-right text-xs sm:text-sm">
-                                {isEditing ? (
-                                  <Input 
-                                    type="number" 
-                                    value={editShares} 
-                                    onChange={(e) => setEditShares(Number(e.target.value))}
-                                    className="w-16 sm:w-20 text-right text-xs sm:text-sm"
-                                    step="0.01"
-                                  />
-                                ) : (
-                                  Number(p.shares)
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right text-xs sm:text-sm">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
-                              <TableCell className="text-right text-xs sm:text-sm">
-                                {price ? `$${(isEditing ? price * editShares : value).toFixed(2)}` : "-"}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {isEditing ? (
-                                  <div className="flex flex-col gap-1 min-w-0">
-                                    <Button variant="outline" size="sm" onClick={() => saveEdit(p.id, p.ticker)} className="text-xs px-2 py-1">Save</Button>
-                                    <Button variant="outline" size="sm" onClick={cancelEdit} className="text-xs px-2 py-1">Cancel</Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col gap-1 min-w-0">
-                                    <Button variant="outline" size="sm" onClick={() => startEdit(p)} className="text-xs px-2 py-1">Edit</Button>
-                                    <Button variant="outline" size="sm" onClick={() => remove(p.id)} className="text-xs px-2 py-1">Delete</Button>
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                  <div className="mt-3 text-right font-semibold text-sm sm:text-base">Total: ${total.toFixed(2)}</div>
-                </Card>
               </>
             )}
 
-
+            <p className="text-xs text-muted-foreground mt-4">Not investment advice.</p>
           </>
         )}
-        <p className="text-xs text-muted-foreground mt-4">Not investment advice.</p>
       </main>
     </div>
   );
