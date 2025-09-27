@@ -581,11 +581,11 @@ const Profile = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[60px] text-xs sm:text-sm">Ticker</TableHead>
-                        <TableHead className="text-right w-[50px] text-xs sm:text-sm">Shares</TableHead>
-                        <TableHead className="text-right w-[60px] text-xs sm:text-sm">Price</TableHead>
-                        <TableHead className="text-right w-[70px] text-xs sm:text-sm">Value</TableHead>
-                        <TableHead className="text-right w-[80px] text-xs sm:text-sm">Actions</TableHead>
+                        <TableHead className="w-[15%] text-xs sm:text-sm">Ticker</TableHead>
+                        <TableHead className="text-right w-[15%] text-xs sm:text-sm">Shares</TableHead>
+                        <TableHead className="text-right w-[20%] text-xs sm:text-sm">Price</TableHead>
+                        <TableHead className="text-right w-[25%] text-xs sm:text-sm">Value</TableHead>
+                        <TableHead className="text-right w-[25%] text-xs sm:text-sm">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
