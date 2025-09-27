@@ -576,23 +576,23 @@ const Profile = () => {
                   </div>
                 </Card>
 
-                <Card className="p-4 overflow-x-auto">
+                <Card className="p-3 sm:p-4 overflow-x-auto">
                   <h3 className="text-md font-semibold mb-3">Portfolio Positions</h3>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Ticker</TableHead>
-                        <TableHead className="text-right">Shares</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                        <TableHead className="text-right">Value</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="w-[60px] text-xs sm:text-sm">Ticker</TableHead>
+                        <TableHead className="text-right w-[50px] text-xs sm:text-sm">Shares</TableHead>
+                        <TableHead className="text-right w-[60px] text-xs sm:text-sm">Price</TableHead>
+                        <TableHead className="text-right w-[70px] text-xs sm:text-sm">Value</TableHead>
+                        <TableHead className="text-right w-[80px] text-xs sm:text-sm">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loading ? (
-                        <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="text-xs sm:text-sm">Loading...</TableCell></TableRow>
                       ) : positions.length === 0 ? (
-                        <TableRow><TableCell colSpan={5}>No positions yet.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="text-xs sm:text-sm">No positions yet.</TableCell></TableRow>
                       ) : (
                         positions.map((p) => {
                           const price = (prices[p.ticker] ?? 0) as number;
@@ -601,22 +601,22 @@ const Profile = () => {
                           
                           return (
                             <TableRow key={p.id}>
-                              <TableCell>{p.ticker}</TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-xs sm:text-sm font-medium">{p.ticker}</TableCell>
+                              <TableCell className="text-right text-xs sm:text-sm">
                                 {isEditing ? (
                                   <Input 
                                     type="number" 
                                     value={editShares} 
                                     onChange={(e) => setEditShares(Number(e.target.value))}
-                                    className="w-20 text-right"
+                                    className="w-16 sm:w-20 text-right text-xs sm:text-sm"
                                     step="0.01"
                                   />
                                 ) : (
                                   Number(p.shares)
                                 )}
                               </TableCell>
-                              <TableCell className="text-right">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-right text-xs sm:text-sm">{price ? `$${price.toFixed(2)}` : "-"}</TableCell>
+                              <TableCell className="text-right text-xs sm:text-sm">
                                 {price ? `$${(isEditing ? price * editShares : value).toFixed(2)}` : "-"}
                               </TableCell>
                               <TableCell className="text-right">
@@ -638,7 +638,7 @@ const Profile = () => {
                       )}
                     </TableBody>
                   </Table>
-                  <div className="mt-3 text-right font-semibold">Total: ${total.toFixed(2)}</div>
+                  <div className="mt-3 text-right font-semibold text-sm sm:text-base">Total: ${total.toFixed(2)}</div>
                 </Card>
               </>
             )}
