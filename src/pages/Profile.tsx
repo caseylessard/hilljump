@@ -472,8 +472,8 @@ const Profile = () => {
     <div>
       <Navigation />
 
-      <main className="container py-4 px-4 sm:py-8 sm:px-6 grid gap-4 sm:gap-6">
-        <h1 className="text-2xl sm:text-3xl font-bold">Profile</h1>
+      <main className="container py-4 px-3 sm:py-8 sm:px-6 grid gap-4 sm:gap-6 max-w-full">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Profile</h1>
         
         {!userId ? (
           <Card className="p-4 sm:p-6">
@@ -535,10 +535,10 @@ const Profile = () => {
                   <div className="font-medium">Subscription</div>
                   <div className="text-sm text-muted-foreground">Current: {subscribed ? (subscriptionTier ? subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1) : 'Active') : 'Free'}</div>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button variant="outline" onClick={refreshSubscription} size="sm">Refresh</Button>
-                  <Button onClick={manageSubscription} size="sm">Manage</Button>
-                  <Button variant="outline" onClick={resetPassword} size="sm">Reset Password</Button>
+                <div className="flex flex-wrap gap-2 text-xs sm:text-sm">
+                  <Button variant="outline" onClick={refreshSubscription} size="sm" className="min-w-0">Refresh</Button>
+                  <Button onClick={manageSubscription} size="sm" className="min-w-0">Manage</Button>
+                  <Button variant="outline" onClick={resetPassword} size="sm" className="min-w-0 whitespace-nowrap">Reset Password</Button>
                   <Button 
                     variant="destructive" 
                     onClick={async () => {
@@ -546,14 +546,21 @@ const Profile = () => {
                       window.location.href = '/';
                     }}
                     size="sm"
+                    className="min-w-0"
                   >
                     Log Out
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button onClick={() => upgrade('subscriber')}>Upgrade to Subscriber — $9/mo</Button>
-                <Button variant="secondary" onClick={() => upgrade('premium')}>Upgrade to Premium — $29/mo</Button>
+              <div className="grid grid-cols-1 gap-2">
+                <Button onClick={() => upgrade('subscriber')} className="text-xs sm:text-sm">
+                  <span className="block sm:hidden">Subscriber — $9/mo</span>
+                  <span className="hidden sm:block">Upgrade to Subscriber — $9/mo</span>
+                </Button>
+                <Button variant="secondary" onClick={() => upgrade('premium')} className="text-xs sm:text-sm">
+                  <span className="block sm:hidden">Premium — $29/mo</span>
+                  <span className="hidden sm:block">Upgrade to Premium — $29/mo</span>
+                </Button>
               </div>
             </Card>
 
@@ -614,14 +621,14 @@ const Profile = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 {isEditing ? (
-                                  <div className="flex gap-1 justify-end">
-                                    <Button variant="outline" size="sm" onClick={() => saveEdit(p.id, p.ticker)}>Save</Button>
-                                    <Button variant="outline" size="sm" onClick={cancelEdit}>Cancel</Button>
+                                  <div className="flex flex-col gap-1 min-w-0">
+                                    <Button variant="outline" size="sm" onClick={() => saveEdit(p.id, p.ticker)} className="text-xs px-2 py-1">Save</Button>
+                                    <Button variant="outline" size="sm" onClick={cancelEdit} className="text-xs px-2 py-1">Cancel</Button>
                                   </div>
                                 ) : (
-                                  <div className="flex gap-1 justify-end">
-                                    <Button variant="outline" size="sm" onClick={() => startEdit(p)}>Edit</Button>
-                                    <Button variant="outline" size="sm" onClick={() => remove(p.id)}>Delete</Button>
+                                  <div className="flex flex-col gap-1 min-w-0">
+                                    <Button variant="outline" size="sm" onClick={() => startEdit(p)} className="text-xs px-2 py-1">Edit</Button>
+                                    <Button variant="outline" size="sm" onClick={() => remove(p.id)} className="text-xs px-2 py-1">Delete</Button>
                                   </div>
                                 )}
                               </TableCell>
@@ -677,8 +684,8 @@ const Profile = () => {
                       <div className="font-medium">Export/Import ETFs CSV</div>
                       <div className="text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button onClick={exportEtfs} size="sm">Export CSV</Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={exportEtfs} size="sm" className="text-xs sm:text-sm">Export CSV</Button>
                       <label className={`cursor-pointer ${importing ? 'pointer-events-none' : ''}`}>
                         <input 
                           type="file" 
@@ -691,7 +698,7 @@ const Profile = () => {
                             e.currentTarget.value = '';
                           }} 
                         />
-                        <span className={`inline-flex items-center justify-center h-9 px-4 rounded-md border bg-background gap-2 text-sm ${importing ? 'opacity-50' : ''}`}>
+                        <span className={`inline-flex items-center justify-center h-9 px-3 sm:px-4 rounded-md border bg-background gap-2 text-xs sm:text-sm ${importing ? 'opacity-50' : ''}`}>
                           {importing && <Loader2 className="h-4 w-4 animate-spin" />}
                           Import CSV
                         </span>
