@@ -144,14 +144,30 @@ const Navigation = () => {
         <nav className="flex items-center gap-2" aria-label="Primary">
           {navItems.map((item) => (
             <Button key={item.href} variant="ghost" asChild className="font-roboto text-sm">
-              <a href={item.href}>
-                {item.label}
+              <a href={item.href} className="flex items-center gap-2">
+                <item.lucideIcon className="h-4 w-4 lg:h-4 lg:w-4" />
+                <span className="hidden lg:inline">{item.label}</span>
               </a>
             </Button>
           ))}
           <Button variant="ghost" asChild className="font-roboto text-sm">
-            <a href={isAuthenticated ? "/profile" : "/auth"}>
-              {isAuthenticated ? "Profile" : "Sign In"}
+            <a href={isAuthenticated ? "/profile" : "/auth"} className="flex items-center gap-2">
+              {isAuthenticated ? (
+                <>
+                  <div className="relative lg:hidden">
+                    <User className="h-4 w-4" />
+                    <span className="absolute -top-1 -right-1 text-xs" aria-hidden>
+                      {flagEmoji(profile?.country as any)}
+                    </span>
+                  </div>
+                  <span className="hidden lg:inline">Profile</span>
+                </>
+              ) : (
+                <>
+                  <User className="h-4 w-4 lg:h-4 lg:w-4" />
+                  <span className="hidden lg:inline">Sign In</span>
+                </>
+              )}
             </a>
           </Button>
         </nav>
