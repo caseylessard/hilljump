@@ -2,16 +2,22 @@ import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, CircleDollarSign, TrendingUp, ChartCandlestick, Bitcoin, LockKeyhole, Home, Briefcase, Bot } from "lucide-react";
+import { Menu, CircleDollarSign, TrendingUp, ChartCandlestick, Bitcoin, LockKeyhole, Home, Briefcase, Bot, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
 
 const Navigation = () => {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const { isAdmin } = useAdmin();
+  const { userId, profile, loading } = useUserProfile();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  function flagEmoji(country: 'US' | 'CA' | undefined) {
+    return country === 'US' ? '🇺🇸' : '🇨🇦';
+  }
 
   // Check authentication status
   useEffect(() => {
@@ -91,7 +97,33 @@ const Navigation = () => {
                     </Button>
                   ))}
                   <div className="border-t pt-4">
-                    <UserBadge />
+                    {loading ? (
+                      <Button variant="ghost" disabled className="justify-start font-roboto text-sm">
+                        <User className="h-4 w-4 mr-3" />
+                        Loading...
+                      </Button>
+                    ) : !userId ? (
+                      <Button variant="ghost" asChild className="justify-start font-roboto text-sm">
+                        <a href="/auth" onClick={() => setIsOpen(false)} className="flex items-center gap-3">
+                          <User className="h-4 w-4" />
+                          <span>Sign In</span>
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" asChild className="justify-start font-roboto text-sm">
+                        <a href="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-3">
+                          <div className="relative">
+                            <User className="h-4 w-4" />
+                            <span className="absolute -top-1 -right-1 text-xs" aria-hidden>
+                              {flagEmoji(profile?.country as any)}
+                            </span>
+                          </div>
+                          <span>
+                            {profile?.first_name || profile?.username || "Profile"}
+                          </span>
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </nav>
               </SheetContent>
