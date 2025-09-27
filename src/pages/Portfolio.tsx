@@ -38,7 +38,7 @@ const Portfolio = () => {
   const [selectedETFs, setSelectedETFs] = useState<AIPortfolioETF[]>([]);
 
   // Current portfolio management (for My Portfolio tab)
-  const [currentPortfolio, setCurrentPortfolio] = useState<{ticker: string; shares: number; id?: string; dripScore?: number; dripRawScore?: number}[]>([]);
+  const [currentPortfolio, setCurrentPortfolio] = useState<{ticker: string; shares: number; id?: string; dripScore?: number; dripRawScore?: number; rankingPosition?: number | null}[]>([]);
   const [newPosition, setNewPosition] = useState({ ticker: '', shares: '' });
   const [rebalanceRecommendations, setRebalanceRecommendations] = useState<any[]>([]);
   const [editingPosition, setEditingPosition] = useState<string | null>(null);
@@ -310,7 +310,44 @@ const Portfolio = () => {
     };
   }, [etfs, cachedPrices, cachedDripData, preferences.topK, preferences.scoreSource, preferences.weighting, preferences.maxWeight, preferences.minWeight, preferences.minTradingDays, portfolioSize]);
 
-  // Calculate DRIP score for a position
+  // Get the current ETF rankings to find actual positions
+  const { data: rankedETFs, isLoading: rankingsLoading } = useQuery({
+    queryKey: ['etf-rankings', storedScores, cachedDripData],
+    queryFn: async () => {
+      if (!storedScores || Object.keys(storedScores).length === 0) return [];
+      
+      // Build rankings using same logic as Rankings page
+      const scoredETFs = Object.values(etfData).filter((etf: any) => {
+        if (!etf.ticker || ['TEST', 'DEMO', 'SAMPLE'].some(test => etf.ticker.includes(test))) {
+          return false;
+        }
+        if (etf.yield_ttm && etf.yield_ttm > 50) {
+          return false;
+        }
+        if (!etf.current_price || etf.current_price <= 0) {
+          return false;
+        }
+        return true;
+      }).map((etf: any) => {
+        const score = storedScores[etf.ticker];
+        return {
+          ...etf,
+          compositeScore: score?.composite_score || 0
+        };
+      });
+
+      // Sort by composite score (highest first) - same as Rankings page
+      return scoredETFs.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0));
+    },
+    enabled: !!storedScores && Object.keys(storedScores).length > 0
+  });
+
+  // Get actual ranking positions for portfolio tickers
+  const getETFRankingPosition = (ticker: string): number | null => {
+    if (!rankedETFs) return null;
+    const index = rankedETFs.findIndex((etf: any) => etf.ticker === ticker);
+    return index >= 0 ? index + 1 : null; // Convert to 1-based ranking
+  };
   const calculateDRIPScore = (ticker: string): { score: number; rawScore: number } => {
     const tickerDripData = cachedDripData?.[ticker];
     if (!tickerDripData) return { score: 0, rawScore: 0 };
@@ -364,31 +401,32 @@ const Portfolio = () => {
     }
   };
 
-  // Update current portfolio when data loads and add DRIP scores
+  // Update current portfolio when data loads and add DRIP scores + ranking positions
   const portfolioWithDRIPScores = useMemo(() => {
-    if (!portfolioPositions || !cachedDripData) return [];
+    if (!portfolioPositions || !cachedDripData || !rankedETFs) return [];
     
     const positions = portfolioPositions.map(p => {
       const dripData = calculateDRIPScore(p.ticker);
+      const rankingPosition = getETFRankingPosition(p.ticker);
       return {
         ticker: p.ticker,
         shares: Number(p.shares),
         id: p.id,
         dripScore: dripData.score,
-        dripRawScore: dripData.rawScore
+        dripRawScore: dripData.rawScore,
+        rankingPosition
       };
     });
     
-    // Sort by raw DRIP score (highest first), then by signal score
+    // Sort by actual ranking position (lowest number = best rank)
     return positions.sort((a, b) => {
-      // First sort by signal (BUY > HOLD > SELL)
-      if (a.dripScore !== b.dripScore) {
-        return b.dripScore - a.dripScore;
-      }
-      // Then by raw score within same signal
-      return b.dripRawScore - a.dripRawScore;
+      // Handle null positions (put them at the end)
+      if (a.rankingPosition === null && b.rankingPosition === null) return 0;
+      if (a.rankingPosition === null) return 1;
+      if (b.rankingPosition === null) return -1;
+      return a.rankingPosition - b.rankingPosition;
     });
-  }, [portfolioPositions, cachedDripData]);
+  }, [portfolioPositions, cachedDripData, rankedETFs]);
 
   // Update current portfolio when data loads
   useEffect(() => {
@@ -586,6 +624,7 @@ const Portfolio = () => {
                             const dripData = (position as any).dripScore !== undefined ? 
                               { score: (position as any).dripScore, rawScore: (position as any).dripRawScore } : 
                               calculateDRIPScore(position.ticker);
+                            const actualRank = (position as any).rankingPosition;
                             
                             // DRIP score styling and text
                             const getDRIPDisplay = (score: number) => {
@@ -599,7 +638,7 @@ const Portfolio = () => {
                             return (
                               <TableRow key={position.id || index}>
                                 <TableCell className="font-bold text-primary">
-                                  #{index + 1}
+                                  {actualRank ? `#${actualRank}` : 'N/A'}
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex flex-col gap-1">
