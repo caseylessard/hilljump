@@ -90,7 +90,7 @@ export const useFrozenRankings = ({ etfs, dripData, storedScores, isDripDataComp
   
   // Function to get rank for a specific ticker
   const getRankForTicker = (ticker: string): number | null => {
-    return frozenRankings.get(ticker) || null;
+    return frozenRankings.get(ticker) ?? null;
   };
   
   // Function to sort any array by frozen rankings

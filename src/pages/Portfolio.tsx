@@ -101,8 +101,9 @@ const Portfolio = () => {
         return false;
       }
       
-      // Filter out ETFs with unrealistic yields (likely bad data) - max 50% annual yield
-      if (etf.yield_ttm && etf.yield_ttm > 50) {
+      // Filter out ETFs with unrealistic yields (likely bad data) - max 150% annual yield
+      // Note: Some covered call and high-yield strategies can legitimately have yields over 50%
+      if (etf.yield_ttm && etf.yield_ttm > 150) {
         console.warn(`Filtering out ${etf.ticker} due to unrealistic yield: ${etf.yield_ttm}%`);
         return false;
       }
