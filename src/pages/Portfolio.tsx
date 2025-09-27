@@ -20,6 +20,7 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFrozenRankings } from "@/hooks/useFrozenRankings";
+import { AIPortfolioAdvisor, type AIPortfolioAdvice, type PortfolioPosition } from "@/lib/portfolioAdvisor";
 
 const Portfolio = () => {
   // Get user profile for country-specific data
@@ -44,6 +45,8 @@ const Portfolio = () => {
   const [rebalanceRecommendations, setRebalanceRecommendations] = useState<any[]>([]);
   const [editingPosition, setEditingPosition] = useState<string | null>(null);
   const [editShares, setEditShares] = useState<number>(0);
+  const [aiAdvice, setAiAdvice] = useState<AIPortfolioAdvice | null>(null);
+  const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
   const { toast } = useToast();
 
   // Load user's current portfolio positions
@@ -418,7 +421,12 @@ const Portfolio = () => {
   // Update current portfolio when data loads
   useEffect(() => {
     setCurrentPortfolio(portfolioWithDRIPScores);
-  }, [portfolioWithDRIPScores]);
+    
+    // Generate AI advice when portfolio data is ready
+    if (portfolioWithDRIPScores.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0) {
+      generateAIAdvice(portfolioWithDRIPScores);
+    }
+  }, [portfolioWithDRIPScores, cachedPrices]);
 
   // Portfolio management functions
   const addOrUpdatePosition = async () => {
@@ -514,6 +522,43 @@ const Portfolio = () => {
     }
   };
 
+  // AI Portfolio Advisor
+  const generateAIAdvice = async (positions: typeof portfolioWithDRIPScores) => {
+    if (positions.length === 0) return;
+    
+    setAiAdviceLoading(true);
+    try {
+      const aiAdvisor = new AIPortfolioAdvisor(etfData, cachedPrices, frozenRankings);
+      
+      // Convert portfolio positions to AI advisor format
+      const portfolioPositions: PortfolioPosition[] = positions.map(p => {
+        const price = cachedPrices?.[p.ticker]?.price || 0;
+        const etfDetails = etfData[p.ticker];
+        
+        return {
+          ticker: p.ticker,
+          shares: p.shares,
+          currentValue: p.shares * price,
+          currentPrice: price,
+          dripScore: p.dripScore || 0,
+          dripRawScore: p.dripRawScore || 0,
+          rankingPosition: p.rankingPosition,
+          yieldTTM: etfDetails?.yield_ttm,
+          strategy: etfDetails?.strategy_label,
+          riskScore: etfDetails?.risk_score || 50
+        };
+      });
+      
+      const advice = await aiAdvisor.analyzePortfolio(portfolioPositions);
+      setAiAdvice(advice);
+    } catch (error) {
+      console.error('Error generating AI advice:', error);
+      setAiAdvice(null);
+    } finally {
+      setAiAdviceLoading(false);
+    }
+  };
+
   // Portfolio allocations are now calculated within the AI portfolio builder
   const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
   const totalSpent = resolvedPortfolio.reduce((sum, item) => sum + (item.allocRounded || 0), 0);
@@ -599,7 +644,8 @@ const Portfolio = () => {
                             <TableHead>Ticker</TableHead>
                             <TableHead>Shares</TableHead>
                             <TableHead>Price</TableHead>
-                            <TableHead>Value</TableHead>
+                            <TableHead>Current Value</TableHead>
+                            <TableHead className="text-center">AI Target Value</TableHead>
                             <TableHead>Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -612,6 +658,9 @@ const Portfolio = () => {
                               { score: (position as any).dripScore, rawScore: (position as any).dripRawScore } : 
                               calculateDRIPScore(position.ticker);
                             const actualRank = (position as any).rankingPosition;
+                            
+                            // Get AI recommendation for this position
+                            const aiRec = aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker);
                             
                             // DRIP score styling and text
                             const getDRIPDisplay = (score: number) => {
@@ -652,6 +701,36 @@ const Portfolio = () => {
                                 </TableCell>
                                 <TableCell>${price.toFixed(2)}</TableCell>
                                 <TableCell>${value.toLocaleString()}</TableCell>
+                                <TableCell className="text-center">
+                                  {aiAdviceLoading ? (
+                                    <div className="text-muted-foreground text-sm">Loading...</div>
+                                  ) : aiRec ? (
+                                    <div className="space-y-1">
+                                      <div className="font-medium">
+                                        {aiRec.action === 'INCREASE' && '↗️'}
+                                        {aiRec.action === 'DECREASE' && '↘️'}
+                                        {aiRec.action === 'SELL' && '❌'}
+                                        {aiRec.action === 'HOLD' && '➡️'} ${aiRec.targetValue.toLocaleString()}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {aiRec.targetShares} shares
+                                      </div>
+                                      <Badge 
+                                        variant={aiRec.action === 'INCREASE' ? 'default' : 
+                                                aiRec.action === 'DECREASE' ? 'secondary' : 
+                                                aiRec.action === 'SELL' ? 'destructive' : 'outline'}
+                                        className="text-xs"
+                                      >
+                                        {aiRec.action}
+                                      </Badge>
+                                      <div className="text-xs text-muted-foreground mt-1" title={aiRec.reason}>
+                                        {aiRec.confidence}% confidence
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-muted-foreground text-sm">-</div>
+                                  )}
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex gap-2">
                                     {isEditing ? (
@@ -696,16 +775,100 @@ const Portfolio = () => {
                         </TableBody>
                       </Table>
                     </div>
-                    <div className="mt-4 pt-4 border-t">
-                      <div className="font-semibold text-lg flex justify-between">
-                        <span>Total:</span>
-                        <span>
-                          ${currentPortfolio.reduce((sum, position) => {
-                            const price = cachedPrices?.[position.ticker]?.price || 0;
-                            return sum + (position.shares * price);
-                          }, 0).toLocaleString()}
-                        </span>
+                      <div className="mt-4 pt-4 border-t space-y-2">
+                        <div className="font-semibold text-lg flex justify-between">
+                          <span>Total Portfolio Value:</span>
+                          <span>
+                            ${currentPortfolio.reduce((sum, position) => {
+                              const price = cachedPrices?.[position.ticker]?.price || 0;
+                              return sum + (position.shares * price);
+                            }, 0).toLocaleString()}
+                          </span>
+                        </div>
+                        
+                        {aiAdvice && (
+                          <div className="bg-muted/30 p-4 rounded-lg">
+                            <h4 className="font-medium mb-2">Portfolio Analysis</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <div className="text-muted-foreground">Diversification</div>
+                                <div className="font-medium">{aiAdvice.portfolioAnalysis.diversificationScore}/100</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">Risk Level</div>
+                                <div className="font-medium">{aiAdvice.portfolioAnalysis.riskScore}/100</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">Yield Balance</div>
+                                <div className="font-medium">{aiAdvice.portfolioAnalysis.yieldBalance}/100</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">Trend Alignment</div>
+                                <div className="font-medium">{aiAdvice.portfolioAnalysis.trendAlignment}/100</div>
+                              </div>
+                            </div>
+                            
+                            {aiAdvice.portfolioAnalysis.recommendations.length > 0 && (
+                              <div className="mt-3">
+                                <div className="text-muted-foreground text-sm mb-1">AI Recommendations:</div>
+                                <ul className="text-sm space-y-1">
+                                  {aiAdvice.portfolioAnalysis.recommendations.map((rec, i) => (
+                                    <li key={i} className="text-muted-foreground">• {rec}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* AI New ETF Recommendations */}
+              {aiAdvice && aiAdvice.newETFRecommendations.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>AI Recommends Adding These ETFs</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {aiAdvice.newETFRecommendations.map((rec, index) => (
+                        <div key={rec.ticker} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <div className="font-medium text-lg">{rec.ticker}</div>
+                              {rec.rankingPosition && (
+                                <div className="text-sm text-muted-foreground">Rank: #{rec.rankingPosition}</div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium">${rec.targetValue.toLocaleString()}</div>
+                              <div className="text-sm text-muted-foreground">{rec.targetShares} shares</div>
+                            </div>
+                          </div>
+                          
+                          <p className="text-sm text-muted-foreground mb-2">{rec.reason}</p>
+                          
+                          <div className="flex justify-between items-center">
+                            <div className="flex gap-2">
+                              {rec.yieldTTM && (
+                                <Badge variant="outline">
+                                  {rec.yieldTTM.toFixed(1)}% yield
+                                </Badge>
+                              )}
+                              {rec.strategy && (
+                                <Badge variant="secondary">
+                                  {rec.strategy}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {rec.confidence}% confidence
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
