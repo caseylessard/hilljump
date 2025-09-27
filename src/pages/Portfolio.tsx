@@ -570,6 +570,53 @@ const Portfolio = () => {
     }
   };
 
+  // Create combined portfolio with recommendations
+  const getCombinedPortfolio = () => {
+    if (!aiAdvice) return currentPortfolio.map(p => ({ ...p, isRecommendation: false }));
+
+    // Convert new ETF recommendations to portfolio format
+    const recommendedPositions = aiAdvice.newETFRecommendations.map(rec => {
+      const etfDetails = etfData[rec.ticker];
+      
+      return {
+        ticker: rec.ticker,
+        name: etfDetails?.name || rec.ticker,
+        shares: rec.targetShares,
+        currentValue: rec.targetValue,
+        currentPrice: cachedPrices?.[rec.ticker]?.price || 0,
+        dripScore: 0, // Will be calculated when displayed
+        dripRawScore: 0, // Will be calculated when displayed
+        rankingPosition: rec.rankingPosition,
+        yieldTTM: rec.yieldTTM,
+        strategy: rec.strategy,
+        isRecommendation: true
+      };
+    });
+
+    // Add isRecommendation flag to existing positions
+    const existingWithFlag = currentPortfolio.map(p => ({ ...p, isRecommendation: false }));
+
+    // Combine existing and recommended positions
+    const combined = [...existingWithFlag, ...recommendedPositions];
+    
+    // Sort by ranking position (nulls last)
+    return combined.sort((a, b) => {
+      const aRank = a.rankingPosition || 999;
+      const bRank = b.rankingPosition || 999;
+      return aRank - bRank;
+    });
+  };
+
+  const combinedPortfolio = getCombinedPortfolio();
+  const totalValueWithRecommendations = combinedPortfolio.reduce((sum, p) => {
+    const price = cachedPrices?.[p.ticker]?.price || 0;
+    if (p.isRecommendation) {
+      return sum + (p as any).currentValue;
+    } else {
+      return sum + (p.shares * price);
+    }
+  }, 0);
+
   // Portfolio allocations are now calculated within the AI portfolio builder
   const totalAllocation = resolvedPortfolio.reduce((sum, item) => sum + (item.weight * 100), 0);
   const totalSpent = resolvedPortfolio.reduce((sum, item) => sum + (item.allocRounded || 0), 0);
@@ -640,10 +687,10 @@ const Portfolio = () => {
               </Card>
 
               {/* Portfolio Positions Table */}
-              {currentPortfolio.length > 0 && (
+              {combinedPortfolio.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Portfolio Positions</CardTitle>
+                    <CardTitle>Portfolio Positions {aiAdvice && aiAdvice.newETFRecommendations.length > 0 && <span className="text-sm font-normal text-muted-foreground">(including AI recommendations)</span>}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
@@ -661,17 +708,20 @@ const Portfolio = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {currentPortfolio.map((position, index) => {
+                          {combinedPortfolio.map((position, index) => {
                             const price = cachedPrices?.[position.ticker]?.price || 0;
-                            const value = position.shares * price;
-                            const isEditing = editingPosition === position.id;
-                            const dripData = (position as any).dripScore !== undefined ? 
-                              { score: (position as any).dripScore, rawScore: (position as any).dripRawScore } : 
-                              calculateDRIPScore(position.ticker);
-                            const actualRank = (position as any).rankingPosition;
+                            const value = position.isRecommendation ? (position as any).currentValue : position.shares * price;
+                            const shares = position.isRecommendation ? (position as any).shares : position.shares;
+                            const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
+                            const dripData = position.isRecommendation ? 
+                              { score: position.dripScore || 0, rawScore: position.dripRawScore || 0 } :
+                              (position.dripScore !== undefined ? 
+                                { score: position.dripScore, rawScore: position.dripRawScore } : 
+                                calculateDRIPScore(position.ticker));
+                            const actualRank = position.rankingPosition;
                             
-                            // Get AI recommendation for this position
-                            const aiRec = aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker);
+                             // Get AI recommendation for this position (only for existing positions)
+                             const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
                             
                             // DRIP score styling and text
                             const getDRIPDisplay = (score: number) => {
@@ -682,8 +732,136 @@ const Portfolio = () => {
                             
                             const dripDisplay = getDRIPDisplay(dripData.score);
                             
-                            return (
-                              <TableRow key={position.id || index}>
+                             return (
+                               <TableRow 
+                                 key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
+                                 className={position.isRecommendation ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/50' : ''}
+                               >
+                                 <TableCell className="font-bold text-primary">
+                                   {actualRank ? `#${actualRank}` : 'N/A'}
+                                 </TableCell>
+                                 <TableCell>
+                                   <div className="flex flex-col gap-1">
+                                     <Badge className={dripDisplay.className}>
+                                       {dripDisplay.text}
+                                     </Badge>
+                                     <span className="text-xs text-muted-foreground">
+                                       {dripData.rawScore.toFixed(4)}
+                                     </span>
+                                   </div>
+                                 </TableCell>
+                                 <TableCell className="font-medium">
+                                   <div className="flex items-center gap-2">
+                                     {position.ticker}
+                                     {position.isRecommendation && (
+                                       <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 dark:text-blue-400">
+                                         AI Suggestion
+                                       </Badge>
+                                     )}
+                                   </div>
+                                 </TableCell>
+                                 <TableCell>
+                                   {isEditing && !position.isRecommendation ? (
+                                     <Input
+                                       type="number"
+                                       value={editShares}
+                                       onChange={(e) => setEditShares(Number(e.target.value))}
+                                       className="w-20"
+                                     />
+                                   ) : (
+                                     shares.toLocaleString()
+                                   )}
+                                 </TableCell>
+                                 <TableCell>${price.toFixed(2)}</TableCell>
+                                 <TableCell>${value.toLocaleString()}</TableCell>
+                                 <TableCell className="text-center">
+                                   {position.isRecommendation ? (
+                                     <div className="space-y-1">
+                                       <div className="font-medium text-blue-600 dark:text-blue-400">
+                                         💡 ${value.toLocaleString()}
+                                       </div>
+                                       <div className="text-xs text-muted-foreground">
+                                         New position
+                                       </div>
+                                       <Badge variant="outline" className="text-xs border-blue-500">
+                                         ADD
+                                       </Badge>
+                                     </div>
+                                   ) : aiAdviceLoading ? (
+                                     <div className="text-muted-foreground text-sm">Loading...</div>
+                                   ) : aiRec ? (
+                                     <div className="space-y-1">
+                                       <div className="font-medium">
+                                         {aiRec.action === 'INCREASE' && '↗️'}
+                                         {aiRec.action === 'DECREASE' && '↘️'}
+                                         {aiRec.action === 'SELL' && '❌'}
+                                         {aiRec.action === 'HOLD' && '➡️'} ${aiRec.targetValue.toLocaleString()}
+                                       </div>
+                                       <div className="text-xs text-muted-foreground">
+                                         {aiRec.targetShares} shares
+                                       </div>
+                                       <Badge 
+                                         variant={aiRec.action === 'INCREASE' ? 'default' : 
+                                                 aiRec.action === 'DECREASE' ? 'secondary' : 
+                                                 aiRec.action === 'SELL' ? 'destructive' : 'outline'}
+                                         className="text-xs"
+                                       >
+                                         {aiRec.action}
+                                       </Badge>
+                                       <div className="text-xs text-muted-foreground mt-1" title={aiRec.reason}>
+                                         {aiRec.confidence}% confidence
+                                       </div>
+                                     </div>
+                                   ) : (
+                                     <div className="text-muted-foreground text-sm">-</div>
+                                   )}
+                                 </TableCell>
+                                 <TableCell>
+                                   {position.isRecommendation ? (
+                                     <div className="text-sm text-muted-foreground">
+                                       AI Recommendation
+                                     </div>
+                                   ) : (
+                                     <div className="flex gap-2">
+                                       {isEditing ? (
+                                         <>
+                                           <Button
+                                             size="sm"
+                                             onClick={() => (position as any).id && saveEdit((position as any).id, position.ticker)}
+                                           >
+                                             Save
+                                           </Button>
+                                           <Button
+                                             size="sm"
+                                             variant="outline"
+                                             onClick={cancelEdit}
+                                           >
+                                             Cancel
+                                           </Button>
+                                         </>
+                                       ) : (
+                                         <>
+                                           <Button
+                                             size="sm"
+                                             variant="outline"
+                                             onClick={() => startEdit(position as any)}
+                                           >
+                                             Edit
+                                           </Button>
+                                           <Button
+                                             size="sm"
+                                             variant="destructive"
+                                             onClick={() => removePosition(position as any)}
+                                           >
+                                             Delete
+                                           </Button>
+                                         </>
+                                       )}
+                                     </div>
+                                   )}
+                                 </TableCell>
+                               </TableRow>
+                             );
                                 <TableCell className="font-bold text-primary">
                                   {actualRank ? `#${actualRank}` : 'N/A'}
                                 </TableCell>
@@ -885,7 +1063,7 @@ const Portfolio = () => {
                 </Card>
               )}
 
-              {currentPortfolio.length === 0 && (
+              {combinedPortfolio.length === 0 && (
                 <div className="text-center py-12 border-2 border-dashed rounded-lg">
                   <p className="text-muted-foreground text-lg">No positions added yet</p>
                   <p className="text-sm text-muted-foreground mt-2">
