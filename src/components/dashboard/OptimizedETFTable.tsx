@@ -689,11 +689,11 @@ export const OptimizedETFTable = ({
             const shouldObfuscate = previewMode && (idx <= 2 || idx >= 10);
             
             // Create obfuscated data
-            const displayTicker = shouldObfuscate ? "***" : etf.ticker;
-            const displayName = shouldObfuscate ? "Sign in to view premium rankings" : etf.name;
-            const displayPrice = shouldObfuscate ? "***" : (liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0));
-            const displayDripSum = shouldObfuscate ? "***" : dripSum;
-            const displayRank = shouldObfuscate ? "***" : idx + 1;
+            const displayTicker = shouldObfuscate ? "HillJumpers Only" : etf.ticker;
+            const displayName = shouldObfuscate ? "HillJumpers Only" : etf.name;
+            const displayPrice = shouldObfuscate ? "HillJumpers Only" : (liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0));
+            const displayDripSum = shouldObfuscate ? "HillJumpers Only" : dripSum;
+            const displayRank = shouldObfuscate ? "HillJumpers Only" : idx + 1;
             
             return (
               <TableRow
@@ -722,11 +722,11 @@ export const OptimizedETFTable = ({
                      <span className="text-xs text-muted-foreground">{shouldObfuscate ? "" : helperFunctions.getFundManager(etf)}</span>
                    </div>
                  </TableCell>
-                 <TableCell className="text-center">
-                   {shouldObfuscate ? "***" : <TrendIndicator position={etf.position} />}
-                 </TableCell>
-                  <TableCell className="text-right">
-                    {shouldObfuscate ? "***" : (() => {
+                  <TableCell className="text-center">
+                    {shouldObfuscate ? "HillJumpers Only" : <TrendIndicator position={etf.position} />}
+                  </TableCell>
+                   <TableCell className="text-right">
+                     {shouldObfuscate ? "HillJumpers Only" : (() => {
                       const price = liveItem?.price;
                       const cp = liveItem?.changePercent;
                       
@@ -757,8 +757,8 @@ export const OptimizedETFTable = ({
                       );
                     })()}
                   </TableCell>
-                 <TableCell className="text-right">
-                   {shouldObfuscate ? "***" : (() => {
+                  <TableCell className="text-right">
+                    {shouldObfuscate ? "HillJumpers Only" : (() => {
                      const dist = distributions[etf.ticker];
                      if (!dist) return "—";
                      

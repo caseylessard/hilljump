@@ -430,7 +430,11 @@ const Portfolio = () => {
 
   // Portfolio management functions
   const addOrUpdatePosition = async () => {
-    if (!profile?.id || !newPosition.ticker || !newPosition.shares) return;
+    if (!profile?.id) {
+      toast({ title: "HillJumpers Only", description: "Sign in to manage your portfolio" });
+      return;
+    }
+    if (!newPosition.ticker || !newPosition.shares) return;
     
     const shares = Number(newPosition.shares);
     if (shares <= 0 || shares > 1000000 || !isFinite(shares)) {
@@ -661,9 +665,10 @@ const Portfolio = () => {
                       </label>
                       <Input
                         id="ticker"
-                        placeholder="AAPL"
-                        value={newPosition.ticker}
+                        placeholder={profile?.id ? "AAPL" : "HillJumpers Only"}
+                        value={profile?.id ? newPosition.ticker : ""}
                         onChange={(e) => setNewPosition(prev => ({ ...prev, ticker: e.target.value }))}
+                        disabled={!profile?.id}
                       />
                     </div>
                     <div>
@@ -673,14 +678,15 @@ const Portfolio = () => {
                       <Input
                         id="shares"
                         type="number"
-                        placeholder="100"
-                        value={newPosition.shares}
+                        placeholder={profile?.id ? "100" : "HillJumpers Only"}
+                        value={profile?.id ? newPosition.shares : ""}
                         onChange={(e) => setNewPosition(prev => ({ ...prev, shares: e.target.value }))}
+                        disabled={!profile?.id}
                       />
                     </div>
-                    <Button onClick={addOrUpdatePosition}>
+                    <Button onClick={addOrUpdatePosition} disabled={!profile?.id}>
                       <Plus className="w-4 h-4 mr-2" />
-                      Add / Update
+                      {profile?.id ? "Add / Update" : "HillJumpers Only"}
                     </Button>
                   </div>
                 </CardContent>

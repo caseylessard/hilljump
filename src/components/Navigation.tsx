@@ -45,15 +45,11 @@ const Navigation = () => {
     { href: "/portfolio", label: "Portfolio", icon: "lucide", lucideIcon: Briefcase }
   ];
 
-  // Build hamburger nav items (excludes income which is always visible on mobile)
-  const hamburgerNavItems = isAuthenticated 
-    ? authOnlyNavItems
-    : [];
+  // Build hamburger nav items (excludes income which is always visible on mobile) - now includes portfolio for all users
+  const hamburgerNavItems = authOnlyNavItems;
 
-  // Build desktop nav items (includes all items)
-  const navItems = isAuthenticated 
-    ? [...baseNavItems, ...authOnlyNavItems]
-    : baseNavItems;
+  // Build desktop nav items (includes all items) - now includes portfolio for all users
+  const navItems = [...baseNavItems, ...authOnlyNavItems];
 
   // Add admin link for admin users
   if (isAdmin) {

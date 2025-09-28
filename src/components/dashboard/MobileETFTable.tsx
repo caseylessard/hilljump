@@ -207,11 +207,11 @@ export const MobileETFTable = ({
         const shouldObfuscate = previewMode && (index <= 2 || index >= 10);
         
         // Create obfuscated data
-        const displayTicker = shouldObfuscate ? "***" : etf.ticker;
-        const displayName = shouldObfuscate ? "Sign in to view premium rankings" : etf.name;
-        const displayPrice = shouldObfuscate ? "***" : price;
-        const displayDripSum = shouldObfuscate ? "***" : dripSum;
-        const displayRank = shouldObfuscate ? "***" : rank;
+        const displayTicker = shouldObfuscate ? "HillJumpers Only" : etf.ticker;
+        const displayName = shouldObfuscate ? "HillJumpers Only" : etf.name;
+        const displayPrice = shouldObfuscate ? "HillJumpers Only" : price;
+        const displayDripSum = shouldObfuscate ? "HillJumpers Only" : dripSum;
+        const displayRank = shouldObfuscate ? "HillJumpers Only" : rank;
         
         return (
           <Card 
