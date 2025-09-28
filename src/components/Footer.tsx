@@ -5,6 +5,13 @@ const Footer = () => {
         <div className="text-center space-y-4">
           <div className="flex justify-center items-center gap-4">
             <a 
+              href="/contact" 
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              Contact
+            </a>
+            <span className="text-muted-foreground">•</span>
+            <a 
               href="/privacy" 
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
