@@ -1,0 +1,18 @@
+const Footer = () => {
+  return (
+    <footer className="border-t border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container py-8 px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground max-w-4xl mx-auto leading-relaxed">
+            The information provided by HillJump is for informational and educational purposes only. 
+            HillJump does not provide financial, investment, legal, or tax advice. 
+            Past performance is not a guarantee of future results. 
+            You are solely responsible for your financial decisions.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+export default Footer;

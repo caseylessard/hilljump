@@ -21,6 +21,7 @@ import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart, Plus, Trash2 }
 import { useToast } from "@/hooks/use-toast";
 import { useFrozenRankings } from "@/hooks/useFrozenRankings";
 import { AIPortfolioAdvisor, type AIPortfolioAdvice, type PortfolioPosition } from "@/lib/portfolioAdvisor";
+import Footer from "@/components/Footer";
 
 const Portfolio = () => {
   // Get user profile for country-specific data
@@ -1123,6 +1124,7 @@ const Portfolio = () => {
           </TabsContent>
         </Tabs>
       </main>
+      <Footer />
     </div>
   );
 };

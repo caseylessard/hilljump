@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label';
 import { MobileETFTable } from '@/components/dashboard/MobileETFTable';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Lock } from 'lucide-react';
+import Footer from '@/components/Footer';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -1121,8 +1122,6 @@ const Ranking = () => {
           </DialogContent>
         </Dialog>
 
-        <p className="text-muted-foreground text-xs">Not investment advice.</p>
-        
         {/* Admin debugging section simplified */}
         {isAdmin && (
           <div className="border-t pt-8">
@@ -1132,6 +1131,7 @@ const Ranking = () => {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Loader2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { useAdmin } from "@/hooks/useAdmin";
+import Footer from "@/components/Footer";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -479,11 +480,10 @@ const Profile = () => {
                 </Card>
               </>
             )}
-
-            <p className="text-xs text-muted-foreground mt-4">Not investment advice.</p>
           </>
         )}
       </main>
+      <Footer />
     </div>
   );
 };

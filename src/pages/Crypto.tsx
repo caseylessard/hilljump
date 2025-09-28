@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import DailyAlerts from "@/components/alerts/DailyAlerts";
+import Footer from "@/components/Footer";
 
 const Crypto = () => {
   useEffect(() => {
@@ -41,6 +42,7 @@ const Crypto = () => {
           <DailyAlerts />
         </section>
       </main>
+      <Footer />
     </div>
   );
 };

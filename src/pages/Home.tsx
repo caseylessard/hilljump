@@ -12,6 +12,7 @@ import { useHomepageContent } from "@/hooks/useHomepageContent";
 import { useSEOSettings } from "@/hooks/useSEOSettings";
 import { clearHomepageCache } from "@/lib/globalCache";
 import { AdminEditToggle } from "@/components/admin/AdminEditToggle";
+import Footer from "@/components/Footer";
 
 const Home = () => {
   // Load dynamic content and SEO settings
@@ -177,6 +178,7 @@ const Home = () => {
           </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 };

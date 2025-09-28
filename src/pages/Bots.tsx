@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Navigation from "@/components/Navigation";
 import { Bot, Download, Code, TrendingUp, Zap, Shield } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const Bots = () => {
   // SEO setup
@@ -122,6 +123,7 @@ const Bots = () => {
           </Card>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

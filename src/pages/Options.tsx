@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 import { UserBadge } from "@/components/UserBadge";
 import Navigation from "@/components/Navigation";
+import Footer from "@/components/Footer";
 
 const Options = () => {
   useEffect(() => {
@@ -42,6 +43,7 @@ const Options = () => {
           <p className="text-base sm:text-lg text-muted-foreground">Content coming soon.</p>
         </section>
       </main>
+      <Footer />
     </div>
   );
 };

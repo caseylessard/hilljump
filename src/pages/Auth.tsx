@@ -14,6 +14,7 @@ import { useSecurityMonitoring } from "@/hooks/useSecurityMonitoring";
 import { sanitizeEmail, checkRateLimitSync } from "@/utils/sanitization";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 import { Github, Phone, Mail } from "lucide-react";
+import Footer from "@/components/Footer";
 
 const Auth = () => {
   const { toast } = useToast();
@@ -384,9 +385,9 @@ const Auth = () => {
               </div>
             </TabsContent>
           </Tabs>
-          <p className="text-xs text-muted-foreground mt-3">By continuing you agree to our terms. Not investment advice.</p>
         </Card>
       </main>
+      <Footer />
     </div>
   );
 };

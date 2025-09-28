@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import DailyAlerts from "@/components/alerts/DailyAlerts";
+import Footer from "@/components/Footer";
 
 const Breakout = () => {
   useEffect(() => {
@@ -44,6 +45,7 @@ const Breakout = () => {
           <DailyAlerts />
         </section>
       </main>
+      <Footer />
     </div>
   );
 };

@@ -36,6 +36,7 @@ import { ETFOrchestrator } from "@/components/admin/ETFOrchestrator";
 import { StalePriceUpdater } from "@/components/admin/StalePriceUpdater";
 import { SEOSettings } from "@/components/admin/SEOSettings";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
+import Footer from "@/components/Footer";
 
 const AdminDashboard = () => {
   const { isAdmin, loading } = useAdmin();
@@ -432,6 +433,7 @@ const AdminDashboard = () => {
           </Tabs>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };
