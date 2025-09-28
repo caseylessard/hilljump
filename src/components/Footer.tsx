@@ -3,12 +3,19 @@ const Footer = () => {
     <footer className="border-t border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center space-y-4">
-          <div>
+          <div className="flex justify-center items-center gap-4">
             <a 
               href="/privacy" 
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
               Privacy Policy
+            </a>
+            <span className="text-muted-foreground">•</span>
+            <a 
+              href="/terms" 
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              Terms of Service
             </a>
           </div>
           <p className="text-sm text-muted-foreground max-w-4xl mx-auto leading-relaxed">
