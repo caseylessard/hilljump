@@ -207,7 +207,7 @@ export const MobileETFTable = ({
         const shouldObfuscate = previewMode && (index <= 2 || index >= 6);
         
         // Create obfuscated data
-        const displayTicker = shouldObfuscate ? "Sign In" : etf.ticker;
+        const displayTicker = shouldObfuscate ? "SIGN IN" : etf.ticker;
         const displayName = shouldObfuscate ? "***" : etf.name;
         const displayPrice = shouldObfuscate ? "***" : price;
         const displayDripSum = shouldObfuscate ? "***" : dripSum;
@@ -240,7 +240,15 @@ export const MobileETFTable = ({
                      <div>
                        <div className="flex items-center gap-2">
                          <span className="font-bold text-lg sm:text-xl lg:text-lg">{displayTicker}</span>
-                         <span className="text-sm sm:text-base lg:text-sm">{!shouldObfuscate && countryFlag(etf)}</span>
+                         {shouldObfuscate ? (
+                           <img 
+                             src="/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png" 
+                             alt="HillJump" 
+                             className="w-4 h-4 rounded" 
+                           />
+                         ) : (
+                           <span className="text-sm sm:text-base lg:text-sm">{countryFlag(etf)}</span>
+                         )}
                        </div>
                        <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
                          {shouldObfuscate ? "***" : manager}

@@ -665,7 +665,7 @@ const Portfolio = () => {
                       </label>
                       <Input
                         id="ticker"
-                        placeholder={profile?.id ? "AAPL" : "HillJumpers Only"}
+                        placeholder={profile?.id ? "AAPL" : "***"}
                         value={profile?.id ? newPosition.ticker : ""}
                         onChange={(e) => setNewPosition(prev => ({ ...prev, ticker: e.target.value }))}
                         disabled={!profile?.id}
@@ -678,7 +678,7 @@ const Portfolio = () => {
                       <Input
                         id="shares"
                         type="number"
-                        placeholder={profile?.id ? "100" : "HillJumpers Only"}
+                        placeholder={profile?.id ? "100" : "***"}
                         value={profile?.id ? newPosition.shares : ""}
                         onChange={(e) => setNewPosition(prev => ({ ...prev, shares: e.target.value }))}
                         disabled={!profile?.id}
@@ -686,7 +686,7 @@ const Portfolio = () => {
                     </div>
                     <Button onClick={addOrUpdatePosition} disabled={!profile?.id}>
                       <Plus className="w-4 h-4 mr-2" />
-                      {profile?.id ? "Add / Update" : "HillJumpers Only"}
+                      {profile?.id ? "Add / Update" : "***"}
                     </Button>
                   </div>
                 </CardContent>
@@ -758,10 +758,10 @@ const Portfolio = () => {
                                  </TableCell>
                                   <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
-                                      {profile?.id ? position.ticker : (position.isRecommendation ? "HillJumpers Only" : position.ticker)}
+                                      {profile?.id ? position.ticker : (position.isRecommendation ? "SIGN IN" : position.ticker)}
                                       {position.isRecommendation && (
                                         <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 dark:text-blue-400">
-                                          {profile?.id ? "AI Suggestion" : "HillJumpers Only"}
+                                          {profile?.id ? "AI Suggestion" : "***"}
                                         </Badge>
                                       )}
                                     </div>
@@ -784,13 +784,13 @@ const Portfolio = () => {
                                     {position.isRecommendation ? (
                                       <div className="space-y-1">
                                         <div className="font-medium text-blue-600 dark:text-blue-400">
-                                          💡 {profile?.id ? `$${value.toLocaleString()}` : "HillJumpers Only"}
+                                          💡 {profile?.id ? `$${value.toLocaleString()}` : "***"}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
-                                          {profile?.id ? "New position" : "HillJumpers Only"}
+                                          {profile?.id ? "New position" : "***"}
                                         </div>
                                         <Badge variant="outline" className="text-xs border-blue-500">
-                                          {profile?.id ? "ADD" : "HillJumpers Only"}
+                                          {profile?.id ? "ADD" : "***"}
                                         </Badge>
                                       </div>
                                    ) : aiAdviceLoading ? (
@@ -827,7 +827,7 @@ const Portfolio = () => {
                                  <TableCell>
                                     {position.isRecommendation ? (
                                       <div className="text-sm text-muted-foreground">
-                                        {profile?.id ? "AI Recommendation" : "HillJumpers Only"}
+                                        {profile?.id ? "AI Recommendation" : "***"}
                                       </div>
                                    ) : (
                                      <div className="flex gap-2">
@@ -1070,10 +1070,10 @@ const Portfolio = () => {
                   <CardHeader>
                     <CardTitle>AI Portfolio Recommendations</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      {profile?.id ? 
-                        `${resolvedPortfolio.length} positions • $${portfolioSize.toLocaleString()} • $${totalSpent.toLocaleString()} allocated • $${cashLeft.toLocaleString()} cash` :
-                        "HillJumpers Only"
-                      }
+                       {profile?.id ? 
+                         `${resolvedPortfolio.length} positions • $${portfolioSize.toLocaleString()} • $${totalSpent.toLocaleString()} allocated • $${cashLeft.toLocaleString()} cash` :
+                         "***"
+                       }
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -1088,8 +1088,8 @@ const Portfolio = () => {
                            <div key={etf.ticker} className="flex items-center justify-between p-4 border rounded-lg">
                              <div className="flex-1">
                                <div className="flex items-center gap-2 mb-1">
-                                 <Badge variant="outline">{profile?.id ? etf.ticker : "HillJumpers Only"}</Badge>
-                                 <span className="font-medium text-sm">{profile?.id ? etf.name : "HillJumpers Only"}</span>
+                                 <Badge variant="outline">{profile?.id ? etf.ticker : "SIGN IN"}</Badge>
+                                 <span className="font-medium text-sm">{profile?.id ? etf.name : "***"}</span>
                                  {etf.badge && profile?.id && (
                                    <Badge 
                                      variant="secondary" 
@@ -1105,10 +1105,10 @@ const Portfolio = () => {
                                 )}
                               </div>
                                <p className="text-sm text-muted-foreground">
-                                 {profile?.id ? 
-                                   `${(etf.weight * 100).toFixed(1)}% • $${(etf.allocationDollar || 0).toFixed(0)} • ${etf.shares || 0} shares @ $${etf.lastPrice.toFixed(2)}` :
-                                   "HillJumpers Only"
-                                 }
+                                  {profile?.id ? 
+                                    `${(etf.weight * 100).toFixed(1)}% • $${(etf.allocationDollar || 0).toFixed(0)} • ${etf.shares || 0} shares @ $${etf.lastPrice.toFixed(2)}` :
+                                    "***"
+                                  }
                                </p>
                             </div>
                           </div>

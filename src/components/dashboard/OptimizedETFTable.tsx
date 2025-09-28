@@ -689,7 +689,7 @@ export const OptimizedETFTable = ({
             const shouldObfuscate = previewMode && (idx <= 2 || idx >= 6);
             
             // Create obfuscated data
-            const displayTicker = shouldObfuscate ? "Sign In" : etf.ticker;
+            const displayTicker = shouldObfuscate ? "SIGN IN" : etf.ticker;
             const displayName = shouldObfuscate ? "***" : etf.name;
             const displayPrice = shouldObfuscate ? "***" : (liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0));
             const displayDripSum = shouldObfuscate ? "***" : dripSum;
@@ -714,14 +714,23 @@ export const OptimizedETFTable = ({
                       {!shouldObfuscate && <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />}
                     </div>
                   </TableCell>
-                 <TableCell>
-                   <div className="inline-flex flex-col">
-                     <span className="inline-flex items-center">
-                       {displayTicker} {!shouldObfuscate && <span className="ml-1" aria-hidden>{helperFunctions.countryFlag(etf)}</span>}
-                     </span>
-                     <span className="text-xs text-muted-foreground">{shouldObfuscate ? "***" : helperFunctions.getFundManager(etf)}</span>
-                   </div>
-                 </TableCell>
+                  <TableCell>
+                    <div className="inline-flex flex-col">
+                      <span className="inline-flex items-center">
+                        {displayTicker} 
+                        {shouldObfuscate ? (
+                          <img 
+                            src="/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png" 
+                            alt="HillJump" 
+                            className="w-4 h-4 ml-1 rounded" 
+                          />
+                        ) : (
+                          <span className="ml-1" aria-hidden>{helperFunctions.countryFlag(etf)}</span>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{shouldObfuscate ? "***" : helperFunctions.getFundManager(etf)}</span>
+                    </div>
+                  </TableCell>
                    <TableCell className="text-center">
                      <TrendIndicator position={etf.position} />
                    </TableCell>
