@@ -87,10 +87,8 @@ const PrivacyPolicy = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Contact</h2>
             <p className="text-muted-foreground">
-              If you have questions about this policy, contact us at:
-            </p>
-            <p className="mt-2">
-              📧 <a href="mailto:info@hilljump.com" className="text-primary hover:underline">info@hilljump.com</a>
+              If you have questions about this policy, please visit our{" "}
+              <a href="/contact" className="text-primary hover:underline">Contact page</a>.
             </p>
           </section>
         </article>
