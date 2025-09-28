@@ -689,11 +689,11 @@ export const OptimizedETFTable = ({
             const shouldObfuscate = previewMode && (idx <= 2 || idx >= 6);
             
             // Create obfuscated data
-            const displayTicker = shouldObfuscate ? "HillJumpers Only" : etf.ticker;
-            const displayName = shouldObfuscate ? "HillJumpers Only" : etf.name;
-            const displayPrice = shouldObfuscate ? "HillJumpers Only" : (liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0));
-            const displayDripSum = shouldObfuscate ? "HillJumpers Only" : dripSum;
-            const displayRank = shouldObfuscate ? "HillJumpers Only" : idx + 1;
+            const displayTicker = shouldObfuscate ? "Sign In" : etf.ticker;
+            const displayName = shouldObfuscate ? "***" : etf.name;
+            const displayPrice = shouldObfuscate ? "***" : (liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0));
+            const displayDripSum = shouldObfuscate ? "***" : dripSum;
+            const displayRank = idx + 1; // Always show rank
             
             return (
               <TableRow
@@ -719,14 +719,14 @@ export const OptimizedETFTable = ({
                      <span className="inline-flex items-center">
                        {displayTicker} {!shouldObfuscate && <span className="ml-1" aria-hidden>{helperFunctions.countryFlag(etf)}</span>}
                      </span>
-                     <span className="text-xs text-muted-foreground">{helperFunctions.getFundManager(etf)}</span>
+                     <span className="text-xs text-muted-foreground">{shouldObfuscate ? "***" : helperFunctions.getFundManager(etf)}</span>
                    </div>
                  </TableCell>
                    <TableCell className="text-center">
                      <TrendIndicator position={etf.position} />
                    </TableCell>
-                   <TableCell className="text-right">
-                     {shouldObfuscate ? "HillJumpers Only" : (() => {
+                    <TableCell className="text-right">
+                      {shouldObfuscate ? "***" : (() => {
                       const price = liveItem?.price;
                       const cp = liveItem?.changePercent;
                       
@@ -757,8 +757,8 @@ export const OptimizedETFTable = ({
                       );
                     })()}
                   </TableCell>
-                  <TableCell className="text-right">
-                    {shouldObfuscate ? "HillJumpers Only" : (() => {
+                   <TableCell className="text-right">
+                     {shouldObfuscate ? "***" : (() => {
                      const dist = distributions[etf.ticker];
                      if (!dist) return "—";
                      
@@ -777,9 +777,9 @@ export const OptimizedETFTable = ({
                      );
                    })()}
                  </TableCell>
-                <TableCell className="text-right">
-                  <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />
-                </TableCell>
+                 <TableCell className="text-right">
+                   {shouldObfuscate ? "***" : <NextDistributionCell ticker={etf.ticker} predictions={dividendPredictions} />}
+                 </TableCell>
                 <TableCell className="text-right">
                   <DRIPCell ticker={etf.ticker} period="4w" dripData={cachedDripData} live={live} etfData={etf} />
                 </TableCell>

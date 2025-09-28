@@ -207,11 +207,11 @@ export const MobileETFTable = ({
         const shouldObfuscate = previewMode && (index <= 2 || index >= 6);
         
         // Create obfuscated data
-        const displayTicker = shouldObfuscate ? "HillJumpers Only" : etf.ticker;
-        const displayName = shouldObfuscate ? "HillJumpers Only" : etf.name;
-        const displayPrice = shouldObfuscate ? "HillJumpers Only" : price;
-        const displayDripSum = shouldObfuscate ? "HillJumpers Only" : dripSum;
-        const displayRank = shouldObfuscate ? "HillJumpers Only" : rank;
+        const displayTicker = shouldObfuscate ? "Sign In" : etf.ticker;
+        const displayName = shouldObfuscate ? "***" : etf.name;
+        const displayPrice = shouldObfuscate ? "***" : price;
+        const displayDripSum = shouldObfuscate ? "***" : dripSum;
+        const displayRank = rank; // Always show rank
         
         return (
           <Card 
@@ -237,18 +237,18 @@ export const MobileETFTable = ({
                       alt={logoUrl ? manager : "Hilljump"} 
                       className="w-6 h-6 sm:w-8 sm:h-8 lg:w-6 lg:h-6 rounded object-contain bg-white"
                     />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg sm:text-xl lg:text-lg">{displayTicker}</span>
-                        <span className="text-sm sm:text-base lg:text-sm">{countryFlag(etf)}</span>
-                      </div>
-                      <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
-                        {manager}
-                      </div>
-                      <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
-                        {etf.underlying || etf.name}
-                      </div>
-                    </div>
+                     <div>
+                       <div className="flex items-center gap-2">
+                         <span className="font-bold text-lg sm:text-xl lg:text-lg">{displayTicker}</span>
+                         <span className="text-sm sm:text-base lg:text-sm">{!shouldObfuscate && countryFlag(etf)}</span>
+                       </div>
+                       <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
+                         {shouldObfuscate ? "***" : manager}
+                       </div>
+                       <div className="text-xs sm:text-sm lg:text-xs text-muted-foreground truncate max-w-32 sm:max-w-48 lg:max-w-32">
+                         {shouldObfuscate ? "***" : (etf.underlying || etf.name)}
+                       </div>
+                     </div>
                   </div>
                 </div>
 
@@ -292,7 +292,7 @@ export const MobileETFTable = ({
                       
                        return (
                          <div className="inline-flex flex-col items-end leading-tight">
-                           <span className="font-semibold">{shouldObfuscate ? "HillJumpers Only" : `$${price.toFixed(2)}`}</span>
+                           <span className="font-semibold">{shouldObfuscate ? "***" : `$${price.toFixed(2)}`}</span>
                            <div className="text-xs space-y-0">
                              {cp != null && !shouldObfuscate && (
                                <div className={up ? "text-emerald-600" : "text-red-600"}>
@@ -318,13 +318,16 @@ export const MobileETFTable = ({
                  <div className="text-xs text-muted-foreground">
                    {distributions[etf.ticker]?.date ? (
                      <>
-                       Last {shouldObfuscate ? "HillJumpers Only" : format(new Date(distributions[etf.ticker].date), "MM/dd")}
+                       Last {shouldObfuscate ? "***" : format(new Date(distributions[etf.ticker].date), "MM/dd")}
                        {dividendPredictions[etf.ticker]?.date && !shouldObfuscate && (
                          <>, Next {format(new Date(dividendPredictions[etf.ticker].date), "MM/dd")}</>
                        )}
+                       {dividendPredictions[etf.ticker]?.date && shouldObfuscate && (
+                         <>, Next ***</>
+                       )}
                      </>
                    ) : (
-                     shouldObfuscate ? "HillJumpers Only" : "No distribution"
+                     shouldObfuscate ? "***" : "No distribution"
                    )}
                  </div>
               </div>
