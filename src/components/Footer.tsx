@@ -2,7 +2,15 @@ const Footer = () => {
   return (
     <footer className="border-t border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container py-8 px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
+        <div className="text-center space-y-4">
+          <div>
+            <a 
+              href="/privacy" 
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              Privacy Policy
+            </a>
+          </div>
           <p className="text-sm text-muted-foreground max-w-4xl mx-auto leading-relaxed">
             The information provided by HillJump is for informational and educational purposes only. 
             HillJump does not provide financial, investment, legal, or tax advice. 
