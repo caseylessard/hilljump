@@ -1070,10 +1070,7 @@ const Portfolio = () => {
                   <CardHeader>
                     <CardTitle>AI Portfolio Recommendations</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                       {profile?.id ? 
-                         `${resolvedPortfolio.length} positions • $${portfolioSize.toLocaleString()} • $${totalSpent.toLocaleString()} allocated • $${cashLeft.toLocaleString()} cash` :
-                         "***"
-                       }
+                      {resolvedPortfolio.length} positions • ${portfolioSize.toLocaleString()} • ${totalSpent.toLocaleString()} allocated • ${cashLeft.toLocaleString()} cash
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -1104,12 +1101,9 @@ const Portfolio = () => {
                                   </Badge>
                                 )}
                               </div>
-                               <p className="text-sm text-muted-foreground">
-                                  {profile?.id ? 
-                                    `${(etf.weight * 100).toFixed(1)}% • $${(etf.allocationDollar || 0).toFixed(0)} • ${etf.shares || 0} shares @ $${etf.lastPrice.toFixed(2)}` :
-                                    "***"
-                                  }
-                               </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {(etf.weight * 100).toFixed(1)}% • ${(etf.allocationDollar || 0).toFixed(0)} • {etf.shares || 0} shares @ ${etf.lastPrice.toFixed(2)}
+                                </p>
                             </div>
                           </div>
                         ))}
