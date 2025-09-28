@@ -163,22 +163,24 @@ const AdminDashboard = () => {
     <div>
       <Navigation />
       
-      <main className="container py-4 md:py-8 px-4 md:px-6">
+      <main className="container py-4 md:py-8 px-4 md:px-6 max-w-7xl">
         <div className="space-y-4 md:space-y-6">
-          <div className="px-2 md:px-0">
+          <div className="px-0">
             <h1 className="text-2xl md:text-3xl font-bold">Admin Dashboard</h1>
             <p className="text-sm md:text-base text-muted-foreground">System management and data administration</p>
           </div>
 
-          <Tabs defaultValue="data" className="space-y-4 md:space-y-6 px-2 md:px-0">
-            <TabsList className="grid w-full grid-cols-6 md:grid-cols-6 sm:grid-cols-2 overflow-x-auto">
-              <TabsTrigger value="data" className="text-xs sm:text-sm">Data</TabsTrigger>
-              <TabsTrigger value="dividends" className="text-xs sm:text-sm">Dividends</TabsTrigger>
-              <TabsTrigger value="pricing" className="text-xs sm:text-sm">Pricing</TabsTrigger>
-              <TabsTrigger value="alerts" className="text-xs sm:text-sm">Alerts</TabsTrigger>
-              <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>
-              <TabsTrigger value="monitoring" className="text-xs sm:text-sm">Monitor</TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="data" className="space-y-4 md:space-y-6 px-0">
+            <div className="overflow-x-auto">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 min-w-max lg:min-w-full">
+                <TabsTrigger value="data" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Data</TabsTrigger>
+                <TabsTrigger value="dividends" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Dividends</TabsTrigger>
+                <TabsTrigger value="pricing" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Pricing</TabsTrigger>
+                <TabsTrigger value="alerts" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Alerts</TabsTrigger>
+                <TabsTrigger value="settings" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Settings</TabsTrigger>
+                <TabsTrigger value="monitoring" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Monitor</TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="data" className="space-y-4 md:space-y-6">
               <div className="grid gap-4 md:gap-6">
@@ -193,32 +195,32 @@ const AdminDashboard = () => {
                     <ETFActivator />
                     <ETFDataExport />
                     <div className="space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                          <div className="font-medium">Export/Import ETFs CSV</div>
-                          <div className="text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
+                        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 gap-3">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm sm:text-base">Export/Import ETFs CSV</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 w-full sm:w-auto">
+                            <Button onClick={exportEtfs} size="sm" className="text-xs sm:text-sm w-full sm:w-auto">Export CSV</Button>
+                            <label className={`cursor-pointer w-full sm:w-auto ${importing ? 'pointer-events-none' : ''}`}>
+                              <input 
+                                type="file" 
+                                accept=".csv" 
+                                className="hidden" 
+                                disabled={importing}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) importEtfsFromFile(file);
+                                  e.currentTarget.value = '';
+                                }} 
+                              />
+                              <span className={`inline-flex items-center justify-center h-9 px-3 sm:px-4 rounded-md border bg-background gap-2 text-xs sm:text-sm w-full ${importing ? 'opacity-50' : ''}`}>
+                                {importing && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Import CSV
+                              </span>
+                            </label>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button onClick={exportEtfs} size="sm" className="text-xs sm:text-sm">Export CSV</Button>
-                          <label className={`cursor-pointer ${importing ? 'pointer-events-none' : ''}`}>
-                            <input 
-                              type="file" 
-                              accept=".csv" 
-                              className="hidden" 
-                              disabled={importing}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) importEtfsFromFile(file);
-                                e.currentTarget.value = '';
-                              }} 
-                            />
-                            <span className={`inline-flex items-center justify-center h-9 px-3 sm:px-4 rounded-md border bg-background gap-2 text-xs sm:text-sm ${importing ? 'opacity-50' : ''}`}>
-                              {importing && <Loader2 className="h-4 w-4 animate-spin" />}
-                              Import CSV
-                            </span>
-                          </label>
-                        </div>
-                      </div>
                     </div>
                     <ETFEditor />
                     <ETFMetadataFetcher />
@@ -272,7 +274,7 @@ const AdminDashboard = () => {
                         <p className="text-muted-foreground">Test WebSocket streaming vs traditional cron jobs</p>
                       </div>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-6">
                         <Card>
                           <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -311,17 +313,17 @@ const AdminDashboard = () => {
                           </CardHeader>
                           <CardContent>
                             <div className="space-y-4">
-                              <Button onClick={testSampleStocks} className="w-full text-sm sm:text-base">
+                              <Button onClick={testSampleStocks} className="w-full text-xs sm:text-sm py-2 sm:py-3">
                                 Test 10 Sample Stocks
                               </Button>
                               
                               {testResults.length > 0 && (
-                                <ScrollArea className="h-48 sm:h-64">
+                                <ScrollArea className="h-40 sm:h-48 md:h-64 border rounded-md p-2">
                                   <div className="space-y-2">
                                     {testResults.map((result, index) => (
                                       <div key={index} className="p-2 border rounded text-xs sm:text-sm">
-                                        <div className="flex justify-between items-start">
-                                          <div>
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                                          <div className="flex-1">
                                             <Badge variant={result.country === 'US' ? 'default' : 'secondary'} className="text-xs">
                                               {result.ticker} ({result.country})
                                             </Badge>
@@ -330,7 +332,7 @@ const AdminDashboard = () => {
                                               {result.data.yield && ` | Yield: ${result.data.yield.toFixed(2)}%`}
                                             </div>
                                           </div>
-                                          <div className="text-xs text-muted-foreground">
+                                          <div className="text-xs text-muted-foreground self-end sm:self-auto">
                                             {new Date(result.timestamp).toLocaleTimeString()}
                                           </div>
                                         </div>
