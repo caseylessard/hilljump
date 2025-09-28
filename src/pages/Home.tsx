@@ -104,7 +104,7 @@ const Home = () => {
                 </div>
               </div>
               
-              <Card className="overflow-hidden order-first lg:order-last">
+              <Card className="overflow-hidden order-first lg:order-last hidden sm:block">
                 <img 
                   src={content.hero_image_url} 
                   alt="Investment platform visualization showing market data and analysis tools" 
