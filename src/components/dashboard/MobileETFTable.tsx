@@ -203,8 +203,8 @@ export const MobileETFTable = ({
         const price = liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0);
         const dripSum = getDripSum(etf.ticker);
         
-        // Preview mode: replace sensitive data with placeholders for ranks 1-3 and 11+
-        const shouldObfuscate = previewMode && (index <= 2 || index >= 10);
+        // Preview mode: replace sensitive data with placeholders for ranks 1-3 and 7+
+        const shouldObfuscate = previewMode && (index <= 2 || index >= 6);
         
         // Create obfuscated data
         const displayTicker = shouldObfuscate ? "HillJumpers Only" : etf.ticker;

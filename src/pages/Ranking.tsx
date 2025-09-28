@@ -588,12 +588,13 @@ const Ranking = () => {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          placeholder="Search ticker/underlying"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder={profile ? "Search ticker/underlying" : "HillJumpers Only"}
+                          value={profile ? searchQuery : ""}
+                          onChange={(e) => profile && setSearchQuery(e.target.value)}
                           className="pl-10 pr-8 w-64"
+                          disabled={!profile}
                         />
-                        {searchQuery && (
+                        {searchQuery && profile && (
                           <button
                             onClick={() => setSearchQuery('')}
                             className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"
@@ -621,12 +622,13 @@ const Ranking = () => {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
-                         placeholder="Search ticker/underlying"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                         placeholder={profile ? "Search ticker/underlying" : "HillJumpers Only"}
+                        value={profile ? searchQuery : ""}
+                        onChange={(e) => profile && setSearchQuery(e.target.value)}
                         className="pl-10 pr-8"
+                        disabled={!profile}
                       />
-                      {searchQuery && (
+                      {searchQuery && profile && (
                         <button
                           onClick={() => setSearchQuery('')}
                           className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center"

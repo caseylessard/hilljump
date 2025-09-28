@@ -685,8 +685,8 @@ export const OptimizedETFTable = ({
             // Calculate DRIP sum for this ticker using lookupTables
             const dripSum = lookupTables.getDripSum(etf.ticker);
             
-            // Preview mode: replace sensitive data with placeholders for ranks 1-3 and 11+
-            const shouldObfuscate = previewMode && (idx <= 2 || idx >= 10);
+            // Preview mode: replace sensitive data with placeholders for ranks 1-3 and 7+
+            const shouldObfuscate = previewMode && (idx <= 2 || idx >= 6);
             
             // Create obfuscated data
             const displayTicker = shouldObfuscate ? "HillJumpers Only" : etf.ticker;
