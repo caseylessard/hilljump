@@ -756,16 +756,16 @@ const Portfolio = () => {
                                      </span>
                                    </div>
                                  </TableCell>
-                                 <TableCell className="font-medium">
-                                   <div className="flex items-center gap-2">
-                                     {position.ticker}
-                                     {position.isRecommendation && (
-                                       <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 dark:text-blue-400">
-                                         AI Suggestion
-                                       </Badge>
-                                     )}
-                                   </div>
-                                 </TableCell>
+                                  <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                      {profile?.id ? position.ticker : (position.isRecommendation ? "HillJumpers Only" : position.ticker)}
+                                      {position.isRecommendation && (
+                                        <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 dark:text-blue-400">
+                                          {profile?.id ? "AI Suggestion" : "HillJumpers Only"}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
                                  <TableCell>
                                    {isEditing && !position.isRecommendation ? (
                                      <Input
@@ -781,18 +781,18 @@ const Portfolio = () => {
                                  <TableCell>${price.toFixed(2)}</TableCell>
                                  <TableCell>${value.toLocaleString()}</TableCell>
                                  <TableCell className="text-center">
-                                   {position.isRecommendation ? (
-                                     <div className="space-y-1">
-                                       <div className="font-medium text-blue-600 dark:text-blue-400">
-                                         💡 ${value.toLocaleString()}
-                                       </div>
-                                       <div className="text-xs text-muted-foreground">
-                                         New position
-                                       </div>
-                                       <Badge variant="outline" className="text-xs border-blue-500">
-                                         ADD
-                                       </Badge>
-                                     </div>
+                                    {position.isRecommendation ? (
+                                      <div className="space-y-1">
+                                        <div className="font-medium text-blue-600 dark:text-blue-400">
+                                          💡 {profile?.id ? `$${value.toLocaleString()}` : "HillJumpers Only"}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {profile?.id ? "New position" : "HillJumpers Only"}
+                                        </div>
+                                        <Badge variant="outline" className="text-xs border-blue-500">
+                                          {profile?.id ? "ADD" : "HillJumpers Only"}
+                                        </Badge>
+                                      </div>
                                    ) : aiAdviceLoading ? (
                                      <div className="text-muted-foreground text-sm">Loading...</div>
                                    ) : aiRec ? (
@@ -825,10 +825,10 @@ const Portfolio = () => {
                                    )}
                                  </TableCell>
                                  <TableCell>
-                                   {position.isRecommendation ? (
-                                     <div className="text-sm text-muted-foreground">
-                                       AI Recommendation
-                                     </div>
+                                    {position.isRecommendation ? (
+                                      <div className="text-sm text-muted-foreground">
+                                        {profile?.id ? "AI Recommendation" : "HillJumpers Only"}
+                                      </div>
                                    ) : (
                                      <div className="flex gap-2">
                                        {isEditing ? (
@@ -1070,7 +1070,10 @@ const Portfolio = () => {
                   <CardHeader>
                     <CardTitle>AI Portfolio Recommendations</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      {resolvedPortfolio.length} positions • ${portfolioSize.toLocaleString()} • ${totalSpent.toLocaleString()} allocated • ${cashLeft.toLocaleString()} cash
+                      {profile?.id ? 
+                        `${resolvedPortfolio.length} positions • $${portfolioSize.toLocaleString()} • $${totalSpent.toLocaleString()} allocated • $${cashLeft.toLocaleString()} cash` :
+                        "HillJumpers Only"
+                      }
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -1081,29 +1084,32 @@ const Portfolio = () => {
                       </div>
                     ) : resolvedPortfolio.length > 0 ? (
                       <div className="space-y-4">
-                        {resolvedPortfolio.map((etf, index) => (
-                          <div key={etf.ticker} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="outline">{etf.ticker}</Badge>
-                                <span className="font-medium text-sm">{etf.name}</span>
-                                {etf.badge && (
-                                  <Badge 
-                                    variant="secondary" 
-                                    className={`text-xs ${
-                                      etf.badgeColor === 'green' ? 'bg-emerald-100 text-emerald-800' :
-                                      etf.badgeColor === 'red' ? 'bg-red-100 text-red-800' :
-                                      etf.badgeColor === 'orange' ? 'bg-orange-100 text-orange-800' :
-                                      'bg-yellow-100 text-yellow-800'
-                                    }`}
-                                  >
-                                    {etf.badge}
+                         {resolvedPortfolio.map((etf, index) => (
+                           <div key={etf.ticker} className="flex items-center justify-between p-4 border rounded-lg">
+                             <div className="flex-1">
+                               <div className="flex items-center gap-2 mb-1">
+                                 <Badge variant="outline">{profile?.id ? etf.ticker : "HillJumpers Only"}</Badge>
+                                 <span className="font-medium text-sm">{profile?.id ? etf.name : "HillJumpers Only"}</span>
+                                 {etf.badge && profile?.id && (
+                                   <Badge 
+                                     variant="secondary" 
+                                     className={`text-xs ${
+                                       etf.badgeColor === 'green' ? 'bg-emerald-100 text-emerald-800' :
+                                       etf.badgeColor === 'red' ? 'bg-red-100 text-red-800' :
+                                       etf.badgeColor === 'orange' ? 'bg-orange-100 text-orange-800' :
+                                       'bg-yellow-100 text-yellow-800'
+                                     }`}
+                                   >
+                                     {etf.badge}
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-muted-foreground">
-                                {(etf.weight * 100).toFixed(1)}% • ${(etf.allocationDollar || 0).toFixed(0)} • {etf.shares || 0} shares @ ${etf.lastPrice.toFixed(2)}
-                              </p>
+                               <p className="text-sm text-muted-foreground">
+                                 {profile?.id ? 
+                                   `${(etf.weight * 100).toFixed(1)}% • $${(etf.allocationDollar || 0).toFixed(0)} • ${etf.shares || 0} shares @ $${etf.lastPrice.toFixed(2)}` :
+                                   "HillJumpers Only"
+                                 }
+                               </p>
                             </div>
                           </div>
                         ))}
