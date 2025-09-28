@@ -290,23 +290,23 @@ export const MobileETFTable = ({
                       }
                       const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
                       
-                      return (
-                        <div className="inline-flex flex-col items-end leading-tight">
-                          <span className="font-semibold">${price.toFixed(2)}</span>
-                          <div className="text-xs space-y-0">
-                            {cp != null && (
-                              <div className={up ? "text-emerald-600" : "text-red-600"}>
-                                {up ? "+" : ""}{cp.toFixed(2)}%
-                              </div>
-                            )}
-                            {dateStr && (
-                              <div className="text-muted-foreground">
-                                {dateStr}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
+                       return (
+                         <div className="inline-flex flex-col items-end leading-tight">
+                           <span className="font-semibold">{shouldObfuscate ? "HillJumpers Only" : `$${price.toFixed(2)}`}</span>
+                           <div className="text-xs space-y-0">
+                             {cp != null && !shouldObfuscate && (
+                               <div className={up ? "text-emerald-600" : "text-red-600"}>
+                                 {up ? "+" : ""}{cp.toFixed(2)}%
+                               </div>
+                             )}
+                             {dateStr && !shouldObfuscate && (
+                               <div className="text-muted-foreground">
+                                 {dateStr}
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       );
                     })()}
                   </div>
                 </div>
@@ -315,38 +315,38 @@ export const MobileETFTable = ({
               {/* Buy/Sell Signal */}
               <div className="flex justify-between items-center">
                 <PositionIndicator position={etf.position} />
-                <div className="text-xs text-muted-foreground">
-                  {distributions[etf.ticker]?.date ? (
-                    <>
-                      Last {format(new Date(distributions[etf.ticker].date), "MM/dd")}
-                      {dividendPredictions[etf.ticker]?.date && (
-                        <>, Next {format(new Date(dividendPredictions[etf.ticker].date), "MM/dd")}</>
-                      )}
-                    </>
-                  ) : (
-                    "No distribution"
-                  )}
-                </div>
+                 <div className="text-xs text-muted-foreground">
+                   {distributions[etf.ticker]?.date ? (
+                     <>
+                       Last {shouldObfuscate ? "HillJumpers Only" : format(new Date(distributions[etf.ticker].date), "MM/dd")}
+                       {dividendPredictions[etf.ticker]?.date && !shouldObfuscate && (
+                         <>, Next {format(new Date(dividendPredictions[etf.ticker].date), "MM/dd")}</>
+                       )}
+                     </>
+                   ) : (
+                     shouldObfuscate ? "HillJumpers Only" : "No distribution"
+                   )}
+                 </div>
               </div>
 
-              {/* DRIP performance grid */}
-              <div className="grid grid-cols-4 gap-2 sm:gap-4 lg:gap-2 text-center">
-                {(['4w', '13w', '26w', '52w'] as const).map((period) => {
-                  const percent = getDripPercent(etf.ticker, period);
-                  const isPositive = percent >= 0;
-                  
-                  return (
-                    <div key={period} className="text-xs sm:text-sm lg:text-xs">
-                      <div className="text-muted-foreground mb-1">{period}</div>
-                      <div className={`font-medium ${
-                        isPositive ? 'text-emerald-600' : 'text-red-600'
-                      }`}>
-                        {percent.toFixed(1)}%
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+               {/* DRIP performance grid */}
+               <div className="grid grid-cols-4 gap-2 sm:gap-4 lg:gap-2 text-center">
+                 {(['4w', '13w', '26w', '52w'] as const).map((period) => {
+                   const percent = getDripPercent(etf.ticker, period);
+                   const isPositive = percent >= 0;
+                   
+                   return (
+                     <div key={period} className="text-xs sm:text-sm lg:text-xs">
+                       <div className="text-muted-foreground mb-1">{period}</div>
+                       <div className={`font-medium ${
+                         isPositive ? 'text-emerald-600' : 'text-red-600'
+                       }`}>
+                         {percent.toFixed(1)}%
+                       </div>
+                     </div>
+                   );
+                 })}
+               </div>
             </CardContent>
           </Card>
         );

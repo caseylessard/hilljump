@@ -646,7 +646,7 @@ const Ranking = () => {
                      <Lock className="h-4 w-4" />
                      <AlertDescription>
                        <div className="flex items-center justify-between">
-                         <span>Sign in to view complete rankings. Preview shows positions 4-10 only.</span>
+                          <span>Sign in to view complete rankings. Preview shows positions 4-6 only.</span>
                          <Button variant="outline" size="sm" onClick={() => window.location.href = '/auth'}>
                            Sign In
                          </Button>
@@ -812,7 +812,7 @@ const Ranking = () => {
                      <Lock className="h-4 w-4" />
                      <AlertDescription>
                        <div className="flex items-center justify-between">
-                         <span>Sign in to view complete rankings. Preview shows positions 4-10 only.</span>
+                          <span>Sign in to view complete rankings. Preview shows positions 4-6 only.</span>
                          <Button variant="outline" size="sm" onClick={() => window.location.href = '/auth'}>
                            Sign In
                          </Button>
@@ -1041,7 +1041,7 @@ const Ranking = () => {
                   <Lock className="h-4 w-4" />
                   <AlertDescription>
                     <div className="flex items-center justify-between">
-                      <span>Sign in to view complete rankings. Preview shows positions 4-10 only.</span>
+                      <span>Sign in to view complete rankings. Preview shows positions 4-6 only.</span>
                       <Button variant="outline" size="sm" onClick={() => window.location.href = '/auth'}>
                         Sign In
                       </Button>

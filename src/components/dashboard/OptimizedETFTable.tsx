@@ -719,12 +719,12 @@ export const OptimizedETFTable = ({
                      <span className="inline-flex items-center">
                        {displayTicker} {!shouldObfuscate && <span className="ml-1" aria-hidden>{helperFunctions.countryFlag(etf)}</span>}
                      </span>
-                     <span className="text-xs text-muted-foreground">{shouldObfuscate ? "" : helperFunctions.getFundManager(etf)}</span>
+                     <span className="text-xs text-muted-foreground">{helperFunctions.getFundManager(etf)}</span>
                    </div>
                  </TableCell>
-                  <TableCell className="text-center">
-                    {shouldObfuscate ? "HillJumpers Only" : <TrendIndicator position={etf.position} />}
-                  </TableCell>
+                   <TableCell className="text-center">
+                     <TrendIndicator position={etf.position} />
+                   </TableCell>
                    <TableCell className="text-right">
                      {shouldObfuscate ? "HillJumpers Only" : (() => {
                       const price = liveItem?.price;
