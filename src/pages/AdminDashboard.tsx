@@ -163,88 +163,104 @@ const AdminDashboard = () => {
     <div>
       <Navigation />
       
-      <main className="container py-4 md:py-8 px-4 md:px-6 max-w-7xl">
-        <div className="space-y-4 md:space-y-6">
-          <div className="px-0">
-            <h1 className="text-2xl md:text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm md:text-base text-muted-foreground">System management and data administration</p>
+      <main className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+          <div className="text-center lg:text-left">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Admin Dashboard</h1>
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground mt-2">System management and data administration</p>
           </div>
 
-          <Tabs defaultValue="data" className="space-y-4 md:space-y-6 px-0">
-            <div className="overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 min-w-max lg:min-w-full">
-                <TabsTrigger value="data" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Data</TabsTrigger>
-                <TabsTrigger value="dividends" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Dividends</TabsTrigger>
-                <TabsTrigger value="pricing" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Pricing</TabsTrigger>
-                <TabsTrigger value="alerts" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Alerts</TabsTrigger>
-                <TabsTrigger value="settings" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Settings</TabsTrigger>
-                <TabsTrigger value="monitoring" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">Monitor</TabsTrigger>
+          <Tabs defaultValue="data" className="space-y-4 sm:space-y-6 lg:space-y-8">
+            <div className="overflow-x-auto pb-2">
+              <TabsList className="inline-flex h-auto w-auto min-w-full bg-muted p-1 text-muted-foreground rounded-lg">
+                <div className="flex flex-wrap gap-1">
+                  <TabsTrigger value="data" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Data
+                  </TabsTrigger>
+                  <TabsTrigger value="dividends" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Dividends
+                  </TabsTrigger>
+                  <TabsTrigger value="pricing" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Pricing
+                  </TabsTrigger>
+                  <TabsTrigger value="alerts" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Alerts
+                  </TabsTrigger>
+                  <TabsTrigger value="settings" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Settings
+                  </TabsTrigger>
+                  <TabsTrigger value="monitoring" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Monitor
+                  </TabsTrigger>
+                </div>
               </TabsList>
             </div>
 
-            <TabsContent value="data" className="space-y-4 md:space-y-6">
-              <div className="grid gap-4 md:gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>ETF Data Management</CardTitle>
+            <TabsContent value="data" className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">ETF Data Management</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                     <ETFOrchestrator />
                     <ETFDataFixer />
                     <ETFDataImport />
                     <ETFActivator />
                     <ETFDataExport />
                     <div className="space-y-4">
-                        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 gap-3">
-                          <div className="flex-1">
-                            <div className="font-medium text-sm sm:text-base">Export/Import ETFs CSV</div>
-                            <div className="text-xs sm:text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 w-full sm:w-auto">
-                            <Button onClick={exportEtfs} size="sm" className="text-xs sm:text-sm w-full sm:w-auto">Export CSV</Button>
-                            <label className={`cursor-pointer w-full sm:w-auto ${importing ? 'pointer-events-none' : ''}`}>
-                              <input 
-                                type="file" 
-                                accept=".csv" 
-                                className="hidden" 
-                                disabled={importing}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) importEtfsFromFile(file);
-                                  e.currentTarget.value = '';
-                                }} 
-                              />
-                              <span className={`inline-flex items-center justify-center h-9 px-3 sm:px-4 rounded-md border bg-background gap-2 text-xs sm:text-sm w-full ${importing ? 'opacity-50' : ''}`}>
-                                {importing && <Loader2 className="h-4 w-4 animate-spin" />}
-                                Import CSV
-                              </span>
-                            </label>
-                          </div>
+                      <div className="flex flex-col space-y-3">
+                        <div className="space-y-2">
+                          <div className="font-medium text-sm sm:text-base">Export/Import ETFs CSV</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">Export all ETFs or import a CSV to update them.</div>
                         </div>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full">
+                          <Button onClick={exportEtfs} size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
+                            Export CSV
+                          </Button>
+                          <label className={`cursor-pointer w-full sm:w-auto ${importing ? 'pointer-events-none' : ''}`}>
+                            <input 
+                              type="file" 
+                              accept=".csv" 
+                              className="hidden" 
+                              disabled={importing}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) importEtfsFromFile(file);
+                                e.currentTarget.value = '';
+                              }} 
+                            />
+                            <span className={`inline-flex items-center justify-center h-9 px-3 sm:px-4 rounded-md border bg-background gap-2 text-xs sm:text-sm w-full ${importing ? 'opacity-50' : ''}`}>
+                              {importing && <Loader2 className="h-4 w-4 animate-spin" />}
+                              Import CSV
+                            </span>
+                          </label>
+                        </div>
+                      </div>
                     </div>
                     <ETFEditor />
                     <ETFMetadataFetcher />
                   </CardContent>
                 </Card>
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>System Updates</CardTitle>
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">System Updates</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6">
                     <DataUpdater />
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
 
-            <TabsContent value="dividends" className="space-y-4 md:space-y-6">
-              <div className="grid gap-4 md:gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Dividend Data Operations</CardTitle>
+            <TabsContent value="dividends" className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">Dividend Data Operations</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                     <AutoDividendFetcher />
                     <RefreshDividendData />
                     <BulkDividendFetcher />
@@ -254,35 +270,35 @@ const AdminDashboard = () => {
                   </CardContent>
                 </Card>
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Dividend System</CardTitle>
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">Dividend System</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                     <DividendSystemTest />
                     <DistributionEditor />
                   </CardContent>
                 </Card>
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>WebSocket vs Cron Jobs Test</CardTitle>
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">WebSocket vs Cron Jobs Test</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-6">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="space-y-4 sm:space-y-6">
                       <div className="text-center space-y-2">
-                        <p className="text-muted-foreground">Test WebSocket streaming vs traditional cron jobs</p>
+                        <p className="text-sm sm:text-base text-muted-foreground">Test WebSocket streaming vs traditional cron jobs</p>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-6">
-                        <Card>
-                          <CardHeader>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        <Card className="w-full">
+                          <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                               <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                               Current Cron Jobs
                             </CardTitle>
                           </CardHeader>
-                          <CardContent>
+                          <CardContent className="p-3 sm:p-4">
                             <div className="space-y-3">
                               <div className="p-3 border rounded-lg">
                                 <div className="font-medium text-sm sm:text-base">dividend-updater-daily</div>
@@ -304,35 +320,35 @@ const AdminDashboard = () => {
                           </CardContent>
                         </Card>
 
-                        <Card>
-                          <CardHeader>
+                        <Card className="w-full">
+                          <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                               <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
                               WebSocket Test
                             </CardTitle>
                           </CardHeader>
-                          <CardContent>
+                          <CardContent className="p-3 sm:p-4">
                             <div className="space-y-4">
                               <Button onClick={testSampleStocks} className="w-full text-xs sm:text-sm py-2 sm:py-3">
                                 Test 10 Sample Stocks
                               </Button>
                               
                               {testResults.length > 0 && (
-                                <ScrollArea className="h-40 sm:h-48 md:h-64 border rounded-md p-2">
+                                <ScrollArea className="h-32 sm:h-40 lg:h-48 border rounded-md p-2">
                                   <div className="space-y-2">
                                     {testResults.map((result, index) => (
                                       <div key={index} className="p-2 border rounded text-xs sm:text-sm">
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-                                          <div className="flex-1">
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-2">
+                                          <div className="flex-1 min-w-0">
                                             <Badge variant={result.country === 'US' ? 'default' : 'secondary'} className="text-xs">
                                               {result.ticker} ({result.country})
                                             </Badge>
-                                            <div className="mt-1 text-xs text-muted-foreground">
+                                            <div className="mt-1 text-xs text-muted-foreground truncate">
                                               Price: ${result.data.price?.toFixed(2) || 'N/A'}
                                               {result.data.yield && ` | Yield: ${result.data.yield.toFixed(2)}%`}
                                             </div>
                                           </div>
-                                          <div className="text-xs text-muted-foreground self-end sm:self-auto">
+                                          <div className="text-xs text-muted-foreground shrink-0">
                                             {new Date(result.timestamp).toLocaleTimeString()}
                                           </div>
                                         </div>
@@ -353,11 +369,11 @@ const AdminDashboard = () => {
                   </CardContent>
                 </Card>
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Dividend Monitoring</CardTitle>
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">Dividend Monitoring</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                     <DividendDataMonitor />
                     <DividendDataViewer />
                   </CardContent>
@@ -365,22 +381,22 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="pricing" className="space-y-4 md:space-y-6">
-              <div className="grid gap-4 md:gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Price Updates</CardTitle>
+            <TabsContent value="pricing" className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">Price Updates</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                     <StalePriceUpdater />
                   </CardContent>
                 </Card>
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Historical Data</CardTitle>
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">Historical Data</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                     <AutoHistoricalPriceFetcher />
                     <HistoricalPriceImport />
                   </CardContent>
@@ -388,15 +404,15 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="alerts" className="space-y-4 md:space-y-6">
-              <div className="grid gap-4 md:gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Market Alerts & Testing</CardTitle>
+            <TabsContent value="alerts" className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">Market Alerts & Testing</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                     <DailyAlertsTestSuite />
-                    <div className="text-center py-4 text-muted-foreground">
+                    <div className="text-center py-4 text-xs sm:text-sm text-muted-foreground">
                       ETF testing tools consolidated into data management section
                     </div>
                   </CardContent>
@@ -404,13 +420,13 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="settings" className="space-y-4 md:space-y-6">
-              <div className="grid gap-4 md:gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Site Settings</CardTitle>
+            <TabsContent value="settings" className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">Site Settings</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                     <SEOSettings />
                     <HomepageEditor />
                   </CardContent>
@@ -418,14 +434,14 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="monitoring" className="space-y-4 md:space-y-6">
-              <div className="grid gap-4 md:gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>System Monitoring</CardTitle>
+            <TabsContent value="monitoring" className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card className="w-full">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl">System Monitoring</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="text-center py-6 sm:py-8 text-xs sm:text-sm text-muted-foreground">
                       System monitoring tools and logs will be available here.
                     </div>
                   </CardContent>
