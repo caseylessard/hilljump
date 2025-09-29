@@ -229,7 +229,7 @@ const Auth = () => {
               </div>
 
               {/* Email/Password */}
-              <div className="space-y-3">
+              <form onSubmit={(e) => { e.preventDefault(); signIn(); }} className="space-y-3">
                 <div>
                   <Input 
                     type="email" 
@@ -251,11 +251,11 @@ const Auth = () => {
                     maxLength={128}
                   />
                 </div>
-                <Button onClick={signIn} disabled={loading} className="w-full">
+                <Button type="submit" disabled={loading} className="w-full">
                   <Mail className="w-4 h-4 mr-2" />
                   {loading ? "Signing in..." : "Sign in with Email"}
                 </Button>
-              </div>
+              </form>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -319,7 +319,7 @@ const Auth = () => {
               </div>
 
               {/* Email/Password */}
-              <div className="space-y-3">
+              <form onSubmit={(e) => { e.preventDefault(); signUp(); }} className="space-y-3">
                 <div>
                   <Input 
                     type="email" 
@@ -351,14 +351,14 @@ const Auth = () => {
                   <PasswordStrengthIndicator password={password} show={tab === 'signup'} />
                 </div>
                 <Button 
-                  onClick={signUp} 
+                  type="submit"
                   disabled={loading || hasErrors || !email || !password} 
                   className="w-full"
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   {loading ? "Creating account..." : "Create Account with Email"}
                 </Button>
-              </div>
+              </form>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
