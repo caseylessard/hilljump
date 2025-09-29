@@ -1,11 +1,13 @@
+# nixpacks.toml (root of repo)
 providers = ["node"]
 
 [variables]
 PORT = "3000"
-NODE_VERSION = "20"   # <-- key line; 22 also fine if your app supports it
+NODE_VERSION = "20"    # or "22" if your app supports it
 
 [phases.setup]
-nixPkgs = ["nodejs_20", "nodePackages.npm", "corepack"]
+# Keep ONLY one node; no overlays, no corepack (not needed if you use npm)
+nixPkgs = ["nodejs_20", "nodePackages.npm"]
 
 [phases.install]
 cmds = ["npm ci"]
