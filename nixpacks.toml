@@ -6,8 +6,9 @@ PORT = "3000"
 NODE_VERSION = "20"    # or "22" if your app supports it
 
 [phases.setup]
-# Keep ONLY one node; no overlays, no corepack (not needed if you use npm)
-nixPkgs = ["nodejs_20", "nodePackages.npm"]
+nixPkgs = ["nodejs_20"]
+# Drop the overlay too—it's only needed when you install npm via Nix
+# nixOverlays = []
 
 [phases.install]
 cmds = ["npm ci"]
