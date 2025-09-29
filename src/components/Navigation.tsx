@@ -45,8 +45,8 @@ const Navigation = () => {
     { href: "/portfolio", label: "Portfolio", icon: "lucide", lucideIcon: Briefcase }
   ];
 
-  // Build hamburger nav items (excludes income which is always visible on mobile) - now includes portfolio for all users
-  const hamburgerNavItems = authOnlyNavItems;
+  // Build hamburger nav items (portfolio is now icon-only on mobile, not in hamburger)
+  const hamburgerNavItems: any[] = [];
 
   // Build desktop nav items (includes all items) - now includes portfolio for all users
   const navItems = [...baseNavItems, ...authOnlyNavItems];
@@ -69,6 +69,11 @@ const Navigation = () => {
             <Button variant="ghost" size="icon" asChild>
               <a href="/ranking" aria-label="Income">
                 <CircleDollarSign className="h-5 w-5" />
+              </a>
+            </Button>
+            <Button variant="ghost" size="icon" asChild>
+              <a href="/portfolio" aria-label="Portfolio">
+                <Briefcase className="h-5 w-5" />
               </a>
             </Button>
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
