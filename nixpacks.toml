@@ -1,0 +1,17 @@
+# Force Node (Nixpacks mis-detected Deno)
+providers = ["node"]
+
+[variables]
+PORT = "3000"
+
+[phases.setup]
+nixPkgs = ["nodejs_18", "nodePackages.npm", "corepack"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npx next start -p ${PORT}"
