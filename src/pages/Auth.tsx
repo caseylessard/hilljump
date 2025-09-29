@@ -38,10 +38,12 @@ const Auth = () => {
   }, []);
 
   const signIn = async () => {
+    console.log('signIn function called', { email, passwordLength: password.length });
     try {
       setLoading(true);
       
       const sanitizedEmail = sanitizeEmail(email);
+      console.log('Sanitized email:', sanitizedEmail);
       if (!sanitizedEmail) {
         toast({ title: "Invalid email", description: "Please enter a valid email address", variant: "destructive" });
         return;
@@ -229,7 +231,11 @@ const Auth = () => {
               </div>
 
               {/* Email/Password */}
-              <form onSubmit={(e) => { e.preventDefault(); signIn(); }} className="space-y-3">
+              <form onSubmit={(e) => { 
+                console.log('Form submit triggered');
+                e.preventDefault(); 
+                signIn(); 
+              }} className="space-y-3">
                 <div>
                   <Input 
                     type="email" 
