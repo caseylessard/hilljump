@@ -423,8 +423,8 @@ const Portfolio = () => {
   useEffect(() => {
     setCurrentPortfolio(portfolioWithDRIPScores);
     
-    // Generate AI advice when portfolio data is ready AND DRIP data is complete
-    if (portfolioWithDRIPScores.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0 && !aiAdviceLoading && isDripDataComplete) {
+    // Generate AI advice when portfolio data is ready AND DRIP data is complete AND rankings are loaded
+    if (portfolioWithDRIPScores.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0 && !aiAdviceLoading && isDripDataComplete && frozenRankings.size > 0) {
       generateAIAdvice(portfolioWithDRIPScores);
     }
   }, [portfolioWithDRIPScores.length, Object.keys(cachedPrices).length, aiAdviceLoading, isDripDataComplete]);
@@ -529,9 +529,9 @@ const Portfolio = () => {
 
   // AI Portfolio Advisor
   const generateAIAdvice = async (positions: typeof portfolioWithDRIPScores) => {
-    if (positions.length === 0 || aiAdviceLoading) return;
+    if (positions.length === 0 || aiAdviceLoading || frozenRankings.size === 0) return;
     
-    console.log('🤖 Generating AI advice for', positions.length, 'positions');
+    console.log('🤖 Generating AI advice for', positions.length, 'positions with', frozenRankings.size, 'frozen rankings');
     setAiAdviceLoading(true);
     
     try {
