@@ -1,0 +1,9 @@
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+node_modules
+.next/cache
+.tmp
+dist
+coverage
