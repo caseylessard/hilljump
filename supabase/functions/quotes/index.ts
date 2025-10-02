@@ -108,8 +108,8 @@ async function fetchEODHDPrice(symbol: string): Promise<number | null> {
     if (symbol.endsWith('.TO')) {
       eodhSymbol = symbol; // EODHD uses .TO format directly
     } else if (symbol.endsWith('.NE')) {
-      // NEO Exchange - try .TO format for EODHD
-      eodhSymbol = symbol.replace('.NE', '.TO');
+      // NEO Exchange - keep as .NE, will try .NEO as fallback
+      eodhSymbol = symbol;
     } else if (symbol.endsWith('.VN')) {
       // TSX Venture - try .V format for EODHD  
       eodhSymbol = symbol.replace('.VN', '.V');
@@ -118,27 +118,37 @@ async function fetchEODHDPrice(symbol: string): Promise<number | null> {
       eodhSymbol = `${symbol}.US`;
     }
 
-    const url = `https://eodhd.com/api/real-time/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
-    console.log(`🎯 EODHD fetching: ${eodhSymbol}`);
+    // For NEO Exchange, try both .NE and .NEO formats with EODHD
+    const symbolsToTry = symbol.endsWith('.NE') 
+      ? [eodhSymbol, symbol.replace('.NE', '.NEO')]
+      : [eodhSymbol];
     
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.warn(`⚠️ EODHD API error for ${eodhSymbol}: ${response.status}, falling back to Yahoo`);
-      return fetchYahooFinancePrice(symbol);
-    }
+    for (const trySymbol of symbolsToTry) {
+      const url = `https://eodhd.com/api/real-time/${trySymbol}?api_token=${apiKey}&fmt=json`;
+      console.log(`🎯 EODHD fetching: ${trySymbol}`);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.warn(`⚠️ EODHD API error for ${trySymbol}: ${response.status}`);
+        continue;
+      }
 
-    const data = await response.json();
-    
-    // EODHD returns different field names based on market status
-    const price = data.close || data.price || data.regularMarketPrice;
-    
-    if (price && typeof price === 'number' && price > 0) {
-      console.log(`✅ EODHD ${eodhSymbol}: $${price}`);
-      return price;
+      const data = await response.json();
+      
+      // EODHD returns different field names based on market status
+      const price = data.close || data.price || data.regularMarketPrice;
+      
+      if (price && typeof price === 'number' && price > 0) {
+        console.log(`✅ EODHD ${trySymbol}: $${price}`);
+        return price;
+      }
+      
+      console.warn(`⚠️ Invalid EODHD data for ${trySymbol}:`, data);
     }
-
-    console.warn(`⚠️ Invalid EODHD data for ${eodhSymbol}, falling back to Yahoo:`, data);
+    
+    console.warn(`⚠️ All EODHD formats failed for ${symbol}, falling back to Yahoo`);
     return fetchYahooFinancePrice(symbol);
+
   } catch (error) {
     console.error(`❌ EODHD fetch error for ${symbol}, falling back to Yahoo:`, error);
     return fetchYahooFinancePrice(symbol);
