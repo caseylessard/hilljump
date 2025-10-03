@@ -21,6 +21,7 @@ import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart, Plus, Trash2 }
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PortfolioPositionCard } from "@/components/portfolio/PortfolioPositionCard";
+import { PortfolioPositionCardCompact } from "@/components/portfolio/PortfolioPositionCardCompact";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useFrozenRankings } from "@/hooks/useFrozenRankings";
 import { AIPortfolioAdvisor, type AIPortfolioAdvice, type PortfolioPosition } from "@/lib/portfolioAdvisor";
@@ -28,6 +29,7 @@ import Footer from "@/components/Footer";
 
 const Portfolio = () => {
   const isMobile = useIsMobile();
+  const isTablet = !isMobile && typeof window !== 'undefined' && window.innerWidth < 1024;
   // Get user profile for country-specific data
   const { profile } = useUserProfile();
   
@@ -728,6 +730,51 @@ const Portfolio = () => {
                           
                           return (
                             <PortfolioPositionCard
+                              key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
+                              position={position}
+                              index={index}
+                              price={price}
+                              isEditing={isEditing}
+                              editShares={editShares}
+                              dripDisplay={dripDisplay}
+                              dripRawScore={dripData.rawScore}
+                              actualRank={actualRank}
+                              aiRec={aiRec}
+                              aiAdviceLoading={aiAdviceLoading}
+                              profileId={profile?.id}
+                              onStartEdit={() => startEdit(position as any)}
+                              onSaveEdit={() => (position as any).id && saveEdit((position as any).id, position.ticker)}
+                              onCancelEdit={cancelEdit}
+                              onRemove={() => removePosition(position as any)}
+                              onSharesChange={setEditShares}
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : isTablet ? (
+                      /* Tablet Compact Card View */
+                      <div className="grid grid-cols-2 gap-3">
+                        {combinedPortfolio.map((position, index) => {
+                          const price = cachedPrices?.[position.ticker]?.price || 0;
+                          const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
+                          const dripData = position.isRecommendation ? 
+                            { score: position.dripScore || 0, rawScore: position.dripRawScore || 0 } :
+                            (position.dripScore !== undefined ? 
+                              { score: position.dripScore, rawScore: position.dripRawScore } : 
+                              calculateDRIPScore(position.ticker));
+                          const actualRank = position.rankingPosition;
+                          const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
+                          
+                          const getDRIPDisplay = (score: number) => {
+                            if (score === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
+                            if (score === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                            return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
+                          };
+                          
+                          const dripDisplay = getDRIPDisplay(dripData.score);
+                          
+                          return (
+                            <PortfolioPositionCardCompact
                               key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
                               position={position}
                               index={index}
