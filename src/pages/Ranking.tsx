@@ -28,6 +28,7 @@ import { MobileETFTable } from '@/components/dashboard/MobileETFTable';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Lock } from 'lucide-react';
 import Footer from '@/components/Footer';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -518,18 +519,7 @@ const Ranking = () => {
         <div className="container">
           {/* Detailed loading progress tracking */}
           {(isLoading || pricesLoading || scoresLoading || (dripLoadingTaxFree && dripLoadingTaxed) || Object.keys(distributions).length === 0 && etfs.length > 0) && (
-            <div className="mb-4 p-4 bg-muted/50 rounded-lg space-y-2">
-              <div className="text-sm font-medium">Loading ETF Data...</div>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                {isLoading && <div>• Fetching ETF list from database...</div>}
-                {pricesLoading && <div>• Loading current prices ({loadingProgress.prices.current}/{loadingProgress.prices.total})</div>}
-                {scoresLoading && <div>• Loading scoring data...</div>}
-                {(dripLoadingTaxFree || dripLoadingTaxed) && <div>• Calculating DRIP returns...</div>}
-                {rsiLoading && <div>• Fetching trend signals...</div>}
-                {Object.keys(distributions).length === 0 && etfs.length > 0 && <div>• Loading distribution history...</div>}
-                {!isLoading && !pricesLoading && !scoresLoading && !dripLoadingTaxFree && !dripLoadingTaxed && <div>• Finalizing rankings...</div>}
-              </div>
-            </div>
+            <LoadingScreen message="Loading ETF data and rankings..." />
           )}
         </div>
       </header>
