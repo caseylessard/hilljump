@@ -32,10 +32,70 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/PR78NbVMLKZgs07fZNVAe78eKOo2/social-images/social-1757774491884-hilljumpbanner.png">
+    
+    <style>
+      #app-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        z-index: 9999;
+      }
+      @media (prefers-color-scheme: dark) {
+        #app-loader {
+          background: #1a1a1a;
+        }
+        #app-loader p {
+          color: #a0a0a0;
+        }
+      }
+      #app-loader img {
+        width: 80px;
+        height: 80px;
+        animation: bounce 1s infinite;
+      }
+      #app-loader p {
+        margin-top: 1.5rem;
+        color: #666666;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      @keyframes bounce {
+        0%, 100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+    </style>
   </head>
 
   <body>
+    <div id="app-loader">
+      <img src="/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png" alt="HillJump Logo" />
+      <p>Loading...</p>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Hide loader once React has mounted
+      window.addEventListener('DOMContentLoaded', () => {
+        const observer = new MutationObserver(() => {
+          const root = document.getElementById('root');
+          if (root && root.children.length > 0) {
+            const loader = document.getElementById('app-loader');
+            if (loader) loader.style.display = 'none';
+            observer.disconnect();
+          }
+        });
+        observer.observe(document.getElementById('root'), { childList: true });
+      });
+    </script>
   </body>
 </html>
