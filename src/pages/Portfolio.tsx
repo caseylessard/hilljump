@@ -29,7 +29,8 @@ import Footer from "@/components/Footer";
 
 const Portfolio = () => {
   const isMobile = useIsMobile();
-  const isTablet = !isMobile && typeof window !== 'undefined' && window.innerWidth < 1024;
+  // Tablet detection: 768px - 900px (narrower range for better desktop table view)
+  const isTablet = !isMobile && typeof window !== 'undefined' && window.innerWidth >= 768 && window.innerWidth < 900;
   // Get user profile for country-specific data
   const { profile } = useUserProfile();
   
