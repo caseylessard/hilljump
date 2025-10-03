@@ -22,14 +22,14 @@ async function fetchEODHDData(ticker: string, apiKey: string): Promise<Partial<E
   try {
     console.log(`🎯 [EODHD] Fetching real-time price for ${ticker}`);
     
-    // Format symbol for EODHD
+    // Format symbol for EODHD (FIXED: NEO Exchange handling)
     let eodhSymbol = ticker;
     if (ticker.endsWith('.TO')) {
       eodhSymbol = ticker; // EODHD uses .TO format directly
     } else if (ticker.endsWith('.NE')) {
-      eodhSymbol = ticker.replace('.NE', '.TO'); // NEO Exchange - try .TO format
+      eodhSymbol = ticker.replace('.NE', '.NEO'); // NEO Exchange - use .NEO format for EODHD
     } else if (ticker.endsWith('.VN')) {
-      eodhSymbol = ticker.replace('.VN', '.V'); // TSX Venture - try .V format
+      eodhSymbol = ticker.replace('.VN', '.V'); // TSX Venture - use .V format
     } else if (!ticker.includes('.')) {
       eodhSymbol = `${ticker}.US`; // US tickers - add .US suffix
     }

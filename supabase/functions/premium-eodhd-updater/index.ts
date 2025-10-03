@@ -25,8 +25,19 @@ async function fetchComprehensiveEODHDData(ticker: string, apiKey: string): Prom
   try {
     console.log(`🎯 [EODHD Premium] Processing ${ticker}`);
     
+    // Format symbol for EODHD (handle NEO Exchange)
+    let eodhSymbol = ticker;
+    if (ticker.endsWith('.NE')) {
+      eodhSymbol = ticker.replace('.NE', '.NEO'); // NEO Exchange uses .NEO format
+      console.log(`📝 [EODHD] Converted ${ticker} → ${eodhSymbol}`);
+    } else if (ticker.endsWith('.VN')) {
+      eodhSymbol = ticker.replace('.VN', '.V'); // TSX Venture uses .V format
+    } else if (!ticker.includes('.') && ticker.match(/^[A-Z]+$/)) {
+      eodhSymbol = `${ticker}.US`; // US tickers need .US suffix
+    }
+    
     // 1. Real-time price data
-    const priceUrl = `https://eodhd.com/api/real-time/${ticker}?api_token=${apiKey}&fmt=json`;
+    const priceUrl = `https://eodhd.com/api/real-time/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
     const priceResponse = await fetch(priceUrl);
     
     if (!priceResponse.ok) {
@@ -43,7 +54,7 @@ async function fetchComprehensiveEODHDData(ticker: string, apiKey: string): Prom
     }
 
     // 2. Comprehensive fundamentals data
-    const fundUrl = `https://eodhd.com/api/fundamentals/${ticker}?api_token=${apiKey}&fmt=json`;
+    const fundUrl = `https://eodhd.com/api/fundamentals/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
     const fundResponse = await fetch(fundUrl);
     
     let fundamentalData: any = {};
@@ -55,7 +66,7 @@ async function fetchComprehensiveEODHDData(ticker: string, apiKey: string): Prom
     const endDate = new Date().toISOString().split('T')[0];
     const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    const histUrl = `https://eodhd.com/api/eod/${ticker}?api_token=${apiKey}&period=d&from=${startDate}&to=${endDate}`;
+    const histUrl = `https://eodhd.com/api/eod/${eodhSymbol}?api_token=${apiKey}&period=d&from=${startDate}&to=${endDate}`;
     const histResponse = await fetch(histUrl);
     
     let performanceMetrics: any = {};

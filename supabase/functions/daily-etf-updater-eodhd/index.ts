@@ -23,12 +23,17 @@ async function fetchEODHDData(ticker: string, apiKey: string): Promise<Partial<E
   try {
     console.log(`📊 Fetching EODHD data for ${ticker}`);
 
-    // Format ticker for EODHD
-    const eodhTicker = ticker.includes('.TO') 
-      ? ticker.replace('.TO', '.TSE') 
-      : ticker.includes('.') 
-        ? ticker 
-        : `${ticker}.US`;
+    // Format ticker for EODHD (FIXED: NEO Exchange handling)
+    let eodhTicker = ticker;
+    if (ticker.includes('.TO')) {
+      eodhTicker = ticker; // Keep .TO for TSX
+    } else if (ticker.includes('.NE')) {
+      eodhTicker = ticker.replace('.NE', '.NEO'); // NEO Exchange uses .NEO
+    } else if (ticker.includes('.VN')) {
+      eodhTicker = ticker.replace('.VN', '.V'); // TSX Venture uses .V
+    } else if (!ticker.includes('.')) {
+      eodhTicker = `${ticker}.US`; // US tickers get .US suffix
+    }
 
     const result: Partial<ETFUpdateData> = {
       ticker,

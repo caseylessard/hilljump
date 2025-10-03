@@ -114,9 +114,17 @@ async function fetchEODHDData(ticker: string): Promise<Partial<ETFUpdateData>> {
   if (!apiKey) return {};
 
   try {
+    // Format ticker for EODHD (handle NEO Exchange)
+    let eodhSymbol = ticker;
+    if (ticker.endsWith('.NE')) {
+      eodhSymbol = ticker.replace('.NE', '.NEO'); // NEO Exchange uses .NEO format
+    } else if (ticker.endsWith('.VN')) {
+      eodhSymbol = ticker.replace('.VN', '.V'); // TSX Venture uses .V format
+    }
+    
     // Get fundamentals data
     const fundamentalsResponse = await fetch(
-      `https://eodhd.com/api/fundamentals/${ticker}?api_token=${apiKey}`
+      `https://eodhd.com/api/fundamentals/${eodhSymbol}?api_token=${apiKey}`
     );
     
     if (!fundamentalsResponse.ok) return {};
@@ -124,7 +132,7 @@ async function fetchEODHDData(ticker: string): Promise<Partial<ETFUpdateData>> {
 
     // Get historical data for volume and performance
     const historicalResponse = await fetch(
-      `https://eodhd.com/api/eod/${ticker}?api_token=${apiKey}&period=d&from=${new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`
+      `https://eodhd.com/api/eod/${eodhSymbol}?api_token=${apiKey}&period=d&from=${new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`
     );
     
     let avgVolume, totalReturn1Y;

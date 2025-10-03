@@ -26,18 +26,18 @@ Deno.serve(async (req) => {
       errors: []
     };
 
-    // 1. Update ETF data from Yahoo Finance
+    // 1. Update ETF data using smart price updater (EODHD + Yahoo hybrid)
     try {
-      console.log('📊 Running Yahoo Finance ETF updates...');
-      const { data: etfData, error: etfError } = await supabase.functions.invoke('daily-etf-updater-yahoo', {
+      console.log('📊 Running smart price updater (EODHD + Yahoo)...');
+      const { data: etfData, error: etfError } = await supabase.functions.invoke('smart-price-updater', {
         body: { manual: true }
       });
       if (etfError) throw etfError;
       results.etfUpdate = etfData;
-      console.log('✅ ETF update completed');
+      console.log('✅ Price update completed');
     } catch (error) {
-      console.error('❌ ETF update failed:', error);
-      results.errors.push(`ETF update: ${error.message}`);
+      console.error('❌ Price update failed:', error);
+      results.errors.push(`Price update: ${error.message}`);
     }
 
     // 2. Update dividend data
