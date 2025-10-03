@@ -68,6 +68,11 @@ export function PortfolioPositionCardCompact({
           </Badge>
         </div>
 
+        {/* Combined Score Info */}
+        <div className="text-xs text-muted-foreground">
+          Combined Score: {dripRawScore.toFixed(2)} (70% DRIP + 30% RSI)
+        </div>
+
         {/* Data Grid */}
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div>

@@ -5,8 +5,9 @@ export interface PortfolioPosition {
   shares: number;
   currentValue: number;
   currentPrice: number;
-  dripScore: number;
-  dripRawScore: number;
+  position: number; // Combined signal position (-2 to +2)
+  dripRawScore: number; // Raw DRIP score
+  combinedScore: number; // Combined score (70% DRIP + 30% RSI)
   rankingPosition?: number | null;
   yieldTTM?: number;
   strategy?: string;
@@ -155,9 +156,9 @@ export class AIPortfolioAdvisor {
   private calculateTrendAlignment(positions: PortfolioPosition[]): number {
     if (positions.length === 0) return 50;
     
-    const buySignals = positions.filter(p => p.dripScore === 1).length;
-    const sellSignals = positions.filter(p => p.dripScore === -1).length;
-    const holdSignals = positions.filter(p => p.dripScore === 0).length;
+    const buySignals = positions.filter(p => p.position >= 1).length; // Buy or Strong Buy
+    const sellSignals = positions.filter(p => p.position <= -1).length; // Sell or Strong Sell
+    const holdSignals = positions.filter(p => p.position === 0).length;
     
     const buyRatio = buySignals / positions.length;
     const sellRatio = sellSignals / positions.length;
@@ -178,20 +179,21 @@ export class AIPortfolioAdvisor {
       let reason = 'Maintain current position';
       let confidence = 60;
 
-      // AI decision logic based on DRIP signals and ranking
-      if (position.dripScore === 1) { // BUY signal
+      // AI decision logic based on signal strength and ranking
+      if (position.position >= 1) { // BUY or STRONG BUY signal
+        const isStrongBuy = position.position === 2;
         if (position.rankingPosition && position.rankingPosition <= 10) {
           // Top 10 ranked ETF with BUY signal - increase significantly
-          targetAllocation = Math.min(currentAllocation * 1.5, 0.25); // Up to 25% max
+          targetAllocation = Math.min(currentAllocation * (isStrongBuy ? 1.6 : 1.5), 0.25); // Up to 25% max
           action = 'INCREASE';
-          reason = `Strong BUY signal (rank #${position.rankingPosition}). Excellent momentum and fundamentals.`;
-          confidence = 90;
+          reason = `${isStrongBuy ? 'STRONG ' : ''}BUY signal (rank #${position.rankingPosition}). Excellent momentum and fundamentals.`;
+          confidence = isStrongBuy ? 95 : 90;
         } else if (position.rankingPosition && position.rankingPosition <= 25) {
           // Top 25 with BUY signal - moderate increase
-          targetAllocation = Math.min(currentAllocation * 1.25, 0.20);
+          targetAllocation = Math.min(currentAllocation * (isStrongBuy ? 1.35 : 1.25), 0.20);
           action = 'INCREASE';
-          reason = `BUY signal with solid ranking (#${position.rankingPosition}). Good growth potential.`;
-          confidence = 75;
+          reason = `${isStrongBuy ? 'STRONG ' : ''}BUY signal with solid ranking (#${position.rankingPosition}). Good growth potential.`;
+          confidence = isStrongBuy ? 80 : 75;
         } else {
           // Lower ranked BUY signal - small increase or hold
           targetAllocation = Math.min(currentAllocation * 1.1, 0.15);
@@ -199,13 +201,14 @@ export class AIPortfolioAdvisor {
           reason = 'BUY signal but lower ranking. Conservative increase suggested.';
           confidence = 65;
         }
-      } else if (position.dripScore === -1) { // SELL signal
+      } else if (position.position <= -1) { // SELL or STRONG SELL signal
+        const isStrongSell = position.position === -2;
         if (currentAllocation > 0.15) {
           // Large position with SELL signal - significant reduction
-          targetAllocation = Math.max(currentAllocation * 0.4, 0.02);
+          targetAllocation = Math.max(currentAllocation * (isStrongSell ? 0.3 : 0.4), 0.02);
           action = 'DECREASE';
-          reason = 'SELL signal on large position. Reduce exposure significantly.';
-          confidence = 85;
+          reason = `${isStrongSell ? 'STRONG ' : ''}SELL signal on large position. Reduce exposure significantly.`;
+          confidence = isStrongSell ? 90 : 85;
         } else if (currentAllocation > 0.05) {
           // Medium position with SELL signal - moderate reduction
           targetAllocation = Math.max(currentAllocation * 0.6, 0.01);

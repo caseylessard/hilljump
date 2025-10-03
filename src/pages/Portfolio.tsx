@@ -48,7 +48,7 @@ const Portfolio = () => {
   const [selectedETFs, setSelectedETFs] = useState<AIPortfolioETF[]>([]);
 
   // Current portfolio management (for My Portfolio tab)
-  const [currentPortfolio, setCurrentPortfolio] = useState<{ticker: string; shares: number; id?: string; dripScore?: number; dripRawScore?: number; rankingPosition?: number | null}[]>([]);
+  const [currentPortfolio, setCurrentPortfolio] = useState<{ticker: string; shares: number; id?: string; position?: number; dripRawScore?: number; combinedScore?: number; rankingPosition?: number | null}[]>([]);
   const [newPosition, setNewPosition] = useState({ ticker: '', shares: '' });
   const [rebalanceRecommendations, setRebalanceRecommendations] = useState<any[]>([]);
   const [editingPosition, setEditingPosition] = useState<string | null>(null);
@@ -352,11 +352,11 @@ const Portfolio = () => {
   const getETFRankingPosition = (ticker: string): number | null => {
     return getRankForTicker(ticker);
   };
-  const calculateDRIPScore = (ticker: string): { score: number; rawScore: number } => {
+  const calculateCombinedSignal = (ticker: string): { position: number; rawScore: number; combinedScore: number } => {
     const tickerDripData = cachedDripData?.[ticker];
-    if (!tickerDripData) return { score: 0, rawScore: 0 };
+    if (!tickerDripData) return { position: 0, rawScore: 0, combinedScore: 0 };
 
-    // Extract DRIP percentages (same logic as Rankings)
+    // Calculate DRIP position
     const getDripPercent = (period: string) => {
       const percentKey = `drip${period}Percent`;
       if (typeof tickerDripData[percentKey] === 'number') {
@@ -373,68 +373,94 @@ const Portfolio = () => {
     const drip26w = getDripPercent('26w');
     const drip52w = getDripPercent('52w');
     
-    // Convert to per-week returns for Ladder-Delta calculation
     const p4 = drip4w / 4;
     const p13 = drip13w / 13;
     const p26 = drip26w / 26;
     const p52 = drip52w / 52;
     
-    // Calculate deltas (recent minus longer period)
     const d1 = p4 - p13;
     const d2 = p13 - p26;
     const d3 = p26 - p52;
     
-    // Calculate Ladder-Delta Trend signal score
     const baseScore = 0.60 * p4 + 0.25 * p13 + 0.10 * p26 + 0.05 * p52;
     const positiveDeltaBonus = 1.00 * Math.max(0, d1) + 0.70 * Math.max(0, d2) + 0.50 * Math.max(0, d3);
     const negativeDeltaPenalty = 0.50 * (Math.max(0, -d1) + Math.max(0, -d2) + Math.max(0, -d3));
     
     const ladderDeltaSignalScore = baseScore + positiveDeltaBonus - negativeDeltaPenalty;
     
-    // Buy/Sell conditions from scoring logic
     const condBuy = (ladderDeltaSignalScore > 0.005) && (d1 > 0) && (d2 > 0) && (d3 > 0);
     const condSell = (ladderDeltaSignalScore < 0) || (d1 <= 0);
     
-    // Return DRIP position: 1=Buy, 0=Hold, -1=Sell and raw score
+    let dripPosition = 0;
     if (condBuy) {
-      return { score: 1, rawScore: ladderDeltaSignalScore };
+      dripPosition = 1;
     } else if (condSell) {
-      return { score: -1, rawScore: ladderDeltaSignalScore };
-    } else {
-      return { score: 0, rawScore: ladderDeltaSignalScore };
+      dripPosition = -1;
     }
+
+    // Calculate RSI position (30% weight)
+    let rsiPosition = 0;
+    const rsiData = rsiSignals[ticker];
+    if (rsiData) {
+      const rsiValue = rsiData.rsi || 50;
+      if (rsiValue < 30) {
+        rsiPosition = 1; // Oversold = BUY
+      } else if (rsiValue > 70) {
+        rsiPosition = -1; // Overbought = SELL
+      }
+    }
+    
+    // Calculate combined score: 70% DRIP + 30% RSI
+    const combinedScore = 0.7 * dripPosition + 0.3 * rsiPosition;
+    
+    // Calculate position based on combined score
+    let position: number;
+    if (combinedScore >= 0.6) {
+      position = 2; // Strong Buy
+    } else if (combinedScore >= 0.2) {
+      position = 1; // Buy
+    } else if (combinedScore >= -0.2) {
+      position = 0; // Hold
+    } else if (combinedScore >= -0.6) {
+      position = -1; // Sell
+    } else {
+      position = -2; // Strong Sell
+    }
+    
+    return { position, rawScore: ladderDeltaSignalScore, combinedScore };
   };
 
-  // Update current portfolio when data loads and add DRIP scores + ranking positions
-  const portfolioWithDRIPScores = useMemo(() => {
+  // Update current portfolio when data loads and add combined signal scores + ranking positions
+  const portfolioWithSignals = useMemo(() => {
     if (!portfolioPositions || !cachedDripData || frozenRankings.size === 0) return [];
     
     const positions = portfolioPositions.map(p => {
-      const dripData = calculateDRIPScore(p.ticker);
+      const signalData = calculateCombinedSignal(p.ticker);
       const rankingPosition = getETFRankingPosition(p.ticker);
       return {
         ticker: p.ticker,
         shares: Number(p.shares),
         id: p.id,
-        dripScore: dripData.score,
-        dripRawScore: dripData.rawScore,
+        position: signalData.position,
+        dripRawScore: signalData.rawScore,
+        combinedScore: signalData.combinedScore,
         rankingPosition
       };
     });
     
     // Sort by frozen ranking position using the hook's helper
     return sortByFrozenRank(positions);
-  }, [portfolioPositions, cachedDripData, frozenRankings, sortByFrozenRank]);
+  }, [portfolioPositions, cachedDripData, rsiSignals, frozenRankings, sortByFrozenRank]);
 
   // Update current portfolio when data loads
   useEffect(() => {
-    setCurrentPortfolio(portfolioWithDRIPScores);
+    setCurrentPortfolio(portfolioWithSignals);
     
     // Generate AI advice when portfolio data is ready AND DRIP data is complete AND rankings are loaded
-    if (portfolioWithDRIPScores.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0 && !aiAdviceLoading && isDripDataComplete && frozenRankings.size > 0) {
-      generateAIAdvice(portfolioWithDRIPScores);
+    if (portfolioWithSignals.length > 0 && cachedPrices && Object.keys(cachedPrices).length > 0 && !aiAdviceLoading && isDripDataComplete && frozenRankings.size > 0) {
+      generateAIAdvice(portfolioWithSignals);
     }
-  }, [portfolioWithDRIPScores.length, Object.keys(cachedPrices).length, aiAdviceLoading, isDripDataComplete]);
+  }, [portfolioWithSignals.length, Object.keys(cachedPrices).length, aiAdviceLoading, isDripDataComplete]);
 
   // Portfolio management functions
   const addOrUpdatePosition = async () => {
@@ -535,7 +561,7 @@ const Portfolio = () => {
   };
 
   // AI Portfolio Advisor
-  const generateAIAdvice = async (positions: typeof portfolioWithDRIPScores) => {
+  const generateAIAdvice = async (positions: typeof portfolioWithSignals) => {
     if (positions.length === 0 || aiAdviceLoading || frozenRankings.size === 0) return;
     
     console.log('🤖 Generating AI advice for', positions.length, 'positions with', frozenRankings.size, 'frozen rankings');
@@ -554,8 +580,9 @@ const Portfolio = () => {
           shares: p.shares,
           currentValue: p.shares * price,
           currentPrice: price,
-          dripScore: p.dripScore || 0,
+          position: p.position || 0,
           dripRawScore: p.dripRawScore || 0,
+          combinedScore: p.combinedScore || 0,
           rankingPosition: p.rankingPosition,
           yieldTTM: etfDetails?.yield_ttm,
           strategy: etfDetails?.strategy_label,
@@ -596,8 +623,9 @@ const Portfolio = () => {
         shares: rec.targetShares,
         currentValue: rec.targetValue,
         currentPrice: cachedPrices?.[rec.ticker]?.price || 0,
-        dripScore: 0, // Will be calculated when displayed
+        position: 0, // Will be calculated when displayed
         dripRawScore: 0, // Will be calculated when displayed
+        combinedScore: 0, // Will be calculated when displayed
         rankingPosition: rec.rankingPosition,
         yieldTTM: rec.yieldTTM,
         strategy: rec.strategy,
@@ -713,21 +741,23 @@ const Portfolio = () => {
                         {combinedPortfolio.map((position, index) => {
                           const price = cachedPrices?.[position.ticker]?.price || 0;
                           const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
-                          const dripData = position.isRecommendation ? 
-                            { score: position.dripScore || 0, rawScore: position.dripRawScore || 0 } :
-                            (position.dripScore !== undefined ? 
-                              { score: position.dripScore, rawScore: position.dripRawScore } : 
-                              calculateDRIPScore(position.ticker));
+                          const signalData = position.isRecommendation ? 
+                            { position: position.position || 0, rawScore: position.dripRawScore || 0, combinedScore: position.combinedScore || 0 } :
+                            (position.position !== undefined ? 
+                              { position: position.position, rawScore: position.dripRawScore, combinedScore: position.combinedScore } : 
+                              calculateCombinedSignal(position.ticker));
                           const actualRank = position.rankingPosition;
                           const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
                           
-                          const getDRIPDisplay = (score: number) => {
-                            if (score === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
-                            if (score === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                          const getSignalDisplay = (position: number) => {
+                            if (position === 2) return { text: 'STRONG BUY', variant: 'default' as const, className: 'bg-green-700 text-white font-bold' };
+                            if (position === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
+                            if (position === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                            if (position === -2) return { text: 'STRONG SELL', variant: 'destructive' as const, className: 'bg-red-700 text-white font-bold' };
                             return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
                           };
                           
-                          const dripDisplay = getDRIPDisplay(dripData.score);
+                          const signalDisplay = getSignalDisplay(signalData.position);
                           
                           return (
                             <PortfolioPositionCard
@@ -737,8 +767,8 @@ const Portfolio = () => {
                               price={price}
                               isEditing={isEditing}
                               editShares={editShares}
-                              dripDisplay={dripDisplay}
-                              dripRawScore={dripData.rawScore}
+                              dripDisplay={signalDisplay}
+                              dripRawScore={signalData.combinedScore}
                               actualRank={actualRank}
                               aiRec={aiRec}
                               aiAdviceLoading={aiAdviceLoading}
@@ -758,21 +788,23 @@ const Portfolio = () => {
                         {combinedPortfolio.map((position, index) => {
                           const price = cachedPrices?.[position.ticker]?.price || 0;
                           const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
-                          const dripData = position.isRecommendation ? 
-                            { score: position.dripScore || 0, rawScore: position.dripRawScore || 0 } :
-                            (position.dripScore !== undefined ? 
-                              { score: position.dripScore, rawScore: position.dripRawScore } : 
-                              calculateDRIPScore(position.ticker));
+                          const signalData = position.isRecommendation ? 
+                            { position: position.position || 0, rawScore: position.dripRawScore || 0, combinedScore: position.combinedScore || 0 } :
+                            (position.position !== undefined ? 
+                              { position: position.position, rawScore: position.dripRawScore, combinedScore: position.combinedScore } : 
+                              calculateCombinedSignal(position.ticker));
                           const actualRank = position.rankingPosition;
                           const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
                           
-                          const getDRIPDisplay = (score: number) => {
-                            if (score === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
-                            if (score === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                          const getSignalDisplay = (position: number) => {
+                            if (position === 2) return { text: 'STRONG BUY', variant: 'default' as const, className: 'bg-green-700 text-white font-bold' };
+                            if (position === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
+                            if (position === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                            if (position === -2) return { text: 'STRONG SELL', variant: 'destructive' as const, className: 'bg-red-700 text-white font-bold' };
                             return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
                           };
                           
-                          const dripDisplay = getDRIPDisplay(dripData.score);
+                          const signalDisplay = getSignalDisplay(signalData.position);
                           
                           return (
                             <PortfolioPositionCardCompact
@@ -782,8 +814,8 @@ const Portfolio = () => {
                               price={price}
                               isEditing={isEditing}
                               editShares={editShares}
-                              dripDisplay={dripDisplay}
-                              dripRawScore={dripData.rawScore}
+                              dripDisplay={signalDisplay}
+                              dripRawScore={signalData.combinedScore}
                               actualRank={actualRank}
                               aiRec={aiRec}
                               aiAdviceLoading={aiAdviceLoading}
@@ -804,7 +836,7 @@ const Portfolio = () => {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Rank</TableHead>
-                              <TableHead>DRIP Signal</TableHead>
+                              <TableHead>Combined Signal</TableHead>
                               <TableHead>Ticker</TableHead>
                               <TableHead>Shares</TableHead>
                               <TableHead>Price</TableHead>
@@ -819,24 +851,26 @@ const Portfolio = () => {
                               const value = position.isRecommendation ? (position as any).currentValue : position.shares * price;
                               const shares = position.isRecommendation ? (position as any).shares : position.shares;
                               const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
-                              const dripData = position.isRecommendation ? 
-                                { score: position.dripScore || 0, rawScore: position.dripRawScore || 0 } :
-                                (position.dripScore !== undefined ? 
-                                  { score: position.dripScore, rawScore: position.dripRawScore } : 
-                                  calculateDRIPScore(position.ticker));
+                              const signalData = position.isRecommendation ? 
+                                { position: position.position || 0, rawScore: position.dripRawScore || 0, combinedScore: position.combinedScore || 0 } :
+                                (position.position !== undefined ? 
+                                  { position: position.position, rawScore: position.dripRawScore, combinedScore: position.combinedScore } : 
+                                  calculateCombinedSignal(position.ticker));
                               const actualRank = position.rankingPosition;
                               
                                // Get AI recommendation for this position (only for existing positions)
                                const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
                               
-                              // DRIP score styling and text
-                              const getDRIPDisplay = (score: number) => {
-                                if (score === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
-                                if (score === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                              // Signal styling and text
+                              const getSignalDisplay = (position: number) => {
+                                if (position === 2) return { text: 'STRONG BUY', variant: 'default' as const, className: 'bg-green-700 text-white font-bold' };
+                                if (position === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
+                                if (position === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                                if (position === -2) return { text: 'STRONG SELL', variant: 'destructive' as const, className: 'bg-red-700 text-white font-bold' };
                                 return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
                               };
                               
-                              const dripDisplay = getDRIPDisplay(dripData.score);
+                              const signalDisplay = getSignalDisplay(signalData.position);
                               
                                return (
                                  <TableRow 
@@ -848,11 +882,11 @@ const Portfolio = () => {
                                    </TableCell>
                                    <TableCell>
                                      <div className="flex flex-col gap-1">
-                                       <Badge className={dripDisplay.className}>
-                                         {dripDisplay.text}
+                                       <Badge className={signalDisplay.className}>
+                                         {signalDisplay.text}
                                        </Badge>
                                        <span className="text-xs text-muted-foreground">
-                                         {dripData.rawScore.toFixed(4)}
+                                         Combined: {signalData.combinedScore.toFixed(2)}
                                        </span>
                                      </div>
                                    </TableCell>

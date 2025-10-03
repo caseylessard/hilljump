@@ -71,7 +71,7 @@ export function PortfolioPositionCard({
               {dripDisplay.text}
             </Badge>
             <span className="text-xs text-muted-foreground">
-              {dripRawScore.toFixed(4)}
+              Combined: {dripRawScore.toFixed(2)}
             </span>
           </div>
         </div>
