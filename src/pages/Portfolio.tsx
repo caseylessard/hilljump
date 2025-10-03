@@ -29,8 +29,19 @@ import Footer from "@/components/Footer";
 
 const Portfolio = () => {
   const isMobile = useIsMobile();
-  // Tablet detection: 768px - 900px (narrower range for better desktop table view)
-  const isTablet = !isMobile && typeof window !== 'undefined' && window.innerWidth >= 768 && window.innerWidth < 900;
+  // Tablet detection: 768px - 1024px for single-column card view
+  const [isTablet, setIsTablet] = useState(false);
+  
+  useEffect(() => {
+    const checkTablet = () => {
+      const width = window.innerWidth;
+      setIsTablet(width >= 768 && width < 1024);
+    };
+    
+    checkTablet();
+    window.addEventListener('resize', checkTablet);
+    return () => window.removeEventListener('resize', checkTablet);
+  }, []);
   // Get user profile for country-specific data
   const { profile } = useUserProfile();
   
@@ -736,7 +747,54 @@ const Portfolio = () => {
                   </CardHeader>
                   <CardContent>
                     {isMobile ? (
-                      /* Mobile Card View */
+                      /* Mobile Compact Card View */
+                      <div className="space-y-4">
+                        {combinedPortfolio.map((position, index) => {
+                          const price = cachedPrices?.[position.ticker]?.price || 0;
+                          const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
+                          const signalData = position.isRecommendation ? 
+                            { position: position.position || 0, rawScore: position.dripRawScore || 0, combinedScore: position.combinedScore || 0 } :
+                            (position.position !== undefined ? 
+                              { position: position.position, rawScore: position.dripRawScore, combinedScore: position.combinedScore } : 
+                              calculateCombinedSignal(position.ticker));
+                          const actualRank = position.rankingPosition;
+                          const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
+                          
+                          const getSignalDisplay = (position: number) => {
+                            if (position === 2) return { text: 'STRONG BUY', variant: 'default' as const, className: 'bg-green-700 text-white font-bold' };
+                            if (position === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
+                            if (position === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                            if (position === -2) return { text: 'STRONG SELL', variant: 'destructive' as const, className: 'bg-red-700 text-white font-bold' };
+                            return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
+                          };
+                          
+                          const signalDisplay = getSignalDisplay(signalData.position);
+                          
+                          return (
+                            <PortfolioPositionCardCompact
+                              key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
+                              position={position}
+                              index={index}
+                              price={price}
+                              isEditing={isEditing}
+                              editShares={editShares}
+                              dripDisplay={signalDisplay}
+                              dripRawScore={signalData.combinedScore}
+                              actualRank={actualRank}
+                              aiRec={aiRec}
+                              aiAdviceLoading={aiAdviceLoading}
+                              profileId={profile?.id}
+                              onStartEdit={() => startEdit(position as any)}
+                              onSaveEdit={() => (position as any).id && saveEdit((position as any).id, position.ticker)}
+                              onCancelEdit={cancelEdit}
+                              onRemove={() => removePosition(position as any)}
+                              onSharesChange={setEditShares}
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : isTablet ? (
+                      /* Tablet Single-Column Full Card View */
                       <div className="space-y-4">
                         {combinedPortfolio.map((position, index) => {
                           const price = cachedPrices?.[position.ticker]?.price || 0;
@@ -761,53 +819,6 @@ const Portfolio = () => {
                           
                           return (
                             <PortfolioPositionCard
-                              key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
-                              position={position}
-                              index={index}
-                              price={price}
-                              isEditing={isEditing}
-                              editShares={editShares}
-                              dripDisplay={signalDisplay}
-                              dripRawScore={signalData.combinedScore}
-                              actualRank={actualRank}
-                              aiRec={aiRec}
-                              aiAdviceLoading={aiAdviceLoading}
-                              profileId={profile?.id}
-                              onStartEdit={() => startEdit(position as any)}
-                              onSaveEdit={() => (position as any).id && saveEdit((position as any).id, position.ticker)}
-                              onCancelEdit={cancelEdit}
-                              onRemove={() => removePosition(position as any)}
-                              onSharesChange={setEditShares}
-                            />
-                          );
-                        })}
-                      </div>
-                    ) : isTablet ? (
-                      /* Tablet Compact Card View */
-                      <div className="grid grid-cols-2 gap-3">
-                        {combinedPortfolio.map((position, index) => {
-                          const price = cachedPrices?.[position.ticker]?.price || 0;
-                          const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
-                          const signalData = position.isRecommendation ? 
-                            { position: position.position || 0, rawScore: position.dripRawScore || 0, combinedScore: position.combinedScore || 0 } :
-                            (position.position !== undefined ? 
-                              { position: position.position, rawScore: position.dripRawScore, combinedScore: position.combinedScore } : 
-                              calculateCombinedSignal(position.ticker));
-                          const actualRank = position.rankingPosition;
-                          const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
-                          
-                          const getSignalDisplay = (position: number) => {
-                            if (position === 2) return { text: 'STRONG BUY', variant: 'default' as const, className: 'bg-green-700 text-white font-bold' };
-                            if (position === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
-                            if (position === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
-                            if (position === -2) return { text: 'STRONG SELL', variant: 'destructive' as const, className: 'bg-red-700 text-white font-bold' };
-                            return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
-                          };
-                          
-                          const signalDisplay = getSignalDisplay(signalData.position);
-                          
-                          return (
-                            <PortfolioPositionCardCompact
                               key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
                               position={position}
                               index={index}
