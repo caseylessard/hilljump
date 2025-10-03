@@ -3,6 +3,7 @@ import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, CircleDollarSign, LockKeyhole, Home, Briefcase, User } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -76,6 +77,7 @@ const Navigation = () => {
                 <Briefcase className="h-5 w-5" />
               </a>
             </Button>
+            <ThemeToggle />
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Open menu">
@@ -169,6 +171,7 @@ const Navigation = () => {
               )}
             </a>
           </Button>
+          <ThemeToggle />
         </nav>
       </div>
     </header>
