@@ -19,11 +19,14 @@ import Navigation from "@/components/Navigation";
 import { RefreshButton } from "@/components/RefreshButton";
 import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { PortfolioPositionCard } from "@/components/portfolio/PortfolioPositionCard";
 import { useFrozenRankings } from "@/hooks/useFrozenRankings";
 import { AIPortfolioAdvisor, type AIPortfolioAdvice, type PortfolioPosition } from "@/lib/portfolioAdvisor";
 import Footer from "@/components/Footer";
 
 const Portfolio = () => {
+  const isMobile = useIsMobile();
   // Get user profile for country-specific data
   const { profile } = useUserProfile();
   
@@ -700,181 +703,229 @@ const Portfolio = () => {
                     <CardTitle>Portfolio Positions {aiAdvice && aiAdvice.newETFRecommendations.length > 0 && <span className="text-sm font-normal text-muted-foreground">(including AI recommendations)</span>}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Rank</TableHead>
-                            <TableHead>DRIP Signal</TableHead>
-                            <TableHead>Ticker</TableHead>
-                            <TableHead>Shares</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Current Value</TableHead>
-                            <TableHead className="text-center">AI Target Value</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {combinedPortfolio.map((position, index) => {
-                            const price = cachedPrices?.[position.ticker]?.price || 0;
-                            const value = position.isRecommendation ? (position as any).currentValue : position.shares * price;
-                            const shares = position.isRecommendation ? (position as any).shares : position.shares;
-                            const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
-                            const dripData = position.isRecommendation ? 
-                              { score: position.dripScore || 0, rawScore: position.dripRawScore || 0 } :
-                              (position.dripScore !== undefined ? 
-                                { score: position.dripScore, rawScore: position.dripRawScore } : 
-                                calculateDRIPScore(position.ticker));
-                            const actualRank = position.rankingPosition;
-                            
-                             // Get AI recommendation for this position (only for existing positions)
-                             const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
-                            
-                            // DRIP score styling and text
-                            const getDRIPDisplay = (score: number) => {
-                              if (score === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
-                              if (score === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
-                              return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
-                            };
-                            
-                            const dripDisplay = getDRIPDisplay(dripData.score);
-                            
-                             return (
-                               <TableRow 
-                                 key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
-                                 className={position.isRecommendation ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/50' : ''}
-                               >
-                                 <TableCell className="font-bold text-primary">
-                                   {actualRank ? `#${actualRank}` : 'N/A'}
-                                 </TableCell>
-                                 <TableCell>
-                                   <div className="flex flex-col gap-1">
-                                     <Badge className={dripDisplay.className}>
-                                       {dripDisplay.text}
-                                     </Badge>
-                                     <span className="text-xs text-muted-foreground">
-                                       {dripData.rawScore.toFixed(4)}
-                                     </span>
-                                   </div>
-                                 </TableCell>
-                                  <TableCell className="font-medium">
-                                    <div className="flex items-center gap-2">
-                                      {profile?.id ? position.ticker : (position.isRecommendation ? "SIGN IN" : position.ticker)}
-                                      {position.isRecommendation && (
-                                        <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 dark:text-blue-400">
-                                          {profile?.id ? "AI Suggestion" : "***"}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                 <TableCell>
-                                   {isEditing && !position.isRecommendation ? (
-                                     <Input
-                                       type="number"
-                                       value={editShares}
-                                       onChange={(e) => setEditShares(Number(e.target.value))}
-                                       className="w-20"
-                                     />
-                                   ) : (
-                                     shares.toLocaleString()
-                                   )}
-                                 </TableCell>
-                                 <TableCell>${price.toFixed(2)}</TableCell>
-                                 <TableCell>${value.toLocaleString()}</TableCell>
-                                 <TableCell className="text-center">
-                                    {position.isRecommendation ? (
-                                      <div className="space-y-1">
-                                        <div className="font-medium text-blue-600 dark:text-blue-400">
-                                          💡 {profile?.id ? `$${value.toLocaleString()}` : "***"}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {profile?.id ? "New position" : "***"}
-                                        </div>
-                                        <Badge variant="outline" className="text-xs border-blue-500">
-                                          {profile?.id ? "ADD" : "***"}
-                                        </Badge>
-                                      </div>
-                                   ) : aiAdviceLoading ? (
-                                     <div className="text-muted-foreground text-sm">Loading...</div>
-                                   ) : aiRec ? (
-                                     <div className="space-y-1">
-                                       <div className="font-medium">
-                                         {aiRec.action === 'INCREASE' && '↗️'}
-                                         {aiRec.action === 'DECREASE' && '↘️'}
-                                         {aiRec.action === 'SELL' && '❌'}
-                                         {aiRec.action === 'HOLD' && '➡️'} ${aiRec.targetValue.toLocaleString()}
-                                       </div>
-                                       <div className="text-xs text-muted-foreground">
-                                         {aiRec.targetShares} shares
-                                       </div>
-                                        <Badge 
-                                          variant={aiRec.action === 'INCREASE' ? 'default' : 
-                                                  aiRec.action === 'DECREASE' || aiRec.action === 'SELL' ? 'destructive' : 'outline'}
-                                          className={`text-xs ${
-                                            aiRec.action === 'INCREASE' ? 'bg-green-600 text-white' :
-                                            aiRec.action === 'DECREASE' || aiRec.action === 'SELL' ? 'bg-red-600 text-white' : ''
-                                          }`}
-                                        >
-                                         {aiRec.action}
+                    {isMobile ? (
+                      /* Mobile Card View */
+                      <div className="space-y-4">
+                        {combinedPortfolio.map((position, index) => {
+                          const price = cachedPrices?.[position.ticker]?.price || 0;
+                          const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
+                          const dripData = position.isRecommendation ? 
+                            { score: position.dripScore || 0, rawScore: position.dripRawScore || 0 } :
+                            (position.dripScore !== undefined ? 
+                              { score: position.dripScore, rawScore: position.dripRawScore } : 
+                              calculateDRIPScore(position.ticker));
+                          const actualRank = position.rankingPosition;
+                          const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
+                          
+                          const getDRIPDisplay = (score: number) => {
+                            if (score === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
+                            if (score === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                            return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
+                          };
+                          
+                          const dripDisplay = getDRIPDisplay(dripData.score);
+                          
+                          return (
+                            <PortfolioPositionCard
+                              key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
+                              position={position}
+                              index={index}
+                              price={price}
+                              isEditing={isEditing}
+                              editShares={editShares}
+                              dripDisplay={dripDisplay}
+                              dripRawScore={dripData.rawScore}
+                              actualRank={actualRank}
+                              aiRec={aiRec}
+                              aiAdviceLoading={aiAdviceLoading}
+                              profileId={profile?.id}
+                              onStartEdit={() => startEdit(position as any)}
+                              onSaveEdit={() => (position as any).id && saveEdit((position as any).id, position.ticker)}
+                              onCancelEdit={cancelEdit}
+                              onRemove={() => removePosition(position as any)}
+                              onSharesChange={setEditShares}
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* Desktop Table View */
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Rank</TableHead>
+                              <TableHead>DRIP Signal</TableHead>
+                              <TableHead>Ticker</TableHead>
+                              <TableHead>Shares</TableHead>
+                              <TableHead>Price</TableHead>
+                              <TableHead>Current Value</TableHead>
+                              <TableHead className="text-center">AI Target Value</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {combinedPortfolio.map((position, index) => {
+                              const price = cachedPrices?.[position.ticker]?.price || 0;
+                              const value = position.isRecommendation ? (position as any).currentValue : position.shares * price;
+                              const shares = position.isRecommendation ? (position as any).shares : position.shares;
+                              const isEditing = !position.isRecommendation && editingPosition === (position as any).id;
+                              const dripData = position.isRecommendation ? 
+                                { score: position.dripScore || 0, rawScore: position.dripRawScore || 0 } :
+                                (position.dripScore !== undefined ? 
+                                  { score: position.dripScore, rawScore: position.dripRawScore } : 
+                                  calculateDRIPScore(position.ticker));
+                              const actualRank = position.rankingPosition;
+                              
+                               // Get AI recommendation for this position (only for existing positions)
+                               const aiRec = !position.isRecommendation ? aiAdvice?.targetRecommendations.find(rec => rec.ticker === position.ticker) : null;
+                              
+                              // DRIP score styling and text
+                              const getDRIPDisplay = (score: number) => {
+                                if (score === 1) return { text: 'BUY', variant: 'default' as const, className: 'bg-green-600 text-white' };
+                                if (score === -1) return { text: 'SELL', variant: 'destructive' as const, className: 'bg-red-600 text-white' };
+                                return { text: 'HOLD', variant: 'secondary' as const, className: 'bg-yellow-600 text-white' };
+                              };
+                              
+                              const dripDisplay = getDRIPDisplay(dripData.score);
+                              
+                               return (
+                                 <TableRow 
+                                   key={position.isRecommendation ? `rec-${position.ticker}` : (position as any).id || index}
+                                   className={position.isRecommendation ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/50' : ''}
+                                 >
+                                   <TableCell className="font-bold text-primary">
+                                     {actualRank ? `#${actualRank}` : 'N/A'}
+                                   </TableCell>
+                                   <TableCell>
+                                     <div className="flex flex-col gap-1">
+                                       <Badge className={dripDisplay.className}>
+                                         {dripDisplay.text}
                                        </Badge>
-                                       <div className="text-xs text-muted-foreground mt-1" title={aiRec.reason}>
-                                         {aiRec.confidence}% confidence
-                                       </div>
+                                       <span className="text-xs text-muted-foreground">
+                                         {dripData.rawScore.toFixed(4)}
+                                       </span>
                                      </div>
-                                   ) : (
-                                     <div className="text-muted-foreground text-sm">-</div>
-                                   )}
-                                 </TableCell>
-                                 <TableCell>
-                                    {position.isRecommendation ? (
-                                      <div className="text-sm text-muted-foreground">
-                                        {profile?.id ? "AI Recommendation" : "***"}
+                                   </TableCell>
+                                    <TableCell className="font-medium">
+                                      <div className="flex items-center gap-2">
+                                        {profile?.id ? position.ticker : (position.isRecommendation ? "SIGN IN" : position.ticker)}
+                                        {position.isRecommendation && (
+                                          <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 dark:text-blue-400">
+                                            {profile?.id ? "AI Suggestion" : "***"}
+                                          </Badge>
+                                        )}
                                       </div>
-                                   ) : (
-                                     <div className="flex gap-2">
-                                       {isEditing ? (
-                                         <>
-                                           <Button
-                                             size="sm"
-                                             onClick={() => (position as any).id && saveEdit((position as any).id, position.ticker)}
-                                           >
-                                             Save
-                                           </Button>
-                                           <Button
-                                             size="sm"
-                                             variant="outline"
-                                             onClick={cancelEdit}
-                                           >
-                                             Cancel
-                                           </Button>
-                                         </>
-                                       ) : (
-                                         <>
-                                           <Button
-                                             size="sm"
-                                             variant="outline"
-                                             onClick={() => startEdit(position as any)}
-                                           >
-                                             Edit
-                                           </Button>
-                                           <Button
-                                             size="sm"
-                                             variant="destructive"
-                                             onClick={() => removePosition(position as any)}
-                                           >
-                                             Delete
-                                           </Button>
-                                         </>
-                                       )}
-                                     </div>
-                                   )}
-                                 </TableCell>
-                               </TableRow>
-                              );
-                           })}
-                        </TableBody>
-                      </Table>
-                    </div>
+                                    </TableCell>
+                                   <TableCell>
+                                     {isEditing && !position.isRecommendation ? (
+                                       <Input
+                                         type="number"
+                                         value={editShares}
+                                         onChange={(e) => setEditShares(Number(e.target.value))}
+                                         className="w-20"
+                                       />
+                                     ) : (
+                                       shares.toLocaleString()
+                                     )}
+                                   </TableCell>
+                                   <TableCell>${price.toFixed(2)}</TableCell>
+                                   <TableCell>${value.toLocaleString()}</TableCell>
+                                   <TableCell className="text-center">
+                                      {position.isRecommendation ? (
+                                        <div className="space-y-1">
+                                          <div className="font-medium text-blue-600 dark:text-blue-400">
+                                            💡 {profile?.id ? `$${value.toLocaleString()}` : "***"}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {profile?.id ? "New position" : "***"}
+                                          </div>
+                                          <Badge variant="outline" className="text-xs border-blue-500">
+                                            {profile?.id ? "ADD" : "***"}
+                                          </Badge>
+                                        </div>
+                                     ) : aiAdviceLoading ? (
+                                       <div className="text-muted-foreground text-sm">Loading...</div>
+                                     ) : aiRec ? (
+                                       <div className="space-y-1">
+                                         <div className="font-medium">
+                                           {aiRec.action === 'INCREASE' && '↗️'}
+                                           {aiRec.action === 'DECREASE' && '↘️'}
+                                           {aiRec.action === 'SELL' && '❌'}
+                                           {aiRec.action === 'HOLD' && '➡️'} ${aiRec.targetValue.toLocaleString()}
+                                         </div>
+                                         <div className="text-xs text-muted-foreground">
+                                           {aiRec.targetShares} shares
+                                         </div>
+                                          <Badge 
+                                            variant={aiRec.action === 'INCREASE' ? 'default' : 
+                                                    aiRec.action === 'DECREASE' || aiRec.action === 'SELL' ? 'destructive' : 'outline'}
+                                            className={`text-xs ${
+                                              aiRec.action === 'INCREASE' ? 'bg-green-600 text-white' :
+                                              aiRec.action === 'DECREASE' || aiRec.action === 'SELL' ? 'bg-red-600 text-white' : ''
+                                            }`}
+                                          >
+                                           {aiRec.action}
+                                         </Badge>
+                                         <div className="text-xs text-muted-foreground mt-1" title={aiRec.reason}>
+                                           {aiRec.confidence}% confidence
+                                         </div>
+                                       </div>
+                                     ) : (
+                                       <div className="text-muted-foreground text-sm">-</div>
+                                     )}
+                                   </TableCell>
+                                   <TableCell>
+                                      {position.isRecommendation ? (
+                                        <div className="text-sm text-muted-foreground">
+                                          {profile?.id ? "AI Recommendation" : "***"}
+                                        </div>
+                                     ) : (
+                                       <div className="flex gap-2">
+                                         {isEditing ? (
+                                           <>
+                                             <Button
+                                               size="sm"
+                                               onClick={() => (position as any).id && saveEdit((position as any).id, position.ticker)}
+                                             >
+                                               Save
+                                             </Button>
+                                             <Button
+                                               size="sm"
+                                               variant="outline"
+                                               onClick={cancelEdit}
+                                             >
+                                               Cancel
+                                             </Button>
+                                           </>
+                                         ) : (
+                                           <>
+                                             <Button
+                                               size="sm"
+                                               variant="outline"
+                                               onClick={() => startEdit(position as any)}
+                                             >
+                                               Edit
+                                             </Button>
+                                             <Button
+                                               size="sm"
+                                               variant="destructive"
+                                               onClick={() => removePosition(position as any)}
+                                             >
+                                               Delete
+                                             </Button>
+                                           </>
+                                         )}
+                                       </div>
+                                     )}
+                                   </TableCell>
+                                 </TableRow>
+                                );
+                             })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
                       <div className="mt-4 pt-4 border-t space-y-2">
                         <div className="font-semibold text-lg flex justify-between">
                           <span>Total Portfolio Value:</span>
