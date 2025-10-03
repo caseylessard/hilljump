@@ -21,6 +21,7 @@ import { TrendingUp, DollarSign, Globe, Building2, Zap, PieChart, Plus, Trash2 }
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PortfolioPositionCard } from "@/components/portfolio/PortfolioPositionCard";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { useFrozenRankings } from "@/hooks/useFrozenRankings";
 import { AIPortfolioAdvisor, type AIPortfolioAdvice, type PortfolioPosition } from "@/lib/portfolioAdvisor";
 import Footer from "@/components/Footer";
@@ -1127,10 +1128,7 @@ const Portfolio = () => {
                   </CardHeader>
                   <CardContent>
                     {etfsLoading || portfolioLoading || pricesLoading || dripLoading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                        <p>Building AI portfolio...</p>
-                      </div>
+                      <LoadingScreen message="Building AI portfolio..." />
                     ) : resolvedPortfolio.length > 0 ? (
                       <div className="space-y-4">
                          {resolvedPortfolio.map((etf, index) => (
