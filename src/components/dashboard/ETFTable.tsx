@@ -34,9 +34,10 @@ type Props = {
   originalRanking?: ScoredETF[]; // Full original ranking to preserve rank numbers
   cachedPrices?: Record<string, any>; // Add cached prices prop
   storedScores?: Record<string, any>; // Add stored scores for frozen rankings
+  isRankingDataLoaded?: boolean; // Whether ranking data is fully loaded
 };
 
-export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [], cachedPrices = {}, storedScores = {} }: Props) => {
+export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [], cachedPrices = {}, storedScores = {}, isRankingDataLoaded = false }: Props) => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
@@ -546,12 +547,18 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                    setOpen(true); 
                  }}
                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono">{idx + 1}</span>
-                      <RankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} />
-                    </div>
-                  </TableCell>
+                   <TableCell>
+                     <div className="flex items-center gap-2">
+                       {isRankingDataLoaded ? (
+                         <>
+                           <span className="font-mono">{idx + 1}</span>
+                           <RankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} />
+                         </>
+                       ) : (
+                         <div className="w-8 h-5 bg-muted animate-pulse rounded" />
+                       )}
+                     </div>
+                   </TableCell>
                  <TableCell>
                    <div className="inline-flex flex-col">
                      <span className="inline-flex items-center">

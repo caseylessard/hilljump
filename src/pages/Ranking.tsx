@@ -324,6 +324,21 @@ const Ranking = () => {
   // Get current ranking based on active tab (default to tax-free, taxed for Canadian users and non-authenticated users)
   const currentRanked = (profile?.country === 'CA' || !profile) && activeTab === 'taxed' ? rankedTaxed : rankedTaxFree;
   
+  // Determine if rankings are ready to display
+  const isRankingDataLoaded = useMemo(() => {
+    // Check all critical data is loaded
+    const hasETFs = etfs.length > 0;
+    const hasScores = Object.keys(storedScores).length > 0;
+    const hasPrices = Object.keys(cachedPrices).length > 0;
+    const hasDripData = (activeTab === 'taxfree' ? 
+      Object.keys(dripDataTaxFree || {}).length > 0 : 
+      Object.keys(dripDataTaxed).length > 0);
+    
+    return hasETFs && hasScores && hasPrices && hasDripData && 
+           !isLoading && !scoresLoading && !pricesLoading && !dripLoadingTaxFree;
+  }, [etfs.length, storedScores, cachedPrices, dripDataTaxFree, dripDataTaxed, 
+      activeTab, isLoading, scoresLoading, pricesLoading, dripLoadingTaxFree]);
+  
   // Store original rankings with fixed positions based on DRIP score
   const [frozenRankings, setFrozenRankings] = useState<Map<string, number>>(new Map());
   
@@ -646,14 +661,15 @@ const Ranking = () => {
                    </Alert>
                  )}
 
-                 {/* Desktop: Full table */}
-                 <div className="hidden lg:block">
-                    <OptimizedETFTable
-                      items={filtered} 
-                      live={cachedPrices}
-                      distributions={distributions}
-                      cachedDripData={dripDataTaxFree || {}}
-                      rsiSignals={rsiSignals || {}}
+                  {/* Desktop: Full table */}
+                  <div className="hidden lg:block">
+                     <OptimizedETFTable
+                       items={filtered} 
+                       live={cachedPrices}
+                       distributions={distributions}
+                       cachedDripData={dripDataTaxFree || {}}
+                       rsiSignals={rsiSignals || {}}
+                       isRankingDataLoaded={isRankingDataLoaded}
                       originalRanking={currentRanked}
                       persistentRanking={persistentRanking}
                       allowSorting={isSubscribed || isAdmin}
@@ -664,14 +680,15 @@ const Ranking = () => {
                    />
                  </div>
                  
-                 {/* Tablet: Enhanced mobile cards */}
-                 <div className="hidden md:block lg:hidden">
-                    <MobileETFTable
-                      items={filtered}
-                      distributions={distributions}
-                      dividendPredictions={dividendPredictions}
-                      cachedDripData={dripDataTaxFree || {}}
-                      originalRanking={currentRanked}
+                  {/* Tablet: Enhanced mobile cards */}
+                  <div className="hidden md:block lg:hidden">
+                     <MobileETFTable
+                       items={filtered}
+                       distributions={distributions}
+                       dividendPredictions={dividendPredictions}
+                       cachedDripData={dripDataTaxFree || {}}
+                       originalRanking={currentRanked}
+                       isRankingDataLoaded={isRankingDataLoaded}
                       cachedPrices={cachedPrices}
                       frozenRankings={frozenRankings}
                       persistentRanking={persistentRanking}
@@ -682,14 +699,15 @@ const Ranking = () => {
                     />
                  </div>
                  
-                 {/* Mobile: Compact cards */}
-                 <div className="block md:hidden">
-                    <MobileETFTable
-                      items={filtered}
-                      distributions={distributions}
-                      dividendPredictions={dividendPredictions}
-                      cachedDripData={dripDataTaxFree || {}}
-                      originalRanking={currentRanked}
+                  {/* Mobile: Compact cards */}
+                  <div className="block md:hidden">
+                     <MobileETFTable
+                       items={filtered}
+                       distributions={distributions}
+                       dividendPredictions={dividendPredictions}
+                       cachedDripData={dripDataTaxFree || {}}
+                       originalRanking={currentRanked}
+                       isRankingDataLoaded={isRankingDataLoaded}
                       cachedPrices={cachedPrices}
                       frozenRankings={frozenRankings}
                       persistentRanking={persistentRanking}
@@ -812,14 +830,15 @@ const Ranking = () => {
                    </Alert>
                  )}
 
-                 {/* Desktop: Full table */}
-                 <div className="hidden lg:block">
-                    <OptimizedETFTable
-                      items={filtered} 
-                      live={cachedPrices}
-                      distributions={distributions}
-                      cachedDripData={dripDataTaxed || {}}
-                      rsiSignals={rsiSignals || {}}
+                  {/* Desktop: Full table */}
+                  <div className="hidden lg:block">
+                     <OptimizedETFTable
+                       items={filtered} 
+                       live={cachedPrices}
+                       distributions={distributions}
+                       cachedDripData={dripDataTaxed || {}}
+                       rsiSignals={rsiSignals || {}}
+                       isRankingDataLoaded={isRankingDataLoaded}
                       originalRanking={currentRanked}
                       persistentRanking={persistentRanking}
                       allowSorting={isSubscribed || isAdmin}
@@ -831,14 +850,15 @@ const Ranking = () => {
                    />
                  </div>
                  
-                 {/* Tablet: Enhanced mobile cards */}
-                 <div className="hidden md:block lg:hidden">
-                    <MobileETFTable
-                      items={filtered}
-                      distributions={distributions}
-                      dividendPredictions={dividendPredictions}
-                      cachedDripData={dripDataTaxed || {}}
-                      originalRanking={currentRanked}
+                  {/* Tablet: Enhanced mobile cards */}
+                  <div className="hidden md:block lg:hidden">
+                     <MobileETFTable
+                       items={filtered}
+                       distributions={distributions}
+                       dividendPredictions={dividendPredictions}
+                       cachedDripData={dripDataTaxed || {}}
+                       originalRanking={currentRanked}
+                       isRankingDataLoaded={isRankingDataLoaded}
                       cachedPrices={cachedPrices}
                       frozenRankings={frozenRankings}
                       persistentRanking={persistentRanking}
@@ -849,14 +869,15 @@ const Ranking = () => {
                     />
                  </div>
                  
-                 {/* Mobile: Compact cards */}
-                 <div className="block md:hidden">
-                    <MobileETFTable
-                      items={filtered}
-                      distributions={distributions}
-                      dividendPredictions={dividendPredictions}
-                      cachedDripData={dripDataTaxed || {}}
-                      originalRanking={currentRanked}
+                  {/* Mobile: Compact cards */}
+                  <div className="block md:hidden">
+                     <MobileETFTable
+                       items={filtered}
+                       distributions={distributions}
+                       dividendPredictions={dividendPredictions}
+                       cachedDripData={dripDataTaxed || {}}
+                       originalRanking={currentRanked}
+                       isRankingDataLoaded={isRankingDataLoaded}
                       cachedPrices={cachedPrices}
                       frozenRankings={frozenRankings}
                       persistentRanking={persistentRanking}
@@ -1049,6 +1070,7 @@ const Ranking = () => {
                distributions={distributions}
                cachedDripData={dripDataTaxFree || {}}
                rsiSignals={rsiSignals || {}}
+               isRankingDataLoaded={isRankingDataLoaded}
                originalRanking={currentRanked}
                persistentRanking={persistentRanking}
                allowSorting={isSubscribed || isAdmin}
@@ -1067,6 +1089,7 @@ const Ranking = () => {
               dividendPredictions={dividendPredictions}
               cachedDripData={dripDataTaxFree || {}}
               originalRanking={currentRanked}
+              isRankingDataLoaded={isRankingDataLoaded}
               cachedPrices={cachedPrices}
               frozenRankings={frozenRankings}
               persistentRanking={persistentRanking}
@@ -1085,6 +1108,7 @@ const Ranking = () => {
               dividendPredictions={dividendPredictions}
               cachedDripData={dripDataTaxFree || {}}
               originalRanking={currentRanked}
+              isRankingDataLoaded={isRankingDataLoaded}
               cachedPrices={cachedPrices}
               frozenRankings={frozenRankings}
               persistentRanking={persistentRanking}

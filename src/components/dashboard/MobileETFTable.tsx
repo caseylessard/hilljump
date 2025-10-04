@@ -26,6 +26,7 @@ type Props = {
   persistentRanking?: Array<{ticker: string, rank: number, score: number, updatedAt: number}>;
   onSelectETF?: (etf: ScoredETF, rank: number) => void;
   previewMode?: boolean;
+  isRankingDataLoaded?: boolean; // Whether ranking data is fully loaded
 };
 
 export const MobileETFTable = ({ 
@@ -39,7 +40,8 @@ export const MobileETFTable = ({
   frozenRankings = new Map(),
   persistentRanking = [],
   onSelectETF,
-  previewMode = false
+  previewMode = false,
+  isRankingDataLoaded = false
 }: Props) => {
   // Create original ranking lookup for persistent rank numbers
   const originalRankMap = useMemo(() => {
@@ -227,7 +229,11 @@ export const MobileETFTable = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 sm:gap-4 lg:gap-3">
                   <div className="flex flex-col items-center">
-                    <span className="text-lg sm:text-xl lg:text-lg font-bold text-primary">#{rank}</span>
+                    {isRankingDataLoaded ? (
+                      <span className="text-lg sm:text-xl lg:text-lg font-bold text-primary">#{rank}</span>
+                    ) : (
+                      <div className="w-8 h-6 bg-muted animate-pulse rounded" />
+                    )}
                     <RankingChangeIndicator ticker={etf.ticker} currentRank={index + 1} />
                   </div>
                   

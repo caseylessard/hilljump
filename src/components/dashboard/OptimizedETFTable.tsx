@@ -35,6 +35,7 @@ type Props = {
   taxedScoring?: boolean;
   previewMode?: boolean;
   storedScores?: Record<string, any>; // Add stored scores for frozen rankings
+  isRankingDataLoaded?: boolean; // Whether ranking data is fully loaded
 };
 
   // Updated ranking change indicator to show actual position changes
@@ -244,7 +245,8 @@ export const OptimizedETFTable = ({
   cachedPrices = {},
   frozenRankings = new Map(),
   taxedScoring = false,
-  previewMode = false
+  previewMode = false,
+  isRankingDataLoaded = false
 }: Props) => {
   // Debug logging removed for performance
   // Performance monitoring
@@ -710,8 +712,14 @@ export const OptimizedETFTable = ({
               >
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono">{displayRank}</span>
-                      {!shouldObfuscate && <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />}
+                      {isRankingDataLoaded ? (
+                        <>
+                          <span className="font-mono">{displayRank}</span>
+                          {!shouldObfuscate && <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />}
+                        </>
+                      ) : (
+                        <div className="w-8 h-5 bg-muted animate-pulse rounded" />
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
