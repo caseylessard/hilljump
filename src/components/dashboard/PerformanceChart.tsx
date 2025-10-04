@@ -18,7 +18,6 @@ export const PerformanceChart = ({ items }: Props) => {
             <Bar dataKey="totalReturn1Y" name="52W Total Return" fill="hsl(var(--sidebar-ring))" radius={[0,4,4,0]}>
               <LabelList dataKey="totalReturn1Y" position="right" formatter={(v: number) => `${v.toFixed(1)}%`} />
             </Bar>
-            <Bar dataKey="yieldTTM" name="Yield TTM" fill="hsl(var(--primary))" radius={[0,4,4,0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

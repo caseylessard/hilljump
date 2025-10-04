@@ -234,8 +234,11 @@ export const MobileETFTable = ({
                   <div className="flex items-center gap-2 sm:gap-3 lg:gap-2">
                     <img 
                       src={logoUrl || hilljumpLogo} 
-                      alt={logoUrl ? manager : "Hilljump"} 
-                      className="w-6 h-6 sm:w-8 sm:h-8 lg:w-6 lg:h-6 rounded object-contain bg-white"
+                      alt={logoUrl ? manager : "HillJump"} 
+                      className="w-8 h-8 sm:w-10 sm:h-10 lg:w-8 lg:h-8 rounded object-contain bg-background"
+                      onError={(e) => {
+                        e.currentTarget.src = hilljumpLogo;
+                      }}
                     />
                      <div>
                        <div className="flex items-center gap-2">

@@ -873,7 +873,7 @@ export const OptimizedETFTable = ({
               {/* Simple Stats Box */}
               <Card>
                 <div className="p-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="text-center">
                       <div className="text-sm text-muted-foreground">Current Price</div>
                       <div className="font-semibold">
@@ -881,15 +881,12 @@ export const OptimizedETFTable = ({
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-sm text-muted-foreground">Yield (TTM)</div>
+                      <div className="text-sm text-muted-foreground">52W DRIP Return</div>
                       <div className="font-semibold">
-                        {selected.yieldTTM ? constants.formatPct(selected.yieldTTM, 1) : "—"}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-muted-foreground">52W Return</div>
-                      <div className="font-semibold">
-                        {selected.totalReturn1Y ? constants.formatPct(selected.totalReturn1Y, 1) : "—"}
+                        {(() => {
+                          const drip52w = lookupTables.getDripPercent(selected.ticker, "52w");
+                          return drip52w !== 0 ? `${drip52w >= 0 ? '+' : ''}${drip52w.toFixed(1)}%` : "—";
+                        })()}
                       </div>
                     </div>
                     <div className="text-center">

@@ -14,6 +14,7 @@ import { useRankingHistory, type RankingChange } from "@/hooks/useRankingHistory
 import { useFrozenRankings } from "@/hooks/useFrozenRankings";
 
 import { DistributionHistory } from "@/components/dashboard/DistributionHistory";
+import { PerformanceChartWithDistributions } from "@/components/dashboard/PerformanceChartWithDistributions";
 import { ArrowUpRight, ArrowDownRight, X, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
@@ -735,12 +736,23 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 </div>
               </div>
               <div className={`${isMobile ? 'p-2 max-h-[60vh] overflow-y-auto' : 'p-4'}`}>
+                {/* 52-Week Performance Chart */}
+                <PerformanceChartWithDistributions ticker={selected.ticker} />
+                
                 {/* Distribution History */}
-                <DistributionHistory ticker={selected.ticker} />
+                <div className="mt-4">
+                  <DistributionHistory ticker={selected.ticker} />
+                </div>
+                
                 <div className={`mt-4 grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
                   <div>
-                    <div className="text-sm text-muted-foreground">52W Total Return</div>
-                    <div className="text-lg font-medium">{selected.totalReturn1Y ? formatPct(selected.totalReturn1Y, 1) : "—"}</div>
+                    <div className="text-sm text-muted-foreground">52W DRIP Return</div>
+                    <div className="text-lg font-medium">
+                      {(() => {
+                        const drip52w = getDripPercent(selected.ticker, "52w");
+                        return drip52w !== 0 ? `${drip52w >= 0 ? '+' : ''}${drip52w.toFixed(1)}%` : "—";
+                      })()}
+                    </div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">AV</div>
