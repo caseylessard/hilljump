@@ -680,10 +680,11 @@ const Ranking = () => {
                    />
                  </div>
                  
-                  {/* Tablet: Enhanced mobile cards */}
+                   {/* Tablet: Enhanced mobile cards */}
                   <div className="hidden md:block lg:hidden">
                      <MobileETFTable
                        items={filtered}
+                       live={cachedPrices}
                        distributions={distributions}
                        dividendPredictions={dividendPredictions}
                        cachedDripData={dripDataTaxFree || {}}
@@ -703,6 +704,7 @@ const Ranking = () => {
                   <div className="block md:hidden">
                      <MobileETFTable
                        items={filtered}
+                       live={cachedPrices}
                        distributions={distributions}
                        dividendPredictions={dividendPredictions}
                        cachedDripData={dripDataTaxFree || {}}
@@ -854,6 +856,7 @@ const Ranking = () => {
                   <div className="hidden md:block lg:hidden">
                      <MobileETFTable
                        items={filtered}
+                       live={cachedPrices}
                        distributions={distributions}
                        dividendPredictions={dividendPredictions}
                        cachedDripData={dripDataTaxed || {}}
@@ -873,6 +876,7 @@ const Ranking = () => {
                   <div className="block md:hidden">
                      <MobileETFTable
                        items={filtered}
+                       live={cachedPrices}
                        distributions={distributions}
                        dividendPredictions={dividendPredictions}
                        cachedDripData={dripDataTaxed || {}}
@@ -1085,6 +1089,7 @@ const Ranking = () => {
           <div className="hidden md:block lg:hidden">
             <MobileETFTable
               items={filtered}
+              live={cachedPrices}
               distributions={distributions}
               dividendPredictions={dividendPredictions}
               cachedDripData={dripDataTaxFree || {}}
@@ -1104,6 +1109,7 @@ const Ranking = () => {
           <div className="block md:hidden">
             <MobileETFTable
               items={filtered}
+              live={cachedPrices}
               distributions={distributions}
               dividendPredictions={dividendPredictions}
               cachedDripData={dripDataTaxFree || {}}

@@ -271,60 +271,58 @@ export const MobileETFTable = ({
 
                 <div className="flex items-center gap-2">
                   <div className="text-right">
-                    {(() => {
-                      const liveItem = live[etf.ticker];
-                      let price = liveItem?.price;
-                      const cp = liveItem?.changePercent;
-                      
-                      // If no live price, get from cached prices or ETF current_price
-                      if (price == null) {
-                        const cachedPrice = cachedPrices[etf.ticker];
-                        if (cachedPrice) {
-                          if (typeof cachedPrice === 'number') {
-                            price = cachedPrice;
-                          } else if (typeof cachedPrice === 'object' && 'price' in cachedPrice && typeof cachedPrice.price === 'number') {
-                            price = cachedPrice.price;
-                          }
-                        }
-                        
-                        if (price == null && etf.current_price) {
-                          if (typeof etf.current_price === 'number') {
-                            price = etf.current_price;
-                          } else if (typeof etf.current_price === 'object' && 'price' in etf.current_price && typeof (etf.current_price as any).price === 'number') {
-                            price = (etf.current_price as any).price;
-                          }
-                        }
-                      }
-                      
-                      if (price == null) return "—";
-                      const up = (cp ?? 0) >= 0;
-                      
-                      // Get price update date from cached prices
-                      const cachedPrice = cachedPrices[etf.ticker];
-                      let priceDate = null;
-                      if (cachedPrice && typeof cachedPrice === 'object' && 'priceUpdatedAt' in cachedPrice) {
-                        priceDate = (cachedPrice as any).priceUpdatedAt;
-                      }
-                      const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
-                      
-                       return (
-                         <div className="inline-flex flex-col items-end leading-tight">
-                           <span className="font-semibold">{shouldObfuscate ? "***" : `$${price.toFixed(2)}`}</span>
-                           <div className="text-xs space-y-0">
-                             {cp != null && !shouldObfuscate && (
-                               <div className={up ? "text-emerald-600" : "text-red-600"}>
-                                 {up ? "+" : ""}{cp.toFixed(2)}%
-                               </div>
-                             )}
-                             {dateStr && !shouldObfuscate && (
-                               <div className="text-muted-foreground">
-                                 {dateStr}
-                               </div>
-                             )}
-                           </div>
-                         </div>
-                       );
-                    })()}
+                     {(() => {
+                       const liveItem = live[etf.ticker];
+                       let price = liveItem?.price;
+                       const cp = liveItem?.changePercent;
+                       
+                       // If no live price, get from cached prices or ETF current_price
+                       if (price == null) {
+                         const cachedPrice = cachedPrices[etf.ticker];
+                         if (cachedPrice) {
+                           if (typeof cachedPrice === 'number') {
+                             price = cachedPrice;
+                           } else if (typeof cachedPrice === 'object' && 'price' in cachedPrice && typeof cachedPrice.price === 'number') {
+                             price = cachedPrice.price;
+                           }
+                         }
+                         
+                         if (price == null && etf.current_price) {
+                           price = typeof etf.current_price === 'number' ? etf.current_price : 
+                                  (typeof etf.current_price === 'object' && 'price' in etf.current_price ? 
+                                   (etf.current_price as any).price : null);
+                         }
+                       }
+                       
+                       if (price == null) return "—";
+                       const up = (cp ?? 0) >= 0;
+                       
+                       // Get price update date from cached prices
+                       const cachedPrice = cachedPrices[etf.ticker];
+                       let priceDate = null;
+                       if (cachedPrice && typeof cachedPrice === 'object' && 'priceUpdatedAt' in cachedPrice) {
+                         priceDate = (cachedPrice as any).priceUpdatedAt;
+                       }
+                       const dateStr = priceDate ? format(new Date(priceDate), "MM/dd HH:mm") : "";
+                       
+                        return (
+                          <div className="inline-flex flex-col items-end leading-tight">
+                            <span className="font-semibold">{shouldObfuscate ? "***" : `$${price.toFixed(2)}`}</span>
+                            <div className="text-xs space-y-0">
+                              {cp != null && !shouldObfuscate && (
+                                <div className={up ? "text-emerald-600" : "text-red-600"}>
+                                  {up ? "+" : ""}{cp.toFixed(2)}%
+                                </div>
+                              )}
+                              {dateStr && !shouldObfuscate && (
+                                <div className="text-muted-foreground">
+                                  {dateStr}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                     })()}
                   </div>
                 </div>
               </div>
@@ -349,24 +347,25 @@ export const MobileETFTable = ({
                  </div>
               </div>
 
-               {/* DRIP performance grid */}
-               <div className="grid grid-cols-4 gap-2 sm:gap-4 lg:gap-2 text-center">
-                 {(['4w', '13w', '26w', '52w'] as const).map((period) => {
-                   const percent = getDripPercent(etf.ticker, period);
-                   const isPositive = percent >= 0;
-                   
-                   return (
-                     <div key={period} className="text-xs sm:text-sm lg:text-xs">
-                       <div className="text-muted-foreground mb-1">{period}</div>
-                       <div className={`font-medium ${
-                         isPositive ? 'text-emerald-600' : 'text-red-600'
-                       }`}>
-                         {percent.toFixed(1)}%
-                       </div>
-                     </div>
-                   );
-                 })}
-               </div>
+                {/* DRIP performance grid */}
+                <div className="grid grid-cols-4 gap-2 sm:gap-4 lg:gap-2 text-center">
+                  {(['4w', '13w', '26w', '52w'] as const).map((period) => {
+                    const percent = getDripPercent(etf.ticker, period);
+                    const isPositive = percent >= 0;
+                    
+                    return (
+                      <div key={period} className="text-xs sm:text-sm lg:text-xs">
+                        <div className="text-muted-foreground mb-1">{period}</div>
+                        <div className={`font-medium ${
+                          shouldObfuscate ? 'text-muted-foreground' : 
+                          isPositive ? 'text-emerald-600' : 'text-red-600'
+                        }`}>
+                          {shouldObfuscate ? "***" : `${percent.toFixed(1)}%`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
             </CardContent>
           </Card>
         );
