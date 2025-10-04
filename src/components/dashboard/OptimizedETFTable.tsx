@@ -885,7 +885,12 @@ export const OptimizedETFTable = ({
                     <div className="text-center">
                       <div className="text-sm text-muted-foreground">Current Price</div>
                       <div className="font-semibold">
-                        {selected.current_price ? `$${helperFunctions.safeToFixed(selected.current_price, 2)}` : "—"}
+                        {(() => {
+                          const livePrice = live[selected.ticker]?.price;
+                          const cachedPrice = cachedPrices[selected.ticker];
+                          const price = livePrice || cachedPrice?.price || selected.current_price;
+                          return price ? `$${Number(price).toFixed(2)}` : "—";
+                        })()}
                       </div>
                     </div>
                     <div className="text-center">

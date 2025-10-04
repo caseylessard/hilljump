@@ -753,6 +753,17 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                 
                 <div className={`mt-4 grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
                   <div>
+                    <div className="text-sm text-muted-foreground">Current Price</div>
+                    <div className="text-lg font-medium">
+                      {(() => {
+                        const livePrice = live[selected.ticker]?.price;
+                        const cachedPrice = cachedPrices[selected.ticker];
+                        const price = livePrice || cachedPrice?.price || selected.current_price;
+                        return price ? `$${Number(price).toFixed(2)}` : "—";
+                      })()}
+                    </div>
+                  </div>
+                  <div>
                     <div className="text-sm text-muted-foreground">52W DRIP Return</div>
                     <div className="text-lg font-medium">
                       {(() => {
