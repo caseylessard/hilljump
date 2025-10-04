@@ -269,27 +269,24 @@ export const OptimizedETFTable = ({
   
   // Pre-compute lookup tables for performance
   const lookupTables = useMemo(() => {
+    // Use frozenRankings if available, otherwise fall back to calculating
     const originalRankMap = new Map<string, number>();
-    originalRanking.forEach((etf, index) => {
-      originalRankMap.set(etf.ticker, index + 1);
-    });
+    if (frozenRankings && frozenRankings.size > 0) {
+      // Use frozen rankings from parent
+      frozenRankings.forEach((rank, ticker) => {
+        originalRankMap.set(ticker, rank);
+      });
+    } else {
+      // Fallback: use original ranking order
+      originalRanking.forEach((etf, index) => {
+        originalRankMap.set(etf.ticker, index + 1);
+      });
+    }
     
-    // Calculate score-based ranking for consistent rank display
-    const scoreBasedRanking = [...items].sort((a, b) => {
-      const scoreA = (a.compositeScore || 0);
-      const scoreB = (b.compositeScore || 0);
-      return scoreB - scoreA; // Highest score first
-    });
-    
-    // Use persistent ranking for consistent rank display
+    // Use persistent ranking for change indicators only
     const persistentRankMap = new Map<string, number>();
     persistentRanking.forEach(item => {
       persistentRankMap.set(item.ticker, item.rank);
-    });
-    
-    const scoreRankMap = new Map<string, number>();
-    scoreBasedRanking.forEach((etf, index) => {
-      scoreRankMap.set(etf.ticker, index + 1);
     });
     
     const dripSumCache = new Map<string, number>();
@@ -390,12 +387,11 @@ export const OptimizedETFTable = ({
     return {
       originalRankMap,
       persistentRankMap,
-      scoreRankMap,
       getDripPercent,
       getDripSum,
       dripSumCache
     };
-  }, [originalRanking, cachedDripData, live, items.length, taxedScoring]);
+  }, [originalRanking, frozenRankings, persistentRanking, cachedDripData, live, items.length, taxedScoring]);
   
   // Optimized constants
   const constants = useMemo(() => ({
@@ -695,7 +691,8 @@ export const OptimizedETFTable = ({
             const displayName = shouldObfuscate ? "***" : etf.name;
             const displayPrice = shouldObfuscate ? "***" : (liveItem?.price || Number(cachedPrices[etf.ticker] || etf.current_price || 0));
             const displayDripSum = shouldObfuscate ? "***" : dripSum;
-            const displayRank = idx + 1; // Always show rank
+            const frozenRank = lookupTables.originalRankMap.get(etf.ticker) || idx + 1; // Use frozen rank
+            const displayRank = shouldObfuscate ? idx + 1 : frozenRank; // Show frozen rank when not obfuscated
             
             return (
               <TableRow
@@ -703,9 +700,8 @@ export const OptimizedETFTable = ({
                 className={`${idx < 3 ? "font-semibold" : ""} ${shouldObfuscate ? "" : "cursor-pointer hover:bg-accent"}`}
                 onClick={() => { 
                   if (shouldObfuscate) return; // Prevent clicks on obfuscated rows
-                  const originalRank = lookupTables.originalRankMap.get(etf.ticker) || idx + 1;
                   setSelected(etf); 
-                  setSelectedRank(originalRank); 
+                  setSelectedRank(frozenRank); 
                   setRange("1Y"); 
                   setOpen(true); 
                 }}
@@ -715,7 +711,7 @@ export const OptimizedETFTable = ({
                       {isRankingDataLoaded ? (
                         <>
                           <span className="font-mono">{displayRank}</span>
-                          {!shouldObfuscate && <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={idx + 1} persistentRanking={persistentRanking} />}
+                          {!shouldObfuscate && <PersistentRankingChangeIndicator ticker={etf.ticker} currentRank={frozenRank} persistentRanking={persistentRanking} />}
                         </>
                       ) : (
                         <div className="w-8 h-5 bg-muted animate-pulse rounded" />

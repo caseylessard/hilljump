@@ -11,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { predictNextDistribution } from "@/lib/dividends";
 import { useCachedDRIP } from "@/hooks/useCachedETFData";
 import { useRankingHistory, type RankingChange } from "@/hooks/useRankingHistory";
-import { useFrozenRankings } from "@/hooks/useFrozenRankings";
 
 import { DistributionHistory } from "@/components/dashboard/DistributionHistory";
 import { PerformanceChartWithDistributions } from "@/components/dashboard/PerformanceChartWithDistributions";
@@ -34,10 +33,11 @@ type Props = {
   originalRanking?: ScoredETF[]; // Full original ranking to preserve rank numbers
   cachedPrices?: Record<string, any>; // Add cached prices prop
   storedScores?: Record<string, any>; // Add stored scores for frozen rankings
+  frozenRankings?: Map<string, number>; // Frozen rankings from parent
   isRankingDataLoaded?: boolean; // Whether ranking data is fully loaded
 };
 
-export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [], cachedPrices = {}, storedScores = {}, isRankingDataLoaded = false }: Props) => {
+export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = true, cachedDripData = {}, originalRanking = [], cachedPrices = {}, storedScores = {}, frozenRankings = new Map(), isRankingDataLoaded = false }: Props) => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ScoredETF | null>(null);
@@ -51,25 +51,18 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   
   // Get ranking history for change indicators
   const { data: rankingChanges = {} } = useRankingHistory(tickers);
-  
-  // Use frozen rankings for stable rank numbers
-  const { frozenRankings, getRankForTicker } = useFrozenRankings({
-    etfs: items,
-    dripData: cachedDripData,
-    storedScores,
-    isDripDataComplete: Object.keys(cachedDripData).length > 0 // Inline check here
-  });
-  
-  // Create original ranking lookup for backward compatibility
+
+  // Create original ranking lookup - use frozenRankings prop instead of creating our own
   const originalRankMap = useMemo(() => {
     const map = new Map<string, number>();
     
-    // Use frozen rankings if available, fall back to original ranking
-    if (frozenRankings.size > 0) {
+    // Use frozen rankings prop from parent if available
+    if (frozenRankings && frozenRankings.size > 0) {
       frozenRankings.forEach((rank, ticker) => {
         map.set(ticker, rank);
       });
     } else {
+      // Fallback to original ranking order
       originalRanking.forEach((etf, index) => {
         map.set(etf.ticker, index + 1);
       });
@@ -257,7 +250,7 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
   // Component for ranking change indicator - shows actual position changes vs frozen rankings
   const RankingChangeIndicator = ({ ticker, currentRank }: { ticker: string; currentRank: number }) => {
     // Get the frozen rank for comparison
-    const frozenRank = getRankForTicker(ticker);
+    const frozenRank = originalRankMap.get(ticker);
     if (!frozenRank || frozenRank === currentRank) return null;
     
     // Calculate change: positive = improvement (lower rank number)
