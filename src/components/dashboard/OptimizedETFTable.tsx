@@ -837,18 +837,16 @@ export const OptimizedETFTable = ({
                   </button>
                   
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12 bg-muted flex items-center justify-center">
-                      {(() => {
-                        const logo = helperFunctions.getManagerLogo(selected);
-                        return logo ? (
-                          <img src={logo} alt="Manager logo" className="h-8 w-8 object-contain rounded-full" />
-                        ) : (
-                          <AvatarFallback className="text-sm font-bold">
-                            {selectedRank}
-                          </AvatarFallback>
-                        );
-                      })()}
-                    </Avatar>
+                    <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={helperFunctions.getManagerLogo(selected) || "/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png"}
+                        alt={helperFunctions.getManagerLogo(selected) ? "Manager logo" : "HillJump logo"}
+                        className="h-8 w-8 object-contain"
+                        onError={(e) => {
+                          e.currentTarget.src = "/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png";
+                        }}
+                      />
+                    </div>
                     
                     <div>
                       <div className="flex items-center gap-2">

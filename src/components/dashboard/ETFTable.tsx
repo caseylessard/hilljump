@@ -697,18 +697,15 @@ export const ETFTable = ({ items, live = {}, distributions = {}, allowSorting = 
                     return (
                       <>
                         <div className="rounded-full border-2 border-foreground p-1 bg-[hsl(var(--success))]">
-                          {logo ? (
-                            <img
-                              src={logo}
-                              alt={`${manager} ETF fund manager logo`}
-                              className="h-16 w-16 object-contain rounded-full"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <Avatar className="h-16 w-16">
-                              <AvatarFallback className="text-xl font-bold">{selected.ticker.slice(0, 2)}</AvatarFallback>
-                            </Avatar>
-                          )}
+                          <img
+                            src={logo || "/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png"}
+                            alt={logo ? `${manager} ETF fund manager logo` : "HillJump logo"}
+                            className="h-16 w-16 object-contain rounded-full"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.src = "/lovable-uploads/81de2019-2acd-4cc3-8af5-508908a6fbc2.png";
+                            }}
+                          />
                         </div>
                         <div>
                           <div className="text-2xl font-semibold inline-flex items-center gap-2">
