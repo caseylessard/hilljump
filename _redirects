@@ -1,5 +1,1 @@
-# www -> apex
-https://www.hilljump.com/*   https://hilljump.com/:splat   301!
-
-# SPA fallback (so client routes work on refresh)
- /*  /index.html  200
+/*    /index.html   200
