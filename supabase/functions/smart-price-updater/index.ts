@@ -22,47 +22,64 @@ async function fetchEODHDData(ticker: string, apiKey: string): Promise<Partial<E
   try {
     console.log(`🎯 [EODHD] Fetching real-time price for ${ticker}`);
     
-    // Format symbol for EODHD (FIXED: NEO Exchange handling)
-    let eodhSymbol = ticker;
+    // Format symbol for EODHD with NEO fallback logic
+    const symbolsToTry: string[] = [];
+    
     if (ticker.endsWith('.TO')) {
-      eodhSymbol = ticker; // EODHD uses .TO format directly
+      symbolsToTry.push(ticker); // EODHD uses .TO format directly
     } else if (ticker.endsWith('.NE')) {
-      eodhSymbol = ticker.replace('.NE', '.NEO'); // NEO Exchange - use .NEO format for EODHD
+      symbolsToTry.push(ticker.replace('.NE', '.NEO')); // NEO Exchange - try .NEO first
+      symbolsToTry.push(ticker); // Fallback to .NE
+      symbolsToTry.push(ticker.split('.')[0]); // Fallback to base ticker
+    } else if (ticker.endsWith('.NEO')) {
+      symbolsToTry.push(ticker); // Try .NEO first
+      symbolsToTry.push(ticker.replace('.NEO', '.NE')); // Fallback to .NE
+      symbolsToTry.push(ticker.split('.')[0]); // Fallback to base ticker
     } else if (ticker.endsWith('.VN')) {
-      eodhSymbol = ticker.replace('.VN', '.V'); // TSX Venture - use .V format
+      symbolsToTry.push(ticker.replace('.VN', '.V')); // TSX Venture - use .V format
     } else if (!ticker.includes('.')) {
-      eodhSymbol = `${ticker}.US`; // US tickers - add .US suffix
+      symbolsToTry.push(`${ticker}.US`); // US tickers - add .US suffix
+    } else {
+      symbolsToTry.push(ticker);
     }
     
-    // Get real-time price ONLY (fundamentals not included in basic plan)
-    const priceUrl = `https://eodhd.com/api/real-time/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
-    const priceResponse = await fetch(priceUrl);
-    
-    if (!priceResponse.ok) {
-      console.warn(`❌ [EODHD] Price fetch failed for ${eodhSymbol}: ${priceResponse.status}, falling back to Yahoo`);
-      return {};
-    }
-    
-    const priceData = await priceResponse.json();
-    const currentPrice = priceData.close || priceData.price || priceData.regularMarketPrice;
-    
-    if (!currentPrice || currentPrice <= 0) {
-      console.warn(`❌ [EODHD] Invalid price for ${eodhSymbol}: ${currentPrice}, falling back to Yahoo`);
-      return {};
-    }
+    // Try each symbol format until one works
+    for (const eodhSymbol of symbolsToTry) {
+      console.log(`🔍 [EODHD] Trying: ${eodhSymbol}`);
+      
+      const priceUrl = `https://eodhd.com/api/real-time/${eodhSymbol}?api_token=${apiKey}&fmt=json`;
+      const priceResponse = await fetch(priceUrl);
+      
+      if (!priceResponse.ok) {
+        console.warn(`⚠️ [EODHD] Price fetch failed for ${eodhSymbol}: ${priceResponse.status}`);
+        continue; // Try next format
+      }
+      
+      const priceData = await priceResponse.json();
+      const currentPrice = priceData.close || priceData.price || priceData.regularMarketPrice;
+      
+      if (!currentPrice || currentPrice <= 0) {
+        console.warn(`⚠️ [EODHD] Invalid price for ${eodhSymbol}: ${currentPrice}`);
+        continue; // Try next format
+      }
 
-    // Get volume from real-time data if available
-    const volume = priceData.volume;
+      // Get volume from real-time data if available
+      const volume = priceData.volume;
+      
+      console.log(`✅ [EODHD] Success for ${ticker} (${eodhSymbol}): $${currentPrice}${volume ? `, vol: ${volume}` : ''}`);
+      
+      return {
+        ticker,
+        current_price: currentPrice,
+        avg_volume: volume,
+        data_source: 'eodhd_realtime',
+        timestamp: new Date().toISOString()
+      };
+    }
     
-    console.log(`✅ [EODHD] Success for ${ticker}: $${currentPrice}${volume ? `, vol: ${volume}` : ''}`);
-    
-    return {
-      ticker,
-      current_price: currentPrice,
-      avg_volume: volume,
-      data_source: 'eodhd_realtime',
-      timestamp: new Date().toISOString()
-    };
+    // All formats failed
+    console.warn(`❌ [EODHD] All formats failed for ${ticker}, falling back to Yahoo`);
+    return {};
     
   } catch (error) {
     console.error(`❌ [EODHD] Error for ${ticker}:`, error);
