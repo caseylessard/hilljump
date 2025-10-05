@@ -22,11 +22,25 @@ async function fetchLatestPrice(
   eodhd_api_key: string,
   debug = false
 ): Promise<EODHDPriceData | null> {
-  const attempts = [
-    ticker,
-    ticker.includes('.') ? ticker : `${ticker}.US`,
-    ticker.includes('.') ? ticker.split('.')[0] : null
-  ].filter(Boolean);
+  const attempts: string[] = [];
+  
+  // Start with the original ticker
+  attempts.push(ticker);
+  
+  // Handle NEO exchange stocks - try both .NE and .NEO formats
+  if (ticker.endsWith('.NE')) {
+    attempts.push(ticker.replace('.NE', '.NEO'));
+    attempts.push(ticker.split('.')[0]); // Base ticker without exchange
+  } else if (ticker.endsWith('.NEO')) {
+    attempts.push(ticker.replace('.NEO', '.NE'));
+    attempts.push(ticker.split('.')[0]); // Base ticker without exchange
+  } else if (ticker.includes('.TO')) {
+    // Toronto stocks - keep .TO format
+    attempts.push(ticker);
+  } else if (!ticker.includes('.')) {
+    // US stocks - add .US suffix
+    attempts.push(`${ticker}.US`);
+  }
 
   for (const symbol of attempts) {
     try {
