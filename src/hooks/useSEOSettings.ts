@@ -8,8 +8,8 @@ interface SEOSettings {
 }
 
 const defaultSettings: SEOSettings = {
-  site_title: 'HillJump — Smart ETF Analysis & Income Investing',
-  site_description: 'HillJump provides advanced ETF analysis tools, income-focused rankings, portfolio tracking, and market insights for smarter investing decisions.',
+  site_title: 'HillJump — High-Yield ETF Rankings & DRIP Tracker',
+  site_description: 'Track high-yield ETFs with DRIP calculations, daily breakout alerts, and risk-adjusted rankings. Built for Canadian & US income investors.',
   favicon_url: '/favicon.ico'
 };
 
