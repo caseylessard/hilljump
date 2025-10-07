@@ -1,5 +1,5 @@
-// AI Portfolio building logic with Ladder-Delta Trend and Past Performance scoring
-// Translated from Python script methodology
+// Enhanced AI Portfolio building logic for DRIP Income ETFs
+// Optimized for dividend sustainability, yield, and risk-adjusted returns
 
 export interface AIPortfolioETF {
   ticker: string;
@@ -10,40 +10,71 @@ export interface AIPortfolioETF {
   alloc_dollars_rounded?: number;
   current_price: number;
   last_date: string;
+  
+  // Return metrics
   ret_1y?: number;
-  trend_score: number;
-  pastperf_score?: number;
-  blend_score?: number;
-  ret1y_score?: number;
-  badge?: string;
-  badge_label?: string;
-  badge_color?: string;
+  ret_3y?: number;
+  ret_5y?: number;
+  
+  // Dividend metrics
+  dividend_yield?: number;
+  dividend_growth_1y?: number;
+  dividend_growth_3y?: number;
+  dividend_growth_5y?: number;
+  payout_ratio?: number;
+  dividend_frequency?: number;
+  yield_on_cost_5y?: number;
+  
+  // Risk metrics
   vol_ann?: number;
+  downside_deviation?: number;
   max_drawdown?: number;
   sharpe?: number;
+  sortino?: number;
+  
+  // Quality metrics
+  expense_ratio?: number;
+  aum?: number;
+  avg_volume?: number;
+  fund_age_years?: number;
+  
+  // DRIP windows
   r4?: number;
   r13?: number;
   r26?: number;
   r52?: number;
+  
+  // Period rates
   p4?: number;
   p13?: number;
   p26?: number;
   p52?: number;
+  
+  // Deltas
   d1?: number;
   d2?: number;
   d3?: number;
-  trend_raw?: number;
-  pastperf_raw?: number;
-  obs?: number;
-  pw_0_4?: number;
-  pw_5_13?: number;
-  pw_14_26?: number;
-  pw_27_52?: number;
   
-  // Backward compatibility properties
+  // Scores
+  trend_score?: number;
+  income_score?: number;
+  quality_score?: number;
+  risk_adjusted_score?: number;
+  composite_score?: number;
+  
+  // Raw scores
+  trend_raw?: number;
+  income_raw?: number;
+  quality_raw?: number;
+  
+  // Badge
+  badge?: string;
+  badge_label?: string;
+  badge_color?: string;
+  
+  // Backward compatibility
   lastPrice?: number;
   trendScore?: number;
-  ret1yScore?: number;
   allocRounded?: number;
   allocationDollar?: number;
   badgeLabel?: string;
@@ -53,31 +84,51 @@ export interface AIPortfolioETF {
   exchange?: string;
 }
 
-export type WeightingMethod = 'equal' | 'return' | 'risk_parity';
-export type ScoreSource = 'trend' | 'ret1y' | 'pastperf' | 'blend';
-export type PastPerfMode = 'equal' | 'time';
+export type WeightingMethod = 'equal' | 'dividend_yield' | 'risk_parity' | 'risk_adjusted' | 'quality_weighted';
+export type ScoreSource = 'trend' | 'income' | 'quality' | 'risk_adjusted' | 'composite';
 
-// Trading days per period (weeks * 5 approximately)
-const WIN = { r4: 20, r13: 65, r26: 130, r52: 260 };
+export interface PortfolioOptions {
+  topK: number;
+  minTradingDays: number;
+  scoreSource: ScoreSource;
+  weighting: WeightingMethod;
+  maxWeight: number;
+  minWeight?: number;
+  capital: number;
+  roundShares: boolean;
+  
+  // Income-focused options
+  minDividendYield?: number;
+  maxExpenseRatio?: number;
+  maxDrawdown?: number;
+  minFundAge?: number;
+  minAUM?: number;
+  
+  // Score weights for composite
+  compositeWeights?: {
+    income: number;
+    quality: number;
+    risk_adjusted: number;
+    trend: number;
+  };
+}
+
+const DEFAULT_COMPOSITE_WEIGHTS = {
+  income: 0.40,
+  quality: 0.25,
+  risk_adjusted: 0.25,
+  trend: 0.10
+};
 
 export const buildAIPortfolio = async (
   etfs: any[], 
   prices: Record<string, any>,
-  options: {
-    topK: number;
-    minTradingDays: number;
-    scoreSource: ScoreSource;
-    weighting: WeightingMethod;
-    maxWeight: number;
-    minWeight?: number;
-    capital: number;
-    roundShares: boolean;
-    pastperfMode?: PastPerfMode;
-  },
+  options: PortfolioOptions,
   dripData?: Record<string, any>
 ): Promise<AIPortfolioETF[]> => {
-  console.log(`🎯 Building AI portfolio with ${etfs.length} ETFs, source: ${options.scoreSource}, weighting: ${options.weighting}`);
-  console.log(`⚖️ Weight constraints: min=${((options.minWeight || 0.01) * 100).toFixed(1)}%, max=${(options.maxWeight * 100).toFixed(1)}%`);
+  console.log(`🎯 Building DRIP Income Portfolio with ${etfs.length} ETFs`);
+  console.log(`📊 Score source: ${options.scoreSource}, Weighting: ${options.weighting}`);
+  console.log(`⚖️ Weight constraints: min=${((options.minWeight || 0.05) * 100).toFixed(1)}%, max=${(options.maxWeight * 100).toFixed(1)}%`);
 
   if (etfs.length === 0) {
     console.warn('No ETFs provided to buildAIPortfolio');
@@ -85,7 +136,6 @@ export const buildAIPortfolio = async (
   }
 
   const results: any[] = [];
-  const pastperfMode = options.pastperfMode || 'equal';
 
   // Process each ETF
   for (const etf of etfs) {
@@ -93,106 +143,101 @@ export const buildAIPortfolio = async (
     const priceData = prices[ticker];
     const cachedDrip = dripData?.[ticker];
     
-    // Skip ETFs without sufficient data
-    if (!priceData && !cachedDrip) {
-      continue;
-    }
+    if (!priceData && !cachedDrip) continue;
 
     const lastPrice = priceData?.price || etf.current_price || 0;
     if (lastPrice <= 0) continue;
 
-    // Calculate 1-year return
-    const ret1y = calculateOneYearReturn(etf, cachedDrip);
+    // Calculate returns
+    const ret_1y = calculateReturn(etf, cachedDrip, '1y');
+    const ret_3y = calculateReturn(etf, cachedDrip, '3y');
+    const ret_5y = calculateReturn(etf, cachedDrip, '5y');
+
+    // Extract dividend metrics
+    const dividendMetrics = extractDividendMetrics(etf);
     
     // Calculate risk metrics
-    const { vol_ann, max_drawdown, sharpe } = calculateRiskMetrics(etf, cachedDrip);
+    const riskMetrics = calculateEnhancedRiskMetrics(etf, cachedDrip);
+    
+    // Extract quality metrics
+    const qualityMetrics = extractQualityMetrics(etf);
 
-    // Calculate DRIP windows (r4, r13, r26, r52)
-    let r4: number | undefined, r13: number | undefined, r26: number | undefined, r52: number | undefined;
-    let trend_raw: number | undefined, pastperf_raw: number | undefined;
-    let p4: number | undefined, p13: number | undefined, p26: number | undefined, p52: number | undefined;
-    let d1: number | undefined, d2: number | undefined, d3: number | undefined;
-    let badge: string | undefined, badge_label: string | undefined, badge_color: string | undefined;
-    let pp_rungs: Record<string, number> = {};
+    // Calculate DRIP windows
+    const { r4, r13, r26, r52 } = computeDripWindows(etf, cachedDrip);
+    
+    let trend_raw, income_raw, quality_raw;
+    let p4, p13, p26, p52, d1, d2, d3;
+    let badge, badge_label, badge_color;
 
-    try {
-      ({ r4, r13, r26, r52 } = computeDripWindows(etf, cachedDrip));
-      
-      if (r4 !== undefined && r13 !== undefined && r26 !== undefined && r52 !== undefined) {
-        // Calculate trend score using Ladder-Delta methodology
-        ({ trend_raw, p4, p13, p26, p52, d1, d2, d3 } = ladderTrendRaw(r4, r13, r26, r52));
-        
-        // Calculate badge from deltas
-        ({ badge, badge_label, badge_color } = ladderBadge(d1!, d2!, d3!));
-        
-        // Calculate past performance score using non-overlapping rungs
-        ({ pastperf_raw, pp_rungs } = pastperfFlatFromRungs(r4, r13, r26, r52, pastperfMode));
-      }
-    } catch (error) {
-      console.warn(`Failed to calculate scores for ${ticker}:`, error);
+    // Calculate trend score with balanced weighting (less short-term focused)
+    if (r4 !== undefined && r13 !== undefined && r26 !== undefined && r52 !== undefined) {
+      ({ trend_raw, p4, p13, p26, p52, d1, d2, d3 } = balancedTrendScore(r4, r13, r26, r52));
+      ({ badge, badge_label, badge_color } = trendBadge(d1!, d2!, d3!));
     }
+
+    // Calculate income score (dividend-focused)
+    income_raw = calculateIncomeScore(dividendMetrics, ret_1y);
+    
+    // Calculate quality score
+    quality_raw = calculateQualityScore(qualityMetrics);
 
     const row = {
       ticker,
       name: etf.name || ticker,
       last_price_adj: lastPrice,
-      ret_1y: ret1y,
+      ret_1y,
+      ret_3y,
+      ret_5y,
+      ...dividendMetrics,
+      ...riskMetrics,
+      ...qualityMetrics,
       r4, r13, r26, r52,
       p4, p13, p26, p52,
       d1, d2, d3,
       trend_raw,
-      pastperf_raw,
+      income_raw,
+      quality_raw,
       badge,
       badge_label,
       badge_color,
-      vol_ann,
-      max_drawdown,
-      sharpe,
-      obs: 252, // Assume full year of data
-      last_date: new Date().toISOString().split('T')[0],
-      ...pp_rungs // Include rung weekly rates
+      last_date: new Date().toISOString().split('T')[0]
     };
     
     results.push(row);
   }
 
   if (results.length === 0) {
-    console.warn('No usable data. Check tickers or lookback.');
+    console.warn('No usable data. Check tickers or data quality.');
     return [];
   }
 
+  // Apply filters for income ETFs
+  let filtered = applyIncomeFilters(results, options);
+  console.log(`🔍 After filters: ${filtered.length}/${results.length} ETFs remaining`);
+
+  if (filtered.length === 0) {
+    console.warn('All ETFs filtered out. Relaxing constraints...');
+    filtered = results;
+  }
+
   // Calculate normalized scores (0-100)
-  const trend_scores = results.map(r => r.trend_raw).filter(x => x !== undefined);
-  const ret1y_scores = results.map(r => r.ret_1y).filter(x => x !== undefined);  
-  const pastperf_scores = results.map(r => r.pastperf_raw).filter(x => x !== undefined);
+  calculateNormalizedScores(filtered);
 
-  // Apply scaling
-  const trend_score_map = scaleSafe(trend_scores);
-  const ret1y_score_map = scaleSafe(ret1y_scores);
-  const pastperf_score_map = scaleSafe(pastperf_scores);
-
-  // Add scores to results
-  results.forEach((result, i) => {
-    const trendIdx = trend_scores.findIndex((_, idx) => results.filter(r => r.trend_raw !== undefined)[idx] === result);
-    const ret1yIdx = ret1y_scores.findIndex((_, idx) => results.filter(r => r.ret_1y !== undefined)[idx] === result);
-    const pastperfIdx = pastperf_scores.findIndex((_, idx) => results.filter(r => r.pastperf_raw !== undefined)[idx] === result);
-
-    result.trend_score = trendIdx >= 0 ? trend_score_map[trendIdx] : 50;
-    result.ret1y_score = ret1yIdx >= 0 ? ret1y_score_map[ret1yIdx] : 50;
-    result.pastperf_score = pastperfIdx >= 0 ? pastperf_score_map[pastperfIdx] : 50;
-    result.blend_score = 0.70 * result.trend_score + 0.30 * result.ret1y_score;
+  // Calculate composite score
+  const compositeWeights = options.compositeWeights || DEFAULT_COMPOSITE_WEIGHTS;
+  filtered.forEach(etf => {
+    etf.composite_score = 
+      compositeWeights.income * (etf.income_score || 50) +
+      compositeWeights.quality * (etf.quality_score || 50) +
+      compositeWeights.risk_adjusted * (etf.risk_adjusted_score || 50) +
+      compositeWeights.trend * (etf.trend_score || 50);
   });
 
-  // Choose score source for ranking
-  const scoreField = {
-    trend: 'trend_score',
-    ret1y: 'ret1y_score', 
-    pastperf: 'pastperf_score',
-    blend: 'blend_score'
-  }[options.scoreSource];
+  // Select scoring method
+  const scoreField = getScoreField(options.scoreSource);
 
-  // Filter valid results and sort by score
-  const validResults = results.filter(r => r[scoreField] !== undefined);
+  // Sort by score
+  const validResults = filtered.filter(r => r[scoreField] !== undefined && isFinite(r[scoreField]));
   if (validResults.length === 0) {
     console.warn('No tickers with valid scores.');
     return [];
@@ -205,201 +250,227 @@ export const buildAIPortfolio = async (
   const chosen = validResults.slice(0, topK);
 
   console.log(`📊 Selected top ${chosen.length} ETFs from ${validResults.length} candidates`);
+  logTopHoldings(chosen, scoreField);
 
   // Build weights
-  const weights = buildWeights(chosen, options.weighting, options.maxWeight, options.minWeight);
+  const weights = buildWeights(chosen, options.weighting, options.maxWeight, options.minWeight || 0.05);
   
-  // Filter out ETFs with zero weights to create a cleaner portfolio
-  const nonZeroIndices = weights
-    .map((weight, index) => ({ weight, index }))
-    .filter(item => item.weight > 0)
-    .map(item => item.index);
+  // Filter out zero weights
+  const portfolio = createPortfolioPositions(chosen, weights, options);
   
-  const filteredChosen = nonZeroIndices.map(i => chosen[i]);
-  const filteredWeights = nonZeroIndices.map(i => weights[i]);
-  
-  console.log(`🎯 Final portfolio: ${filteredChosen.length} positions after removing zero weights`);
-  
-  // Create portfolio ETFs with allocations
-  const portfolioETFs: AIPortfolioETF[] = filteredChosen.map((etf, i) => {
-    const weight = filteredWeights[i];
-    const alloc_dollars = weight * options.capital;
-    const shares = options.roundShares 
-      ? Math.floor(alloc_dollars / etf.last_price_adj)
-      : alloc_dollars / etf.last_price_adj;
-    
-    const alloc_dollars_rounded = shares * etf.last_price_adj;
+  console.log(`✅ Portfolio built: ${portfolio.length} positions, total weight: ${(portfolio.reduce((s, e) => s + e.weight, 0) * 100).toFixed(1)}%`);
+  logPortfolioMetrics(portfolio);
 
-    return {
-      ticker: etf.ticker,
-      name: etf.name,
-      weight,
-      shares,
-      alloc_dollars,
-      alloc_dollars_rounded,
-      current_price: etf.last_price_adj,
-      last_date: etf.last_date,
-      ret_1y: etf.ret_1y,
-      trend_score: etf.trend_score,
-      pastperf_score: etf.pastperf_score,
-      blend_score: etf.blend_score,
-      ret1y_score: etf.ret1y_score,
-      badge: etf.badge,
-      badge_label: etf.badge_label,
-      badge_color: etf.badge_color,
-      vol_ann: etf.vol_ann,
-      max_drawdown: etf.max_drawdown,
-      sharpe: etf.sharpe,
-      r4: etf.r4,
-      r13: etf.r13,
-      r26: etf.r26,
-      r52: etf.r52,
-      p4: etf.p4,
-      p13: etf.p13,
-      p26: etf.p26,
-      p52: etf.p52,
-      d1: etf.d1,
-      d2: etf.d2,
-      d3: etf.d3,
-      trend_raw: etf.trend_raw,
-      pastperf_raw: etf.pastperf_raw,
-      obs: etf.obs,
-      pw_0_4: etf.pw_0_4,
-      pw_5_13: etf.pw_5_13,
-      pw_14_26: etf.pw_14_26,
-      pw_27_52: etf.pw_27_52,
-      
-      // Backward compatibility properties
-      lastPrice: etf.last_price_adj,
-      trendScore: etf.trend_score,
-      ret1yScore: etf.ret1y_score,
-      allocRounded: alloc_dollars_rounded,
-      allocationDollar: alloc_dollars,
-      badgeLabel: etf.badge_label,
-      badgeColor: etf.badge_color,
-      isEstimated: !etf.ret_1y || (!etf.trend_raw && !etf.pastperf_raw),
-      category: etf.category || 'ETF',
-      exchange: etf.exchange || 'N/A'
-    };
-  });
-
-  const totalWeight = portfolioETFs.reduce((sum, etf) => sum + etf.weight, 0);
-  console.log(`✅ Portfolio built: ${portfolioETFs.length} positions, total weight: ${(totalWeight * 100).toFixed(1)}%`);
-
-  // Sort portfolio by allocation percentage (highest to lowest)
-  portfolioETFs.sort((a, b) => b.weight - a.weight);
-
-  return portfolioETFs;
+  return portfolio;
 };
 
-// Helper functions
+// ==================== DIVIDEND METRICS ====================
 
-function calculateOneYearReturn(etf: any, cachedDrip?: any): number | undefined {
-  // Try multiple sources for 1-year return
-  let ret1y = etf.total_return_1y || etf.totalReturn1Y || etf.totalReturn;
+function extractDividendMetrics(etf: any): any {
+  let dividend_yield = etf.dividend_yield || etf.dividendYield || etf.yield;
+  let dividend_growth_1y = etf.dividend_growth_1y || etf.dividendGrowth1Y;
+  let dividend_growth_3y = etf.dividend_growth_3y || etf.dividendGrowth3Y;
+  let dividend_growth_5y = etf.dividend_growth_5y || etf.dividendGrowth5Y;
+  let payout_ratio = etf.payout_ratio || etf.payoutRatio;
   
-  if (ret1y && ret1y !== 0) {
-    // Handle both decimal (0.25) and percentage (25) formats
-    if (Math.abs(ret1y) > 5) {
-      ret1y = ret1y / 100; // Convert percentage to decimal
-    }
-    return ret1y;
-  }
-
-  // Fallback to DRIP 52w data
-  if (cachedDrip?.drip52wPercent) {
-    return cachedDrip.drip52wPercent / 100; // Convert to decimal
-  }
-
-  if (etf.drip_52w) {
-    return etf.drip_52w / 100; // Convert to decimal
-  }
-
-  return undefined;
-}
-
-function calculateRiskMetrics(etf: any, cachedDrip?: any): { vol_ann?: number; max_drawdown?: number; sharpe?: number } {
-  // Try to get volatility and risk metrics from ETF data
-  let vol_ann = etf.volatility || etf.vol_ann;
-  let max_drawdown = etf.max_drawdown;
-  let sharpe = etf.sharpe;
-
   // Convert percentages to decimals if needed
-  if (vol_ann && vol_ann > 5) {
-    vol_ann = vol_ann / 100;
-  }
-  if (max_drawdown && max_drawdown > 0) {
-    max_drawdown = max_drawdown / 100;
-  }
+  if (dividend_yield && dividend_yield > 1) dividend_yield /= 100;
+  if (dividend_growth_1y && dividend_growth_1y > 2) dividend_growth_1y /= 100;
+  if (dividend_growth_3y && dividend_growth_3y > 2) dividend_growth_3y /= 100;
+  if (dividend_growth_5y && dividend_growth_5y > 2) dividend_growth_5y /= 100;
+  if (payout_ratio && payout_ratio > 2) payout_ratio /= 100;
 
-  return { vol_ann, max_drawdown, sharpe };
-}
-
-function computeDripWindows(etf: any, cachedDrip?: any): { r4?: number; r13?: number; r26?: number; r52?: number } {
-  // Use cached DRIP data if available
-  if (cachedDrip) {
-    return {
-      r4: cachedDrip.drip4wPercent ? cachedDrip.drip4wPercent / 100 : undefined,
-      r13: cachedDrip.drip13wPercent ? cachedDrip.drip13wPercent / 100 : undefined,  
-      r26: cachedDrip.drip26wPercent ? cachedDrip.drip26wPercent / 100 : undefined,
-      r52: cachedDrip.drip52wPercent ? cachedDrip.drip52wPercent / 100 : undefined
-    };
-  }
-
-  // Fallback to ETF object DRIP data
   return {
-    r4: etf.drip_4w ? etf.drip_4w / 100 : undefined,
-    r13: etf.drip_13w ? etf.drip_13w / 100 : undefined,
-    r26: etf.drip_26w ? etf.drip_26w / 100 : undefined,
-    r52: etf.drip_52w ? etf.drip_52w / 100 : undefined
+    dividend_yield,
+    dividend_growth_1y,
+    dividend_growth_3y,
+    dividend_growth_5y,
+    payout_ratio,
+    dividend_frequency: etf.dividend_frequency || 4,
+    yield_on_cost_5y: etf.yield_on_cost_5y
   };
 }
 
-function ladderTrendRaw(r4: number, r13: number, r26: number, r52: number, eps: number = 0.0): {
+function calculateIncomeScore(metrics: any, ret_1y?: number): number {
+  let score = 0;
+  let weights = 0;
+
+  // Current yield (40% weight) - most important for income
+  if (metrics.dividend_yield && metrics.dividend_yield > 0) {
+    score += 0.40 * metrics.dividend_yield * 100; // Scale to ~0-10 range
+    weights += 0.40;
+  }
+
+  // Dividend growth 3y (25% weight)
+  if (metrics.dividend_growth_3y !== undefined) {
+    score += 0.25 * Math.max(0, metrics.dividend_growth_3y * 100);
+    weights += 0.25;
+  }
+
+  // Dividend growth 1y (15% weight)
+  if (metrics.dividend_growth_1y !== undefined) {
+    score += 0.15 * Math.max(0, metrics.dividend_growth_1y * 100);
+    weights += 0.15;
+  }
+
+  // Payout sustainability (20% weight) - penalize high payout ratios
+  if (metrics.payout_ratio !== undefined && metrics.payout_ratio > 0) {
+    const sustainability = metrics.payout_ratio < 0.60 ? 1.0 :
+                          metrics.payout_ratio < 0.80 ? 0.7 :
+                          metrics.payout_ratio < 1.00 ? 0.4 : 0.1;
+    score += 0.20 * sustainability * 10;
+    weights += 0.20;
+  }
+
+  // If we have no dividend data, use total return as proxy
+  if (weights === 0 && ret_1y !== undefined) {
+    score = Math.max(0, ret_1y * 100);
+    weights = 1.0;
+  }
+
+  return weights > 0 ? score / weights : 0;
+}
+
+// ==================== RISK METRICS ====================
+
+function calculateEnhancedRiskMetrics(etf: any, cachedDrip?: any): any {
+  let vol_ann = etf.volatility || etf.vol_ann;
+  let downside_deviation = etf.downside_deviation || etf.downsideDeviation;
+  let max_drawdown = etf.max_drawdown || etf.maxDrawdown;
+  let sharpe = etf.sharpe || etf.sharpeRatio;
+  let sortino = etf.sortino || etf.sortinoRatio;
+
+  // Convert percentages to decimals
+  if (vol_ann && vol_ann > 2) vol_ann /= 100;
+  if (downside_deviation && downside_deviation > 2) downside_deviation /= 100;
+  if (max_drawdown && Math.abs(max_drawdown) > 2) max_drawdown /= 100;
+
+  // Ensure max_drawdown is negative
+  if (max_drawdown && max_drawdown > 0) max_drawdown = -max_drawdown;
+
+  return {
+    vol_ann,
+    downside_deviation,
+    max_drawdown,
+    sharpe,
+    sortino
+  };
+}
+
+// ==================== QUALITY METRICS ====================
+
+function extractQualityMetrics(etf: any): any {
+  let expense_ratio = etf.expense_ratio || etf.expenseRatio || etf.fee;
+  let aum = etf.aum || etf.totalAssets || etf.assetsUnderManagement;
+  let avg_volume = etf.avg_volume || etf.avgVolume || etf.volume;
+  let fund_age_years = etf.fund_age_years || etf.fundAge;
+
+  // Convert expense ratio to decimal if needed
+  if (expense_ratio && expense_ratio > 2) expense_ratio /= 100;
+
+  // Convert AUM to millions if in other units
+  if (aum && aum > 1e9) aum /= 1e6; // Convert from dollars to millions
+
+  return {
+    expense_ratio,
+    aum,
+    avg_volume,
+    fund_age_years
+  };
+}
+
+function calculateQualityScore(metrics: any): number {
+  let score = 0;
+  let weights = 0;
+
+  // Low expense ratio (30% weight)
+  if (metrics.expense_ratio !== undefined && metrics.expense_ratio >= 0) {
+    const expenseScore = metrics.expense_ratio < 0.002 ? 10 :
+                        metrics.expense_ratio < 0.005 ? 8 :
+                        metrics.expense_ratio < 0.010 ? 6 :
+                        metrics.expense_ratio < 0.020 ? 4 : 2;
+    score += 0.30 * expenseScore;
+    weights += 0.30;
+  }
+
+  // Large AUM (30% weight) - stability and liquidity
+  if (metrics.aum !== undefined && metrics.aum > 0) {
+    const aumScore = metrics.aum > 10000 ? 10 :
+                    metrics.aum > 5000 ? 8 :
+                    metrics.aum > 1000 ? 6 :
+                    metrics.aum > 500 ? 4 : 2;
+    score += 0.30 * aumScore;
+    weights += 0.30;
+  }
+
+  // Fund maturity (25% weight)
+  if (metrics.fund_age_years !== undefined && metrics.fund_age_years >= 0) {
+    const ageScore = metrics.fund_age_years > 10 ? 10 :
+                    metrics.fund_age_years > 5 ? 8 :
+                    metrics.fund_age_years > 3 ? 6 :
+                    metrics.fund_age_years > 1 ? 4 : 2;
+    score += 0.25 * ageScore;
+    weights += 0.25;
+  }
+
+  // Trading volume (15% weight) - liquidity
+  if (metrics.avg_volume !== undefined && metrics.avg_volume > 0) {
+    const volumeScore = metrics.avg_volume > 1000000 ? 10 :
+                       metrics.avg_volume > 500000 ? 8 :
+                       metrics.avg_volume > 100000 ? 6 :
+                       metrics.avg_volume > 50000 ? 4 : 2;
+    score += 0.15 * volumeScore;
+    weights += 0.15;
+  }
+
+  return weights > 0 ? score / weights : 5; // Default to middle score
+}
+
+// ==================== TREND ANALYSIS ====================
+
+function balancedTrendScore(r4: number, r13: number, r26: number, r52: number): {
   trend_raw: number;
   p4: number;
-  p13: number; 
+  p13: number;
   p26: number;
   p52: number;
   d1: number;
   d2: number;
   d3: number;
 } {
-  // Calculate periodic returns (per-period rates)
+  // Calculate periodic returns (weekly rates)
   const p4 = r4 / 4;
   const p13 = r13 / 13;
   const p26 = r26 / 26;
   const p52 = r52 / 52;
 
-  // Calculate deltas (momentum differences)
+  // Calculate deltas (momentum)
   const d1 = p4 - p13;
   const d2 = p13 - p26;
   const d3 = p26 - p52;
 
-  // Utility functions
-  const pos = (x: number) => Math.max(0.0, x - eps);
-  const neg = (x: number) => Math.max(0.0, -x - eps);
-
-  // Calculate trend score
-  const base = 0.60 * p4 + 0.25 * p13 + 0.10 * p26 + 0.05 * p52;
-  const bonus = 1.00 * pos(d1) + 0.70 * pos(d2) + 0.50 * pos(d3);
-  const penalty = 0.50 * (neg(d1) + neg(d2) + neg(d3));
+  // Balanced weighting (less short-term focus for income ETFs)
+  const base = 0.20 * p4 + 0.30 * p13 + 0.30 * p26 + 0.20 * p52;
+  
+  // Modest momentum bonus/penalty
+  const pos = (x: number) => Math.max(0, x);
+  const neg = (x: number) => Math.max(0, -x);
+  
+  const bonus = 0.50 * pos(d1) + 0.35 * pos(d2) + 0.25 * pos(d3);
+  const penalty = 0.30 * (neg(d1) + neg(d2) + neg(d3));
 
   const trend_raw = base + bonus - penalty;
 
   return { trend_raw, p4, p13, p26, p52, d1, d2, d3 };
 }
 
-function ladderBadge(d1: number, d2: number, d3: number, eps: number = 0.0005): {
+function trendBadge(d1: number, d2: number, d3: number): {
   badge: string;
   badge_label: string;
   badge_color: string;
 } {
-  const arrow = (d: number) => {
-    if (d > eps) return "↑";
-    if (d < -eps) return "↓";
-    return "↔";
-  };
+  const eps = 0.0005;
+  const arrow = (d: number) => d > eps ? "↑" : d < -eps ? "↓" : "→";
 
   const arrows = [arrow(d1), arrow(d2), arrow(d3)];
   const badge = arrows.join("");
@@ -410,81 +481,111 @@ function ladderBadge(d1: number, d2: number, d3: number, eps: number = 0.0005): 
   let badge_color: string;
 
   if (pos === 3) {
-    badge_label = "Strong uptrend";
+    badge_label = "Strong momentum";
     badge_color = "green";
-  } else if (pos === 2 && neg === 0) {
-    badge_label = "Uptrend (moderate)";
-    badge_color = "green";
+  } else if (pos >= 2 && neg === 0) {
+    badge_label = "Positive momentum";
+    badge_color = "lightgreen";
   } else if (neg === 3) {
-    badge_label = "Strong downtrend";
+    badge_label = "Weak momentum";
     badge_color = "red";
-  } else if (neg === 2 && pos === 0) {
-    badge_label = "Downtrend (moderate)";
-    badge_color = "red";
+  } else if (neg >= 2 && pos === 0) {
+    badge_label = "Declining";
+    badge_color = "orange";
   } else {
-    badge_label = "Mixed / choppy";
-    badge_color = "yellow";
+    badge_label = "Stable";
+    badge_color = "gray";
   }
 
   return { badge, badge_label, badge_color };
 }
 
-function weeklyCagr(r: number, weeks: number): number {
-  // (1+R)^(1/weeks) - 1; safe for R >= -1
-  if (r <= -1.0) return -1.0;
-  return Math.pow(1.0 + r, 1.0 / weeks) - 1.0;
+// ==================== FILTERING ====================
+
+function applyIncomeFilters(etfs: any[], options: PortfolioOptions): any[] {
+  return etfs.filter(etf => {
+    // Minimum dividend yield
+    if (options.minDividendYield && etf.dividend_yield) {
+      if (etf.dividend_yield < options.minDividendYield) return false;
+    }
+
+    // Maximum expense ratio
+    if (options.maxExpenseRatio && etf.expense_ratio) {
+      if (etf.expense_ratio > options.maxExpenseRatio) return false;
+    }
+
+    // Maximum drawdown
+    if (options.maxDrawdown && etf.max_drawdown) {
+      if (Math.abs(etf.max_drawdown) > Math.abs(options.maxDrawdown)) return false;
+    }
+
+    // Minimum fund age
+    if (options.minFundAge && etf.fund_age_years) {
+      if (etf.fund_age_years < options.minFundAge) return false;
+    }
+
+    // Minimum AUM
+    if (options.minAUM && etf.aum) {
+      if (etf.aum < options.minAUM) return false;
+    }
+
+    return true;
+  });
 }
 
-function pastperfFlatFromRungs(r4: number, r13: number, r26: number, r52: number, mode: PastPerfMode = 'equal'): {
-  pastperf_raw: number;
-  pp_rungs: Record<string, number>;
-} {
-  // Split year into non-overlapping rungs: [0-4w], [5-13w], [14-26w], [27-52w]
-  const g4 = 1 + r4;
-  const g13 = 1 + r13;
-  const g26 = 1 + r26;
-  const g52 = 1 + r52;
+// ==================== SCORE NORMALIZATION ====================
 
-  const g_0_4 = g4;
-  const g_5_13 = g13 / g4;
-  const g_14_26 = g26 / g13;
-  const g_27_52 = g52 / g26;
+function calculateNormalizedScores(etfs: any[]): void {
+  // Trend scores
+  const trendValues = etfs.map(e => e.trend_raw).filter(v => v !== undefined);
+  const trendScores = scale0to100Safe(trendValues);
+  let trendIdx = 0;
+  etfs.forEach(e => {
+    if (e.trend_raw !== undefined) {
+      e.trend_score = trendScores[trendIdx++];
+    } else {
+      e.trend_score = 50;
+    }
+  });
 
-  const r_0_4 = g_0_4 - 1.0;
-  const r_5_13 = g_5_13 - 1.0;
-  const r_14_26 = g_14_26 - 1.0;
-  const r_27_52 = g_27_52 - 1.0;
+  // Income scores
+  const incomeValues = etfs.map(e => e.income_raw).filter(v => v !== undefined);
+  const incomeScores = scale0to100Safe(incomeValues);
+  let incomeIdx = 0;
+  etfs.forEach(e => {
+    if (e.income_raw !== undefined) {
+      e.income_score = incomeScores[incomeIdx++];
+    } else {
+      e.income_score = 50;
+    }
+  });
 
-  const weeks = [4, 9, 13, 26];
-  const pw = [
-    weeklyCagr(r_0_4, 4),
-    weeklyCagr(r_5_13, 9),
-    weeklyCagr(r_14_26, 13),
-    weeklyCagr(r_27_52, 26)
-  ];
+  // Quality scores
+  const qualityValues = etfs.map(e => e.quality_raw).filter(v => v !== undefined);
+  const qualityScores = scale0to100Safe(qualityValues);
+  let qualityIdx = 0;
+  etfs.forEach(e => {
+    if (e.quality_raw !== undefined) {
+      e.quality_score = qualityScores[qualityIdx++];
+    } else {
+      e.quality_score = 50;
+    }
+  });
 
-  const pp_rungs = {
-    pw_0_4: pw[0],
-    pw_5_13: pw[1],
-    pw_14_26: pw[2],
-    pw_27_52: pw[3]
-  };
-
-  // Calculate score based on mode
-  let pastperf_raw: number;
-  if (mode === 'time') {
-    // Time-weighted average
-    const totalWeeks = weeks.reduce((sum, w) => sum + w, 0);
-    pastperf_raw = pw.reduce((sum, p, i) => sum + p * weeks[i], 0) / totalWeeks;
-  } else {
-    // Equal-weighted average
-    pastperf_raw = pw.reduce((sum, p) => sum + p, 0) / pw.length;
-  }
-
-  return { pastperf_raw, pp_rungs };
+  // Risk-adjusted scores (using Sortino ratio if available, else Sharpe)
+  etfs.forEach(e => {
+    const riskMetric = e.sortino || e.sharpe;
+    if (riskMetric !== undefined && isFinite(riskMetric)) {
+      // Map Sortino/Sharpe to 0-100 scale
+      // Typical range: -1 to 3, with >1 being good
+      e.risk_adjusted_score = Math.max(0, Math.min(100, 50 + riskMetric * 20));
+    } else {
+      e.risk_adjusted_score = 50;
+    }
+  });
 }
 
-function scale0to100(values: number[]): number[] {
+function scale0to100Safe(values: number[]): number[] {
   if (values.length === 0) return [];
   
   const validValues = values.filter(v => isFinite(v));
@@ -501,136 +602,362 @@ function scale0to100(values: number[]): number[] {
   });
 }
 
-function scaleSafe(values: number[]): number[] {
-  // Replace infinities with NaN, then fill NaN with min value
-  const safeValues = values.map(v => isFinite(v) ? v : NaN);
-  const validValues = safeValues.filter(v => !isNaN(v));
-  
-  if (validValues.length === 0) {
-    return safeValues.map(() => 50);
-  }
-  
-  const fillValue = Math.min(...validValues);
-  const filledValues = safeValues.map(v => isNaN(v) ? fillValue : v);
-  
-  return scale0to100(filledValues);
-}
+// ==================== WEIGHTING ====================
 
-function capAndNormalize(weights: number[], maxWeight?: number, minWeight: number = 0.01): number[] {
-  console.log(`🔧 capAndNormalize: minWeight=${(minWeight * 100).toFixed(1)}%, maxWeight=${maxWeight ? (maxWeight * 100).toFixed(1) + '%' : 'none'}`);
-  console.log(`📊 Input weights:`, weights.map(w => (w * 100).toFixed(1) + '%').join(', '));
-  
-  let w = [...weights];
-  
-  // Set negative weights to 0
-  w = w.map(weight => Math.max(0, weight));
-  
-  // Handle all-zero case
-  const sum = w.reduce((acc, weight) => acc + weight, 0);
-  if (sum === 0) {
-    return new Array(w.length).fill(1.0 / w.length);
-  }
-  
-  // Normalize first
-  w = w.map(weight => weight / sum);
-  console.log(`📊 After normalization:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
-  
-  // Apply minimum weight constraint - now apply to ALL positions
-  const positionsNeedingMin = w.length; // Apply minimum to all positions
-  if (positionsNeedingMin > 0) {
-    const currentBelowMin = w.filter(weight => weight < minWeight);
-    
-    if (currentBelowMin.length > 0) {
-      console.log(`⬆️ ${currentBelowMin.length} positions need minimum weight boost to ${(minWeight * 100).toFixed(1)}%`);
-      
-      // Set all positions to at least minimum weight
-      const totalMinRequired = w.length * minWeight;
-      
-      if (totalMinRequired <= 1.0) {
-        // If we can fit all minimums, redistribute properly
-        w = w.map(weight => Math.max(weight, minWeight));
-        
-        // Normalize to ensure sum = 1
-        const sumAfterMin = w.reduce((acc, weight) => acc + weight, 0);
-        if (sumAfterMin > 1.0) {
-          // Scale down proportionally if we exceed 100%
-          w = w.map(weight => weight / sumAfterMin);
-        }
-        
-        console.log(`📊 After minimum weight adjustment:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
-      } else {
-        console.log(`⚠️ Cannot fit ${w.length} positions with ${(minWeight * 100).toFixed(1)}% minimum (would need ${(totalMinRequired * 100).toFixed(1)}%)`);
-      }
-    }
-  }
-  
-  // Apply max weight cap if specified
-  if (maxWeight !== undefined && maxWeight > 0 && maxWeight < 1) {
-    for (let iter = 0; iter < 10; iter++) {
-      const over = w.map(weight => weight > maxWeight);
-      const hasOver = over.some(Boolean);
-      
-      if (!hasOver) break;
-      
-      const excess = w.reduce((acc, weight, i) => 
-        acc + (over[i] ? weight - maxWeight : 0), 0);
-      
-      // Cap overweight positions
-      w = w.map((weight, i) => over[i] ? maxWeight : weight);
-      
-      // Redistribute excess to underweight positions
-      const underWeights = w.filter((_, i) => !over[i]);
-      const underSum = underWeights.reduce((acc, weight) => acc + weight, 0);
-      
-      if (underSum <= 0 || excess <= 0) break;
-      
-      w = w.map((weight, i) => 
-        over[i] ? weight : weight + (weight / underSum) * excess);
-    }
-    
-    // Final normalization
-    const finalSum = w.reduce((acc, weight) => acc + weight, 0);
-    if (finalSum > 0) {
-      w = w.map(weight => weight / finalSum);
-    }
-  }
-  
-  console.log(`✅ Final weights:`, w.map(weight => (weight * 100).toFixed(1) + '%').join(', '));
-  return w;
-}
-
-function buildWeights(etfs: any[], method: WeightingMethod, maxWeight?: number, minWeight?: number): number[] {
+function buildWeights(etfs: any[], method: WeightingMethod, maxWeight: number, minWeight: number): number[] {
   if (etfs.length === 0) return [];
   
   let baseWeights: number[];
   
-  switch (method.toLowerCase()) {
+  switch (method) {
     case 'equal':
       baseWeights = new Array(etfs.length).fill(1.0);
       break;
       
-    case 'return':
-      baseWeights = etfs.map(etf => Math.max(0, etf.ret_1y || 0));
+    case 'dividend_yield':
+      baseWeights = etfs.map(e => Math.max(0, e.dividend_yield || 0));
       if (baseWeights.every(w => w === 0)) {
         baseWeights = new Array(etfs.length).fill(1.0);
       }
       break;
       
     case 'risk_parity':
-    case 'inverse_vol':
-      baseWeights = etfs.map(etf => {
-        const vol = etf.vol_ann;
-        if (!vol || vol <= 0) return 0;
-        return 1.0 / vol;
+      baseWeights = etfs.map(e => {
+        const vol = e.downside_deviation || e.vol_ann;
+        return (vol && vol > 0) ? 1.0 / vol : 0;
       });
       if (baseWeights.every(w => w === 0)) {
         baseWeights = new Array(etfs.length).fill(1.0);
       }
       break;
+
+    case 'risk_adjusted':
+      baseWeights = etfs.map(e => {
+        const metric = e.sortino || e.sharpe || 0;
+        return Math.max(0, metric);
+      });
+      if (baseWeights.every(w => w === 0)) {
+        baseWeights = new Array(etfs.length).fill(1.0);
+      }
+      break;
+
+    case 'quality_weighted':
+      baseWeights = etfs.map(e => Math.max(0, e.quality_score || 50) / 100);
+      break;
       
     default:
-      throw new Error(`Unknown weighting method: ${method}`);
+      baseWeights = new Array(etfs.length).fill(1.0);
   }
   
-  return capAndNormalize(baseWeights, maxWeight, minWeight || 0.01);
+  return normalizeWeights(baseWeights, maxWeight, minWeight);
+}
+
+function normalizeWeights(weights: number[], maxWeight: number, minWeight: number): number[] {
+  console.log(`🔧 Normalizing weights: min=${(minWeight * 100).toFixed(1)}%, max=${(maxWeight * 100).toFixed(1)}%`);
+  
+  let w = weights.map(x => Math.max(0, x));
+  
+  // Initial normalization
+  let sum = w.reduce((a, b) => a + b, 0);
+  if (sum === 0) return new Array(w.length).fill(1.0 / w.length);
+  
+  w = w.map(x => x / sum);
+  
+  // Apply constraints iteratively
+  for (let iter = 0; iter < 20; iter++) {
+    let changed = false;
+    
+    // Apply minimum weight to non-zero positions
+    const nonZero = w.filter(x => x > 1e-6);
+    if (nonZero.length > 0 && minWeight * nonZero.length <= 1.0) {
+      w = w.map(x => {
+        if (x > 1e-6 && x < minWeight) {
+          changed = true;
+          return minWeight;
+        }
+        return x;
+      });
+    }
+    
+    // Apply maximum weight cap
+    const overMax = w.map(x => x > maxWeight);
+    if (overMax.some(Boolean)) {
+      changed = true;
+      const excess = w.reduce((acc, x, i) => acc + (overMax[i] ? x - maxWeight : 0), 0);
+      
+      w = w.map((x, i) => overMax[i] ? maxWeight : x);
+      
+      // Redistribute excess proportionally to under-weight positions
+      const underSum = w.reduce((acc, x, i) => acc + (overMax[i] ? 0 : x), 0);
+      if (underSum > 0 && excess > 0) {
+        w = w.map((x, i) => overMax[i] ? x : x + (x / underSum) * excess);
+      }
+    }
+    
+    // Renormalize
+    sum = w.reduce((a, b) => a + b, 0);
+    if (sum > 0) w = w.map(x => x / sum);
+    
+    if (!changed) break;
+  }
+  
+  console.log(`✅ Normalized weights:`, w.map(x => (x * 100).toFixed(1) + '%').join(', '));
+  return w;
+}
+
+// ==================== PORTFOLIO CONSTRUCTION ====================
+
+function createPortfolioPositions(etfs: any[], weights: number[], options: PortfolioOptions): AIPortfolioETF[] {
+  const positions: AIPortfolioETF[] = [];
+  
+  for (let i = 0; i < etfs.length; i++) {
+    const weight = weights[i];
+    if (weight < 0.001) continue; // Skip negligible weights
+    
+    const etf = etfs[i];
+    const alloc_dollars = weight * options.capital;
+    const shares = options.roundShares 
+      ? Math.floor(alloc_dollars / etf.last_price_adj)
+      : alloc_dollars / etf.last_price_adj;
+    
+    const alloc_dollars_rounded = shares * etf.last_price_adj;
+
+    positions.push({
+      ticker: etf.ticker,
+      name: etf.name,
+      weight,
+      shares,
+      alloc_dollars,
+      alloc_dollars_rounded,
+      current_price: etf.last_price_adj,
+      last_date: etf.last_date,
+      ret_1y: etf.ret_1y,
+      ret_3y: etf.ret_3y,
+      ret_5y: etf.ret_5y,
+      dividend_yield: etf.dividend_yield,
+      dividend_growth_1y: etf.dividend_growth_1y,
+      dividend_growth_3y: etf.dividend_growth_3y,
+      dividend_growth_5y: etf.dividend_growth_5y,
+      payout_ratio: etf.payout_ratio,
+      dividend_frequency: etf.dividend_frequency,
+      vol_ann: etf.vol_ann,
+      downside_deviation: etf.downside_deviation,
+      max_drawdown: etf.max_drawdown,
+      sharpe: etf.sharpe,
+      sortino: etf.sortino,
+      expense_ratio: etf.expense_ratio,
+      aum: etf.aum,
+      avg_volume: etf.avg_volume,
+      fund_age_years: etf.fund_age_years,
+      r4: etf.r4,
+      r13: etf.r13,
+      r26: etf.r26,
+      r52: etf.r52,
+      p4: etf.p4,
+      p13: etf.p13,
+      p26: etf.p26,
+      p52: etf.p52,
+      d1: etf.d1,
+      d2: etf.d2,
+      d3: etf.d3,
+      trend_score: etf.trend_score,
+      income_score: etf.income_score,
+      quality_score: etf.quality_score,
+      risk_adjusted_score: etf.risk_adjusted_score,
+      composite_score: etf.composite_score,
+      trend_raw: etf.trend_raw,
+      income_raw: etf.income_raw,
+      quality_raw: etf.quality_raw,
+      badge: etf.badge,
+      badge_label: etf.badge_label,
+      badge_color: etf.badge_color,
+      
+      // Backward compatibility
+      lastPrice: etf.last_price_adj,
+      trendScore: etf.trend_score,
+      allocRounded: alloc_dollars_rounded,
+      allocationDollar: alloc_dollars,
+      badgeLabel: etf.badge_label,
+      badgeColor: etf.badge_color,
+      isEstimated: !etf.dividend_yield && !etf.ret_1y,
+      category: etf.category || 'Income ETF',
+      exchange: etf.exchange || 'N/A'
+    });
+  }
+
+  // Sort by weight descending
+  positions.sort((a, b) => b.weight - a.weight);
+  
+  return positions;
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+
+function calculateReturn(etf: any, cachedDrip: any, period: '1y' | '3y' | '5y'): number | undefined {
+  const fieldMap = {
+    '1y': ['total_return_1y', 'totalReturn1Y', 'ret_1y'],
+    '3y': ['total_return_3y', 'totalReturn3Y', 'ret_3y'],
+    '5y': ['total_return_5y', 'totalReturn5Y', 'ret_5y']
+  };
+  
+  const dripMap = {
+    '1y': 'drip52wPercent',
+    '3y': 'drip156wPercent',
+    '5y': 'drip260wPercent'
+  };
+
+  // Try ETF data sources
+  for (const field of fieldMap[period]) {
+    let ret = etf[field];
+    if (ret !== undefined && ret !== 0) {
+      // Handle both decimal (0.25) and percentage (25) formats
+      if (Math.abs(ret) > 5) ret /= 100;
+      return ret;
+    }
+  }
+
+  // Try DRIP cache
+  if (cachedDrip?.[dripMap[period]]) {
+    return cachedDrip[dripMap[period]] / 100;
+  }
+
+  return undefined;
+}
+
+function computeDripWindows(etf: any, cachedDrip?: any): {
+  r4?: number;
+  r13?: number;
+  r26?: number;
+  r52?: number;
+} {
+  if (cachedDrip) {
+    return {
+      r4: cachedDrip.drip4wPercent !== undefined ? cachedDrip.drip4wPercent / 100 : undefined,
+      r13: cachedDrip.drip13wPercent !== undefined ? cachedDrip.drip13wPercent / 100 : undefined,
+      r26: cachedDrip.drip26wPercent !== undefined ? cachedDrip.drip26wPercent / 100 : undefined,
+      r52: cachedDrip.drip52wPercent !== undefined ? cachedDrip.drip52wPercent / 100 : undefined
+    };
+  }
+
+  return {
+    r4: etf.drip_4w !== undefined ? etf.drip_4w / 100 : undefined,
+    r13: etf.drip_13w !== undefined ? etf.drip_13w / 100 : undefined,
+    r26: etf.drip_26w !== undefined ? etf.drip_26w / 100 : undefined,
+    r52: etf.drip_52w !== undefined ? etf.drip_52w / 100 : undefined
+  };
+}
+
+function getScoreField(source: ScoreSource): string {
+  const fieldMap = {
+    trend: 'trend_score',
+    income: 'income_score',
+    quality: 'quality_score',
+    risk_adjusted: 'risk_adjusted_score',
+    composite: 'composite_score'
+  };
+  return fieldMap[source] || 'composite_score';
+}
+
+function logTopHoldings(etfs: any[], scoreField: string): void {
+  console.log(`\n📈 Top ${Math.min(5, etfs.length)} Holdings by ${scoreField}:`);
+  etfs.slice(0, 5).forEach((etf, i) => {
+    const score = etf[scoreField]?.toFixed(1) || 'N/A';
+    const yield_str = etf.dividend_yield ? `${(etf.dividend_yield * 100).toFixed(2)}%` : 'N/A';
+    const badge_str = etf.badge || 'N/A';
+    console.log(`  ${i + 1}. ${etf.ticker} - Score: ${score}, Yield: ${yield_str}, Trend: ${badge_str}`);
+  });
+}
+
+function logPortfolioMetrics(portfolio: AIPortfolioETF[]): void {
+  const totalAlloc = portfolio.reduce((s, e) => s + (e.alloc_dollars_rounded || 0), 0);
+  const avgYield = portfolio.reduce((s, e) => s + (e.dividend_yield || 0) * e.weight, 0);
+  const avgExpense = portfolio.reduce((s, e) => s + (e.expense_ratio || 0) * e.weight, 0);
+  const avgQuality = portfolio.reduce((s, e) => s + (e.quality_score || 50) * e.weight, 0);
+  
+  console.log(`\n💼 Portfolio Metrics:`);
+  console.log(`  Total Allocated: ${totalAlloc.toFixed(2)}`);
+  console.log(`  Weighted Avg Yield: ${(avgYield * 100).toFixed(2)}%`);
+  console.log(`  Weighted Avg Expense: ${(avgExpense * 100).toFixed(3)}%`);
+  console.log(`  Weighted Avg Quality Score: ${avgQuality.toFixed(1)}/100`);
+  console.log(`  Number of Holdings: ${portfolio.length}`);
+  console.log(`  Largest Position: ${(Math.max(...portfolio.map(e => e.weight)) * 100).toFixed(1)}%`);
+  console.log(`  Smallest Position: ${(Math.min(...portfolio.map(e => e.weight)) * 100).toFixed(1)}%`);
+}
+
+// ==================== EXPORTS ====================
+
+export const PRESET_STRATEGIES = {
+  conservative_income: {
+    scoreSource: 'composite' as ScoreSource,
+    weighting: 'dividend_yield' as WeightingMethod,
+    compositeWeights: {
+      income: 0.50,
+      quality: 0.30,
+      risk_adjusted: 0.15,
+      trend: 0.05
+    },
+    minDividendYield: 0.03,
+    maxExpenseRatio: 0.01,
+    maxDrawdown: -0.20,
+    minFundAge: 3
+  },
+  
+  balanced_income: {
+    scoreSource: 'composite' as ScoreSource,
+    weighting: 'risk_adjusted' as WeightingMethod,
+    compositeWeights: {
+      income: 0.40,
+      quality: 0.25,
+      risk_adjusted: 0.25,
+      trend: 0.10
+    },
+    minDividendYield: 0.02,
+    maxExpenseRatio: 0.015,
+    maxDrawdown: -0.30
+  },
+  
+  growth_income: {
+    scoreSource: 'composite' as ScoreSource,
+    weighting: 'quality_weighted' as WeightingMethod,
+    compositeWeights: {
+      income: 0.30,
+      quality: 0.20,
+      risk_adjusted: 0.20,
+      trend: 0.30
+    },
+    minDividendYield: 0.015,
+    maxExpenseRatio: 0.02
+  },
+  
+  high_yield: {
+    scoreSource: 'income' as ScoreSource,
+    weighting: 'dividend_yield' as WeightingMethod,
+    compositeWeights: {
+      income: 0.60,
+      quality: 0.20,
+      risk_adjusted: 0.10,
+      trend: 0.10
+    },
+    minDividendYield: 0.04,
+    maxExpenseRatio: 0.015
+  }
+};
+
+// Helper to apply preset strategy
+export function applyPresetStrategy(
+  baseOptions: Partial<PortfolioOptions>,
+  presetName: keyof typeof PRESET_STRATEGIES
+): PortfolioOptions {
+  const preset = PRESET_STRATEGIES[presetName];
+  
+  return {
+    topK: 10,
+    minTradingDays: 252,
+    capital: 100000,
+    roundShares: true,
+    maxWeight: 0.25,
+    minWeight: 0.05,
+    ...preset,
+    ...baseOptions
+  } as PortfolioOptions;
 }
