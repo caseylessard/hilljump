@@ -36,6 +36,10 @@ interface PolygonSnapshot {
 }
 
 const CACHE_TTL = 300; // 5 minutes
+const POLYGON_RATE_LIMIT = 5; // calls per minute
+const RATE_LIMIT_WINDOW = 60000; // 1 minute in milliseconds
+const MIN_DELAY_BETWEEN_CALLS = Math.ceil(RATE_LIMIT_WINDOW / POLYGON_RATE_LIMIT); // 12 seconds
+
 const VOLATILITY_MAP: Record<string, number> = {
   'NVDA': 0.45,
   'PLTR': 0.55,
@@ -46,6 +50,38 @@ const VOLATILITY_MAP: Record<string, number> = {
   'AMD': 0.5,
   'SOFI': 0.65,
 };
+
+// Rate limiter to track API calls
+class RateLimiter {
+  private callTimes: number[] = [];
+
+  async waitForSlot(): Promise<void> {
+    const now = Date.now();
+    
+    // Remove calls older than 1 minute
+    this.callTimes = this.callTimes.filter(time => now - time < RATE_LIMIT_WINDOW);
+    
+    // If we've made 5 calls in the last minute, wait
+    if (this.callTimes.length >= POLYGON_RATE_LIMIT) {
+      const oldestCall = this.callTimes[0];
+      const waitTime = RATE_LIMIT_WINDOW - (now - oldestCall) + 100; // Add 100ms buffer
+      console.log(`Rate limit reached, waiting ${waitTime}ms`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      
+      // Clean up old calls again after waiting
+      this.callTimes = this.callTimes.filter(time => Date.now() - time < RATE_LIMIT_WINDOW);
+    }
+    
+    // Record this call
+    this.callTimes.push(Date.now());
+  }
+
+  getCallCount(): number {
+    const now = Date.now();
+    this.callTimes = this.callTimes.filter(time => now - time < RATE_LIMIT_WINDOW);
+    return this.callTimes.length;
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -71,14 +107,14 @@ serve(async (req) => {
     console.log('Fetching options data for:', tickers);
 
     const signals: OptionCandidate[] = [];
+    const rateLimiter = new RateLimiter();
 
     for (const ticker of tickers) {
       try {
-        const result = await researchTicker(ticker, polygonApiKey, supabase);
+        const result = await researchTicker(ticker, polygonApiKey, supabase, rateLimiter);
         if (result) {
           signals.push(result);
         }
-        await new Promise(resolve => setTimeout(resolve, 200));
       } catch (tickerError) {
         console.error(`Error processing ${ticker}:`, tickerError);
       }
@@ -113,7 +149,7 @@ serve(async (req) => {
   }
 });
 
-async function researchTicker(ticker: string, apiKey: string, supabase: any): Promise<OptionCandidate | null> {
+async function researchTicker(ticker: string, apiKey: string, supabase: any, rateLimiter: RateLimiter): Promise<OptionCandidate | null> {
   try {
     // Check cache first
     const cacheKey = `options_${ticker}_${Math.floor(Date.now() / (CACHE_TTL * 1000))}`;
@@ -129,11 +165,11 @@ async function researchTicker(ticker: string, apiKey: string, supabase: any): Pr
     }
 
     // Fetch current price
-    const quote = await fetchPolygonQuote(ticker, apiKey);
+    const quote = await fetchPolygonQuote(ticker, apiKey, rateLimiter);
     if (!quote) return null;
 
     // Fetch real options data
-    const optionsData = await fetchPolygonOptions(ticker, quote.currentPrice, apiKey);
+    const optionsData = await fetchPolygonOptions(ticker, quote.currentPrice, apiKey, rateLimiter);
     
     let optimalOption;
     if (optionsData && optionsData.length > 0) {
@@ -171,10 +207,12 @@ async function researchTicker(ticker: string, apiKey: string, supabase: any): Pr
   }
 }
 
-async function fetchPolygonQuote(ticker: string, apiKey: string): Promise<{ currentPrice: number; earningsDate: string } | null> {
+async function fetchPolygonQuote(ticker: string, apiKey: string, rateLimiter: RateLimiter): Promise<{ currentPrice: number; earningsDate: string } | null> {
   try {
+    await rateLimiter.waitForSlot();
+    
     const url = `https://api.polygon.io/v2/aggs/ticker/${ticker}/prev?adjusted=true&apiKey=${apiKey}`;
-    console.log(`Fetching quote for ${ticker}`);
+    console.log(`Fetching quote for ${ticker} (API calls in last minute: ${rateLimiter.getCallCount()})`);
     
     const response = await fetch(url);
     if (!response.ok) {
@@ -200,8 +238,10 @@ async function fetchPolygonQuote(ticker: string, apiKey: string): Promise<{ curr
   }
 }
 
-async function fetchPolygonOptions(ticker: string, currentPrice: number, apiKey: string): Promise<any[] | null> {
+async function fetchPolygonOptions(ticker: string, currentPrice: number, apiKey: string, rateLimiter: RateLimiter): Promise<any[] | null> {
   try {
+    await rateLimiter.waitForSlot();
+    
     // Calculate target expiration (45 days out)
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 45);
@@ -209,7 +249,7 @@ async function fetchPolygonOptions(ticker: string, currentPrice: number, apiKey:
 
     // Fetch options contracts
     const contractsUrl = `https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${ticker}&contract_type=call&expiration_date.gte=${targetDateStr}&limit=250&apiKey=${apiKey}`;
-    console.log(`Fetching options contracts for ${ticker}`);
+    console.log(`Fetching options contracts for ${ticker} (API calls in last minute: ${rateLimiter.getCallCount()})`);
     
     const response = await fetch(contractsUrl);
     if (!response.ok) {
@@ -230,7 +270,7 @@ async function fetchPolygonOptions(ticker: string, currentPrice: number, apiKey:
         const strike = c.strike_price;
         return strike >= currentPrice * 1.05 && strike <= currentPrice * 1.2;
       })
-      .slice(0, 20); // Limit to prevent too many API calls
+      .slice(0, 10); // Reduced to 10 to respect rate limits
 
     if (contracts.length === 0) return null;
 
@@ -238,6 +278,8 @@ async function fetchPolygonOptions(ticker: string, currentPrice: number, apiKey:
     const optionsWithData = [];
     for (const contract of contracts) {
       try {
+        await rateLimiter.waitForSlot();
+        
         const snapshotUrl = `https://api.polygon.io/v3/snapshot/options/${ticker}/${contract.ticker}?apiKey=${apiKey}`;
         const snapRes = await fetch(snapshotUrl);
         
@@ -257,8 +299,6 @@ async function fetchPolygonOptions(ticker: string, currentPrice: number, apiKey:
             });
           }
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 100)); // Rate limiting
       } catch (err) {
         console.error(`Error fetching snapshot for ${contract.ticker}:`, err);
       }
