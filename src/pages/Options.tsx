@@ -29,7 +29,7 @@ const calculateGreeks = (S: number, K: number, T: number, r: number, sigma: numb
   return { delta, gamma, theta };
 };
 
-const API_ENDPOINT = 'https://earnings-scanner-api.caseylessard.workers.dev/api/research';
+const API_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/polygon-options-scanner`;
 
 interface Signal {
   ticker: string;
@@ -97,8 +97,17 @@ const Options = () => {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [error, setError] = useState<string | null>(null);
   
-  const [watchlistTickers, setWatchlistTickers] = useState(['NVDA', 'PLTR', 'SOFI', 'AMD', 'PLUG']);
+  const [watchlistTickers, setWatchlistTickers] = useState<string[]>(() => {
+    // Load from localStorage on mount
+    const saved = localStorage.getItem('optionsWatchlist');
+    return saved ? JSON.parse(saved) : ['NVDA', 'PLTR', 'SOFI', 'AMD', 'PLUG'];
+  });
   const [newTicker, setNewTicker] = useState('');
+
+  // Save watchlist to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('optionsWatchlist', JSON.stringify(watchlistTickers));
+  }, [watchlistTickers]);
   
   useEffect(() => {
     if (watchlistTickers.length > 0) {
@@ -112,10 +121,14 @@ const Options = () => {
     setError(null);
     
     try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({ tickers: watchlistTickers }),
       });
@@ -146,7 +159,11 @@ const Options = () => {
     }
   };
   
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [positions, setPositions] = useState<Position[]>(() => {
+    // Load from localStorage on mount
+    const saved = localStorage.getItem('optionsPositions');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [editingPosition, setEditingPosition] = useState<number | null>(null);
   const [newPosition, setNewPosition] = useState({
     ticker: '',
@@ -157,6 +174,11 @@ const Options = () => {
     currentPrice: '',
     notes: ''
   });
+
+  // Save positions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('optionsPositions', JSON.stringify(positions));
+  }, [positions]);
 
   const generateSignalsFromData = (candidates: any[]): Signal[] => {
     const r = 0.045;
@@ -423,7 +445,7 @@ const Options = () => {
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-blue-900">
-                  <strong>AI Auto-Research:</strong> These signals are automatically generated from your watchlist using real-time data from Yahoo Finance. 
+                  <strong>AI Auto-Research:</strong> These signals are automatically generated from your watchlist using real-time data from Polygon. 
                   The AI researches current prices, earnings dates, option chains, and calculates optimal strikes based on stochastic models.
                 </p>
                 <button

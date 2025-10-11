@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, CircleDollarSign, LockKeyhole, Home, Briefcase, User } from "lucide-react";
+import { Menu, CircleDollarSign, LockKeyhole, Home, Briefcase, User, TrendingUp } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -52,9 +52,11 @@ const Navigation = () => {
   // Build desktop nav items (includes all items) - now includes portfolio for all users
   const navItems = [...baseNavItems, ...authOnlyNavItems];
 
-  // Add admin link for admin users
+  // Add admin-only links for admin users
   if (isAdmin) {
+    hamburgerNavItems.push({ href: "/options", label: "Options", icon: "lucide", lucideIcon: TrendingUp });
     hamburgerNavItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: LockKeyhole });
+    navItems.push({ href: "/options", label: "Options", icon: "lucide", lucideIcon: TrendingUp });
     navItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: LockKeyhole });
   }
 
