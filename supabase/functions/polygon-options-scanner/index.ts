@@ -110,19 +110,24 @@ serve(async (req) => {
     const signals: OptionCandidate[] = [];
     const rateLimiter = new RateLimiter();
 
-    // Batch fetch quotes for all tickers (up to 250 per request)
-    const BATCH_SIZE = 250;
+    // Try batch fetch quotes first, fall back to individual if not available
     const quotesMap = new Map();
     
-    for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
-      const batch = tickers.slice(i, i + BATCH_SIZE);
-      const batchQuotes = await fetchPolygonQuotes(batch, polygonApiKey, rateLimiter);
-      for (const [ticker, quote] of batchQuotes) {
-        quotesMap.set(ticker, quote);
+    if (tickers.length <= 250) {
+      try {
+        const batchQuotes = await fetchPolygonQuotes(tickers, polygonApiKey, rateLimiter);
+        if (batchQuotes.size > 0) {
+          console.log(`Successfully batch fetched ${batchQuotes.size} quotes`);
+          for (const [ticker, quote] of batchQuotes) {
+            quotesMap.set(ticker, quote);
+          }
+        }
+      } catch (error) {
+        console.log('Batch quotes not available, will fetch individually');
       }
     }
 
-    // Now process each ticker with cached quotes
+    // Process each ticker with cached quotes or individual fetch
     for (const ticker of tickers) {
       try {
         const result = await researchTicker(ticker, polygonApiKey, supabase, rateLimiter, quotesMap);
@@ -248,6 +253,13 @@ async function fetchPolygonQuotes(tickers: string[], apiKey: string, rateLimiter
     console.log(`Fetching batch quotes for ${tickers.length} tickers (API calls in last minute: ${rateLimiter.getCallCount()})`);
     
     const response = await fetch(url);
+    
+    // If not available on this tier, return empty map to fall back to individual fetches
+    if (response.status === 403) {
+      console.log('Batch quotes endpoint not available on this API tier');
+      return quotes;
+    }
+    
     if (!response.ok) {
       console.error(`Failed to fetch batch quotes: ${response.status}`);
       return quotes;

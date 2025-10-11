@@ -510,7 +510,14 @@ const Options = () => {
             )}
 
             {!isLoading && filteredSignals.map((signal, idx) => (
-              <Card key={idx} className="hover:shadow-lg transition-all">
+              <Card 
+                key={idx} 
+                className="hover:shadow-lg transition-all animate-fade-in opacity-0"
+                style={{ 
+                  animationDelay: `${idx * 100}ms`,
+                  animationFillMode: 'forwards'
+                }}
+              >
                 <CardContent 
                   className="p-6 cursor-pointer"
                   onClick={() => toggleExpand(idx)}
