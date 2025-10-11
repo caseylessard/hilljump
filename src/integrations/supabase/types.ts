@@ -748,6 +748,33 @@ export type Database = {
         }
         Relationships: []
       }
+      options_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+          ticker: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          data: Json
+          expires_at: string
+          id?: string
+          ticker: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          ticker?: string
+        }
+        Relationships: []
+      }
       portfolio_positions: {
         Row: {
           created_at: string
@@ -1026,6 +1053,10 @@ export type Database = {
           ticker: string
           total_dividends: number
         }[]
+      }
+      clean_expired_options_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       has_role: {
         Args: {
