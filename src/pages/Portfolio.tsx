@@ -638,7 +638,7 @@ const Portfolio = () => {
         dripRawScore: 0, // Will be calculated when displayed
         combinedScore: 0, // Will be calculated when displayed
         rankingPosition: rec.rankingPosition,
-        yieldTTM: rec.yieldTTM,
+        yieldTTM: rec.metrics.dividend_yield || 0,
         strategy: rec.strategy,
         isRecommendation: true
       };
@@ -1046,12 +1046,12 @@ const Portfolio = () => {
                                 <div className="font-medium">{aiAdvice.portfolioAnalysis.riskScore}/100</div>
                               </div>
                               <div>
-                                <div className="text-muted-foreground">Yield Balance</div>
-                                <div className="font-medium">{aiAdvice.portfolioAnalysis.yieldBalance}/100</div>
+                                <div className="text-muted-foreground">Income Quality</div>
+                                <div className="font-medium">{aiAdvice.portfolioAnalysis.incomeQualityScore}/100</div>
                               </div>
                               <div>
-                                <div className="text-muted-foreground">Trend Alignment</div>
-                                <div className="font-medium">{aiAdvice.portfolioAnalysis.trendAlignment}/100</div>
+                                <div className="text-muted-foreground">Portfolio Health</div>
+                                <div className="font-medium">{aiAdvice.portfolioAnalysis.portfolioHealthScore}/100</div>
                               </div>
                             </div>
                             
@@ -1142,9 +1142,10 @@ const Portfolio = () => {
                             onClick={() => setPreferences(p => ({ ...p, scoreSource: method }))}
                           >
                             {method === 'trend' ? 'Trend' : 
-                             method === 'ret1y' ? '1Y Return' : 
-                             method === 'pastperf' ? 'Past Perf' :
-                             'Blend'}
+                             method === 'income' ? 'Income' : 
+                             method === 'quality' ? 'Quality' :
+                             method === 'risk_adjusted' ? 'Risk-Adj' :
+                             'Composite'}
                           </Button>
                         ))}
                       </div>
@@ -1157,14 +1158,14 @@ const Portfolio = () => {
                     <div>
                       <label className="text-sm font-medium mb-2 block">Weighting Method</label>
                       <div className="grid grid-cols-3 gap-2">
-                        {(['equal', 'return', 'risk_parity'] as WeightingMethod[]).map(method => (
+                        {(['equal', 'dividend_yield', 'risk_parity'] as WeightingMethod[]).map(method => (
                           <Button
                             key={method}
                             variant={preferences.weighting === method ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPreferences(p => ({ ...p, weighting: method }))}
                           >
-                            {method === 'equal' ? 'Equal' : method === 'return' ? 'Return' : 'Risk'}
+                            {method === 'equal' ? 'Equal' : method === 'dividend_yield' ? 'Yield' : 'Risk'}
                           </Button>
                         ))}
                       </div>
