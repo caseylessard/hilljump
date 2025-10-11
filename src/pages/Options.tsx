@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, Bell, Target, DollarSign, Activity, Clock, Plus, X, ChevronDown, ChevronUp, Filter, ArrowUpDown, Download, Edit2, Save } from 'lucide-react';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Stochastic Calculations
 const normalCDF = (x: number) => {
@@ -343,74 +348,76 @@ const Options = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 shadow-lg">
-        <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen">
+      <Navigation />
+      
+      <header className="relative overflow-hidden border-b">
+        <div className="container py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight flex items-center gap-3">
                 <Target className="w-8 h-8" />
-                Earnings Edge Scanner
+                Options Scanner
               </h1>
-              <p className="text-blue-100 mt-1">AI-Powered Options Research & Analysis</p>
+              <p className="text-muted-foreground mt-2">AI-Powered Options Research & Analysis</p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="bg-white/20 backdrop-blur px-4 py-2 rounded-lg">
-                <div className="text-sm text-blue-100">Tracking</div>
-                <div className="text-2xl font-bold">{watchlistTickers.length} stocks</div>
-              </div>
-              <div className="bg-white/20 backdrop-blur px-4 py-2 rounded-lg">
-                <div className="text-sm text-blue-100">Positions</div>
-                <div className="text-2xl font-bold">{positions.length}</div>
-              </div>
+              <Card className="bg-card">
+                <CardContent className="p-3">
+                  <div className="text-xs text-muted-foreground">Tracking</div>
+                  <div className="text-xl font-bold">{watchlistTickers.length}</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-card">
+                <CardContent className="p-3">
+                  <div className="text-xs text-muted-foreground">Positions</div>
+                  <div className="text-xl font-bold">{positions.length}</div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto mt-6 px-6">
-        <div className="flex gap-2 bg-white rounded-lg p-1 shadow-sm">
+      <main className="container px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex gap-2 bg-card rounded-lg p-1 shadow-sm border mb-6">
           {[
             { id: 'signals', label: 'AI Signals', icon: TrendingUp },
             { id: 'watchlist', label: 'Watchlist', icon: Activity },
             { id: 'positions', label: 'My Positions', icon: DollarSign },
             { id: 'schedule', label: 'Schedule', icon: Calendar }
           ].map(tab => (
-            <button
+            <Button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={'flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-all ' + (
-                activeTab === tab.id
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:bg-gray-100'
-              )}
+              variant={activeTab === tab.id ? "default" : "ghost"}
+              className="flex-1 flex items-center justify-center gap-2"
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
-            </button>
+            </Button>
           ))}
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto mt-6 px-6 pb-12">
+        <div className="space-y-6">
         {activeTab === 'signals' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-800">AI-Researched Signals</h2>
-              <div className="flex gap-2">
-                <button
+              <h2 className="text-2xl font-bold">AI-Researched Signals</h2>
+              <div className="flex gap-2 flex-wrap">
+                <Button
                   onClick={fetchSignals}
                   disabled={isLoading}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
+                  variant="default"
                 >
                   {isLoading ? '🔄 Researching...' : '🔄 Refresh Signals'}
-                </button>
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm">
-                  <Filter className="w-4 h-4 text-gray-600" />
+                </Button>
+                <div className="flex items-center gap-2 bg-card border rounded-lg px-3">
+                  <Filter className="w-4 h-4" />
                   <select 
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
-                    className="border-none bg-transparent focus:outline-none text-sm font-medium"
+                    className="border-none bg-transparent focus:outline-none text-sm"
                   >
                     <option value="all">All Signals</option>
                     <option value="STRONG BUY">Strong Buy Only</option>
@@ -418,12 +425,12 @@ const Options = () => {
                     <option value="LOTTERY TICKET">Lottery Tickets</option>
                   </select>
                 </div>
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm">
-                  <ArrowUpDown className="w-4 h-4 text-gray-600" />
+                <div className="flex items-center gap-2 bg-card border rounded-lg px-3">
+                  <ArrowUpDown className="w-4 h-4" />
                   <select 
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="border-none bg-transparent focus:outline-none text-sm font-medium"
+                    className="border-none bg-transparent focus:outline-none text-sm"
                   >
                     <option value="score">Sort by Score</option>
                     <option value="delta">Sort by Delta</option>
@@ -432,73 +439,84 @@ const Options = () => {
                     <option value="earnings">Sort by Earnings</option>
                   </select>
                 </div>
-                <button
+                <Button
                   onClick={exportToCSV}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 shadow-sm"
+                  variant="outline"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4 mr-2" />
                   Export CSV
-                </button>
+                </Button>
               </div>
             </div>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-blue-900">
-                  <strong>AI Auto-Research:</strong> These signals are automatically generated from your watchlist using real-time data from Polygon. 
-                  The AI researches current prices, earnings dates, option chains, and calculates optimal strikes based on stochastic models.
-                </p>
-                <button
-                  onClick={() => {
-                    console.log('Test button clicked');
-                    console.log('Current watchlist:', watchlistTickers);
-                    console.log('API Endpoint:', API_ENDPOINT);
-                    fetchSignals();
-                  }}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 whitespace-nowrap ml-4"
-                >
-                  Test API
-                </button>
-              </div>
-            </div>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm">
+                    <strong>AI Auto-Research:</strong> These signals are automatically generated from your watchlist using real-time data from Polygon. 
+                    The AI researches current prices, earnings dates, option chains, and calculates optimal strikes based on stochastic models.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      console.log('Test button clicked');
+                      console.log('Current watchlist:', watchlistTickers);
+                      console.log('API Endpoint:', API_ENDPOINT);
+                      fetchSignals();
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap ml-4"
+                  >
+                    Test API
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                <p className="text-sm text-red-900">
-                  <strong>Error:</strong> {error}. Please try refreshing the signals.
-                </p>
-              </div>
+              <Card className="border-destructive">
+                <CardContent className="p-4">
+                  <p className="text-sm text-destructive">
+                    <strong>Error:</strong> {error}. Please try refreshing the signals.
+                  </p>
+                </CardContent>
+              </Card>
             )}
 
             {isLoading && (
-              <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <div className="text-gray-600 text-lg">Researching options for {watchlistTickers.length} tickers...</div>
-                <div className="text-gray-400 text-sm mt-2">This may take a few moments</div>
-              </div>
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+                  <div className="text-lg">Researching options for {watchlistTickers.length} tickers...</div>
+                  <div className="text-muted-foreground text-sm mt-2">This may take a few moments</div>
+                </CardContent>
+              </Card>
             )}
 
             {!isLoading && filteredSignals.length === 0 && !error && (
-              <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                <div className="text-gray-400 text-lg">No signals available</div>
-                <button
-                  onClick={fetchSignals}
-                  className="mt-4 text-blue-600 hover:text-blue-700 font-semibold"
-                >
-                  Refresh Signals
-                </button>
-              </div>
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <div className="text-muted-foreground text-lg">No signals available</div>
+                  <Button
+                    onClick={fetchSignals}
+                    className="mt-4"
+                    variant="link"
+                  >
+                    Refresh Signals
+                  </Button>
+                </CardContent>
+              </Card>
             )}
 
             {!isLoading && filteredSignals.map((signal, idx) => (
-              <div key={idx} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all">
-                <div 
+              <Card key={idx} className="hover:shadow-lg transition-all">
+                <CardContent 
                   className="p-6 cursor-pointer"
                   onClick={() => toggleExpand(idx)}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
-                      <div className="bg-gradient-to-br from-blue-500 to-purple-500 text-white w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold">
+                      <div className="bg-primary text-primary-foreground w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold">
                         {signal.ticker}
                       </div>
                       <div>
@@ -510,45 +528,45 @@ const Options = () => {
                             {signal.score}/100
                           </span>
                         </div>
-                        <div className="text-gray-600 mt-1">
+                        <div className="text-muted-foreground mt-1">
                           ${signal.currentPrice.toFixed(2)} | Earnings in {signal.daysToEarnings} days | Expires {signal.expiry}
                         </div>
                       </div>
                     </div>
-                    <button className="text-gray-400 hover:text-gray-600">
+                    <Button variant="ghost" size="icon">
                       {expandedSignals[idx] ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="grid grid-cols-5 gap-4">
-                    <div className="bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="text-xs text-gray-500 mb-1">Strike</div>
+                    <div className="bg-muted p-3 rounded-lg hover:bg-muted/80 transition-colors">
+                      <div className="text-xs text-muted-foreground mb-1">Strike</div>
                       <div className="text-lg font-bold">${signal.strike}</div>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="text-xs text-gray-500 mb-1">Premium</div>
+                    <div className="bg-muted p-3 rounded-lg hover:bg-muted/80 transition-colors">
+                      <div className="text-xs text-muted-foreground mb-1">Premium</div>
                       <div className="text-lg font-bold">${signal.premium.toFixed(2)}</div>
                     </div>
-                    <div className="bg-orange-50 p-3 rounded-lg border-2 border-orange-300 hover:bg-orange-100 transition-colors">
-                      <div className="text-xs text-orange-700 font-semibold mb-1">Expiry</div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border-2 border-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
+                      <div className="text-xs text-orange-700 dark:text-orange-400 font-semibold mb-1">Expiry</div>
                       <div className="text-sm font-bold">{signal.expiry}</div>
-                      <div className="text-xs text-gray-500">{signal.daysToExpiry} days</div>
+                      <div className="text-xs text-muted-foreground">{signal.daysToExpiry} days</div>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="text-xs text-gray-500 mb-1">Fair Value</div>
+                    <div className="bg-muted p-3 rounded-lg hover:bg-muted/80 transition-colors">
+                      <div className="text-xs text-muted-foreground mb-1">Fair Value</div>
                       <div className="text-lg font-bold">${signal.fairValue.toFixed(2)}</div>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="text-xs text-gray-500 mb-1">Edge</div>
-                      <div className={'text-lg font-bold ' + (signal.edge > 0 ? 'text-green-600' : 'text-red-600')}>
+                    <div className="bg-muted p-3 rounded-lg hover:bg-muted/80 transition-colors">
+                      <div className="text-xs text-muted-foreground mb-1">Edge</div>
+                      <div className={'text-lg font-bold ' + (signal.edge > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                         {signal.edge > 0 ? '+' : ''}{signal.edge.toFixed(1)}%
                       </div>
                     </div>
                   </div>
-                </div>
+                </CardContent>
 
                 {expandedSignals[idx] && (
-                  <div className="px-6 pb-6 border-t border-gray-100 pt-4 space-y-4">
+                  <CardContent className="pt-4 space-y-4 border-t">
                     <div className="grid grid-cols-4 gap-4">
                       <div className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-500">
                         <div className="text-xs text-blue-600 mb-1">Delta</div>
@@ -582,140 +600,150 @@ const Options = () => {
                         ))}
                       </div>
                     </div>
-                  </div>
+                  </CardContent>
                 )}
-              </div>
+              </Card>
             ))}
           </div>
         )}
 
         {activeTab === 'watchlist' && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800">Stock Watchlist</h2>
+            <h2 className="text-2xl font-bold">Stock Watchlist</h2>
 
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="font-bold text-lg mb-4">Add Tickers to Monitor</h3>
-              <div className="flex gap-3">
-                <textarea
-                  placeholder="Enter ticker symbols separated by commas (e.g., AAPL, TSLA, NVDA, MSFT)"
-                  value={newTicker}
-                  onChange={(e) => setNewTicker(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && e.ctrlKey && addTicker()}
-                  className="flex-1 border rounded px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none min-h-20"
-                />
-                <button
-                  onClick={addTicker}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 h-fit"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add All
-                </button>
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                💡 Paste a comma-separated list to add multiple tickers at once. AI will automatically research all of them.
-              </p>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Add Tickers to Monitor</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-3">
+                  <textarea
+                    placeholder="Enter ticker symbols separated by commas (e.g., AAPL, TSLA, NVDA, MSFT)"
+                    value={newTicker}
+                    onChange={(e) => setNewTicker(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && e.ctrlKey && addTicker()}
+                    className="flex-1 border rounded px-4 py-2 focus:ring-2 focus:ring-primary outline-none min-h-20 bg-background"
+                  />
+                  <Button
+                    onClick={addTicker}
+                    className="h-fit"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add All
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  💡 Paste a comma-separated list to add multiple tickers at once. AI will automatically research all of them.
+                </p>
+              </CardContent>
+            </Card>
 
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="font-bold text-lg mb-4">Currently Tracking ({watchlistTickers.length})</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {watchlistTickers.map((ticker, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200 hover:border-blue-400 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-blue-600 text-white w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm">
-                        {ticker}
-                      </div>
-                      <div className="text-sm text-gray-600">Monitored</div>
-                    </div>
-                    <button
-                      onClick={() => removeTicker(ticker)}
-                      className="text-red-600 hover:bg-red-50 p-1 rounded transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Currently Tracking ({watchlistTickers.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {watchlistTickers.map((ticker, idx) => (
+                    <Card key={idx} className="hover:border-primary transition-colors">
+                      <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-primary text-primary-foreground w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm">
+                            {ticker}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Monitored</div>
+                        </div>
+                        <Button
+                          onClick={() => removeTicker(ticker)}
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {activeTab === 'positions' && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800">Position Tracker</h2>
+            <h2 className="text-2xl font-bold">Position Tracker</h2>
 
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="font-bold text-lg mb-4">Add New Position</h3>
-              <div className="grid grid-cols-7 gap-3 mb-3">
-                <input
-                  type="text"
-                  placeholder="Ticker"
-                  value={newPosition.ticker}
-                  onChange={(e) => setNewPosition({...newPosition, ticker: e.target.value.toUpperCase()})}
-                  className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <input
-                  type="number"
-                  placeholder="Strike"
-                  value={newPosition.strike}
-                  onChange={(e) => setNewPosition({...newPosition, strike: e.target.value})}
-                  className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <input
-                  type="date"
-                  placeholder="Expiry"
-                  value={newPosition.expiry}
-                  onChange={(e) => setNewPosition({...newPosition, expiry: e.target.value})}
-                  className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <input
-                  type="number"
-                  placeholder="Contracts"
-                  value={newPosition.contracts}
-                  onChange={(e) => setNewPosition({...newPosition, contracts: e.target.value})}
-                  className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Entry Price"
-                  value={newPosition.entryPrice}
-                  onChange={(e) => setNewPosition({...newPosition, entryPrice: e.target.value})}
-                  className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Current Price"
-                  value={newPosition.currentPrice}
-                  onChange={(e) => setNewPosition({...newPosition, currentPrice: e.target.value})}
-                  className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Notes"
-                  value={newPosition.notes}
-                  onChange={(e) => setNewPosition({...newPosition, notes: e.target.value})}
-                  className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <button
-                onClick={addPosition}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Position
-              </button>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Add New Position</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-3 mb-3">
+                  <Input
+                    type="text"
+                    placeholder="Ticker"
+                    value={newPosition.ticker}
+                    onChange={(e) => setNewPosition({...newPosition, ticker: e.target.value.toUpperCase()})}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Strike"
+                    value={newPosition.strike}
+                    onChange={(e) => setNewPosition({...newPosition, strike: e.target.value})}
+                  />
+                  <Input
+                    type="date"
+                    placeholder="Expiry"
+                    value={newPosition.expiry}
+                    onChange={(e) => setNewPosition({...newPosition, expiry: e.target.value})}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Contracts"
+                    value={newPosition.contracts}
+                    onChange={(e) => setNewPosition({...newPosition, contracts: e.target.value})}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Entry Price"
+                    value={newPosition.entryPrice}
+                    onChange={(e) => setNewPosition({...newPosition, entryPrice: e.target.value})}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Current Price"
+                    value={newPosition.currentPrice}
+                    onChange={(e) => setNewPosition({...newPosition, currentPrice: e.target.value})}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Notes"
+                    value={newPosition.notes}
+                    onChange={(e) => setNewPosition({...newPosition, notes: e.target.value})}
+                  />
+                </div>
+                <Button
+                  onClick={addPosition}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Position
+                </Button>
+              </CardContent>
+            </Card>
 
             {positions.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                <DollarSign className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                <div className="text-gray-500 text-lg mb-2">No active positions</div>
-                <div className="text-gray-400 text-sm">Add your trades above to track P&L</div>
-              </div>
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <DollarSign className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <div className="text-muted-foreground text-lg mb-2">No active positions</div>
+                  <div className="text-muted-foreground text-sm">Add your trades above to track P&L</div>
+                </CardContent>
+              </Card>
             ) : (
-              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              <Card>
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
@@ -783,65 +811,74 @@ const Options = () => {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </Card>
             )}
           </div>
         )}
 
         {activeTab === 'schedule' && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800">Automated Scan Schedule</h2>
+            <h2 className="text-2xl font-bold">Automated Scan Schedule</h2>
             
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="space-y-4">
-                {[
-                  { day: 'Friday', time: '5:30 AM', task: 'AI Signal Generation', desc: 'Research watchlist tickers, analyze options, calculate Greeks & scores', icon: '🎯' },
-                  { day: 'Friday', time: '9:00 AM', task: 'Pre-Market Update', desc: 'Refresh signals based on overnight price movements', icon: '✅' }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-300 rounded-lg">
-                    <div className="text-3xl">{item.icon}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="font-bold text-gray-800">{item.day}</span>
-                        <span className="text-sm text-gray-500">{item.time}</span>
-                        <span className="font-semibold text-blue-700 text-lg">{item.task}</span>
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {[
+                    { day: 'Friday', time: '5:30 AM', task: 'AI Signal Generation', desc: 'Research watchlist tickers, analyze options, calculate Greeks & scores', icon: '🎯' },
+                    { day: 'Friday', time: '9:00 AM', task: 'Pre-Market Update', desc: 'Refresh signals based on overnight price movements', icon: '✅' }
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/10 border-2 border-primary/20 rounded-lg">
+                      <div className="text-3xl">{item.icon}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="font-bold">{item.day}</span>
+                          <span className="text-sm text-muted-foreground">{item.time}</span>
+                          <span className="font-semibold text-primary text-lg">{item.task}</span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">{item.desc}</div>
                       </div>
-                      <div className="text-sm text-gray-600">{item.desc}</div>
+                      <Clock className="w-6 h-6 text-primary" />
                     </div>
-                    <Clock className="w-6 h-6 text-blue-500" />
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-              <div className="font-bold text-lg mb-3">AI Research Process:</div>
-              <div className="space-y-2 text-sm text-gray-700">
-                <div className="flex items-start gap-2">
-                  <div className="text-blue-600 font-bold">1.</div>
-                  <div>Fetch real-time stock prices and upcoming earnings dates</div>
+            <Card>
+              <CardHeader>
+                <CardTitle>AI Research Process</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
+                    <div className="text-primary font-bold">1.</div>
+                    <div>Fetch real-time stock prices and upcoming earnings dates</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="text-primary font-bold">2.</div>
+                    <div>Scan option chains to find optimal strikes and expiries</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="text-primary font-bold">3.</div>
+                    <div>Calculate Black-Scholes fair values and Greeks (Delta, Gamma, Theta)</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="text-primary font-bold">4.</div>
+                    <div>Score opportunities based on edge, probability, and risk metrics</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="text-primary font-bold">5.</div>
+                    <div>Generate buy signals and send email alerts for top opportunities</div>
+                  </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <div className="text-blue-600 font-bold">2.</div>
-                  <div>Scan option chains to find optimal strikes and expiries</div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="text-blue-600 font-bold">3.</div>
-                  <div>Calculate Black-Scholes fair values and Greeks (Delta, Gamma, Theta)</div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="text-blue-600 font-bold">4.</div>
-                  <div>Score opportunities based on edge, probability, and risk metrics</div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="text-blue-600 font-bold">5.</div>
-                  <div>Generate buy signals and send email alerts for top opportunities</div>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         )}
-      </div>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };
