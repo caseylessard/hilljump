@@ -38,6 +38,7 @@ const API_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/polygon-
 
 interface Signal {
   ticker: string;
+  name: string;
   currentPrice: number;
   strike: number;
   premium: number;
@@ -520,7 +521,8 @@ const Options = () => {
                         {signal.ticker}
                       </div>
                       <div>
-                        <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-semibold text-foreground">{signal.name}</h3>
+                        <div className="flex items-center gap-3 mt-1">
                           <span className={'px-3 py-1 rounded-full text-sm font-semibold border ' + getSignalColor(signal.signalType)}>
                             {signal.signalType}
                           </span>

@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface OptionCandidate {
   ticker: string;
+  name: string;
   currentPrice: number;
   strike: number;
   premium: number;
@@ -109,9 +110,22 @@ serve(async (req) => {
     const signals: OptionCandidate[] = [];
     const rateLimiter = new RateLimiter();
 
+    // Batch fetch quotes for all tickers (up to 250 per request)
+    const BATCH_SIZE = 250;
+    const quotesMap = new Map();
+    
+    for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
+      const batch = tickers.slice(i, i + BATCH_SIZE);
+      const batchQuotes = await fetchPolygonQuotes(batch, polygonApiKey, rateLimiter);
+      for (const [ticker, quote] of batchQuotes) {
+        quotesMap.set(ticker, quote);
+      }
+    }
+
+    // Now process each ticker with cached quotes
     for (const ticker of tickers) {
       try {
-        const result = await researchTicker(ticker, polygonApiKey, supabase, rateLimiter);
+        const result = await researchTicker(ticker, polygonApiKey, supabase, rateLimiter, quotesMap);
         if (result) {
           signals.push(result);
         }
@@ -149,7 +163,13 @@ serve(async (req) => {
   }
 });
 
-async function researchTicker(ticker: string, apiKey: string, supabase: any, rateLimiter: RateLimiter): Promise<OptionCandidate | null> {
+async function researchTicker(
+  ticker: string, 
+  apiKey: string, 
+  supabase: any, 
+  rateLimiter: RateLimiter,
+  quotesMap?: Map<string, any>
+): Promise<OptionCandidate | null> {
   try {
     // Check cache first
     const cacheKey = `options_${ticker}_${Math.floor(Date.now() / (CACHE_TTL * 1000))}`;
@@ -164,8 +184,15 @@ async function researchTicker(ticker: string, apiKey: string, supabase: any, rat
       return cachedData.data;
     }
 
-    // Fetch current price
-    const quote = await fetchPolygonQuote(ticker, apiKey, rateLimiter);
+    // Use cached quote from batch fetch if available, otherwise fetch individually
+    let quote;
+    if (quotesMap && quotesMap.has(ticker)) {
+      quote = quotesMap.get(ticker);
+      console.log(`Using cached quote for ${ticker}`);
+    } else {
+      quote = await fetchPolygonQuote(ticker, apiKey, rateLimiter);
+    }
+    
     if (!quote) return null;
 
     // Fetch real options data
@@ -184,6 +211,7 @@ async function researchTicker(ticker: string, apiKey: string, supabase: any, rat
 
     const result: OptionCandidate = {
       ticker,
+      name: quote.name || ticker,
       currentPrice: quote.currentPrice,
       strike: optimalOption.strike,
       expiry: optimalOption.expiration,
@@ -207,7 +235,51 @@ async function researchTicker(ticker: string, apiKey: string, supabase: any, rat
   }
 }
 
-async function fetchPolygonQuote(ticker: string, apiKey: string, rateLimiter: RateLimiter): Promise<{ currentPrice: number; earningsDate: string } | null> {
+// Batch fetch quotes for multiple tickers using snapshots
+async function fetchPolygonQuotes(tickers: string[], apiKey: string, rateLimiter: RateLimiter): Promise<Map<string, { currentPrice: number; earningsDate: string; name: string }>> {
+  const quotes = new Map();
+  
+  try {
+    await rateLimiter.waitForSlot();
+    
+    // Use snapshot endpoint which supports multiple tickers in one call
+    const tickersParam = tickers.join(',');
+    const url = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${tickersParam}&apiKey=${apiKey}`;
+    console.log(`Fetching batch quotes for ${tickers.length} tickers (API calls in last minute: ${rateLimiter.getCallCount()})`);
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch batch quotes: ${response.status}`);
+      return quotes;
+    }
+
+    const data = await response.json();
+    
+    if (data.tickers && Array.isArray(data.tickers)) {
+      for (const tickerData of data.tickers) {
+        const ticker = tickerData.ticker;
+        const currentPrice = tickerData.day?.c || tickerData.prevDay?.c;
+        const name = tickerData.name || ticker;
+        
+        if (currentPrice) {
+          quotes.set(ticker, {
+            currentPrice,
+            earningsDate: estimateEarningsDate(),
+            name,
+          });
+        }
+      }
+    }
+
+    console.log(`Successfully fetched ${quotes.size} quotes from batch request`);
+    return quotes;
+  } catch (error) {
+    console.error(`Error fetching batch quotes:`, error);
+    return quotes;
+  }
+}
+
+async function fetchPolygonQuote(ticker: string, apiKey: string, rateLimiter: RateLimiter): Promise<{ currentPrice: number; earningsDate: string; name: string } | null> {
   try {
     await rateLimiter.waitForSlot();
     
@@ -231,6 +303,7 @@ async function fetchPolygonQuote(ticker: string, apiKey: string, rateLimiter: Ra
     return {
       currentPrice,
       earningsDate: estimateEarningsDate(),
+      name: ticker, // Fallback to ticker as name
     };
   } catch (error) {
     console.error(`Error fetching quote for ${ticker}:`, error);
