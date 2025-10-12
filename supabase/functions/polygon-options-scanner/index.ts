@@ -41,6 +41,9 @@ const POLYGON_RATE_LIMIT = 5; // calls per minute
 const RATE_LIMIT_WINDOW = 60000; // 1 minute in milliseconds
 const MIN_DELAY_BETWEEN_CALLS = Math.ceil(RATE_LIMIT_WINDOW / POLYGON_RATE_LIMIT); // 12 seconds
 
+// Reduce options contract processing to stay within time limits
+const MAX_CONTRACTS_TO_PROCESS = 5; // Reduced from 10
+
 const VOLATILITY_MAP: Record<string, number> = {
   'NVDA': 0.45,
   'PLTR': 0.55,
@@ -127,8 +130,18 @@ serve(async (req) => {
       }
     }
 
+    // Process tickers with a timeout to avoid edge function timeout
+    const PROCESSING_TIMEOUT = 45000; // 45 seconds max
+    const startTime = Date.now();
+    
     // Process each ticker with cached quotes or individual fetch
     for (const ticker of tickers) {
+      // Check if we're approaching timeout
+      if (Date.now() - startTime > PROCESSING_TIMEOUT) {
+        console.log(`Timeout approaching, returning ${signals.length} partial results`);
+        break;
+      }
+      
       try {
         const result = await researchTicker(ticker, polygonApiKey, supabase, rateLimiter, quotesMap);
         if (result) {
@@ -355,7 +368,7 @@ async function fetchPolygonOptions(ticker: string, currentPrice: number, apiKey:
         const strike = c.strike_price;
         return strike >= currentPrice * 1.05 && strike <= currentPrice * 1.2;
       })
-      .slice(0, 10); // Reduced to 10 to respect rate limits
+      .slice(0, MAX_CONTRACTS_TO_PROCESS);
 
     if (contracts.length === 0) return null;
 
