@@ -100,6 +100,7 @@ const Options = () => {
   const [sortBy, setSortBy] = useState('score');
   const [filterType, setFilterType] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [error, setError] = useState<string | null>(null);
   
@@ -471,6 +472,7 @@ const Options = () => {
                     onClick={async () => {
                       console.log('Test button clicked - testing with NVDA only');
                       setIsLoading(true);
+                      setIsTesting(true);
                       setError(null);
                       
                       try {
@@ -496,11 +498,13 @@ const Options = () => {
                         alert(`❌ API Test Failed\n\n${err instanceof Error ? err.message : 'Unknown error'}`);
                       } finally {
                         setIsLoading(false);
+                        setIsTesting(false);
                       }
                     }}
                     size="sm"
                     variant="outline"
                     className="whitespace-nowrap ml-4"
+                    disabled={isLoading}
                   >
                     Test API
                   </Button>
@@ -522,7 +526,9 @@ const Options = () => {
               <Card>
                 <CardContent className="p-12 text-center">
                   <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-                  <div className="text-lg">Researching options for {watchlistTickers.length} tickers...</div>
+                  <div className="text-lg">
+                    {isTesting ? 'Testing API connection with NVDA...' : `Researching options for ${watchlistTickers.length} tickers...`}
+                  </div>
                   <div className="text-muted-foreground text-sm mt-2">This may take a few moments</div>
                 </CardContent>
               </Card>
