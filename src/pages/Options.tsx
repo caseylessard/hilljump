@@ -130,6 +130,10 @@ const Options = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+      // Add timeout to prevent infinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -137,8 +141,10 @@ const Options = () => {
           'Authorization': `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({ tickers: watchlistTickers }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       console.log('Response status:', response.status);
 
       if (!response.ok) {
@@ -149,7 +155,7 @@ const Options = () => {
       console.log('Received data:', data);
       
       if (!data.signals || data.signals.length === 0) {
-        setError('No signals returned from API');
+        setError('No signals returned from API. This could be due to rate limits or no available data.');
         setSignals([]);
         return;
       }
@@ -159,7 +165,11 @@ const Options = () => {
       setSignals(processedSignals);
     } catch (err) {
       console.error('Error fetching signals:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. The API may be experiencing rate limits. Please try again in a few minutes.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to fetch signals. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -458,11 +468,35 @@ const Options = () => {
                     The AI researches current prices, earnings dates, option chains, and calculates optimal strikes based on stochastic models.
                   </p>
                   <Button
-                    onClick={() => {
-                      console.log('Test button clicked');
-                      console.log('Current watchlist:', watchlistTickers);
-                      console.log('API Endpoint:', API_ENDPOINT);
-                      fetchSignals();
+                    onClick={async () => {
+                      console.log('Test button clicked - testing with NVDA only');
+                      setIsLoading(true);
+                      setError(null);
+                      
+                      try {
+                        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+                        const response = await fetch(API_ENDPOINT, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${supabaseKey}`,
+                          },
+                          body: JSON.stringify({ tickers: ['NVDA'] }),
+                        });
+
+                        if (!response.ok) {
+                          throw new Error(`API returned ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        console.log('Test API response:', data);
+                        alert(`✅ API Connected!\n\nReceived ${data.count} signal(s)\nTimestamp: ${new Date(data.timestamp).toLocaleString()}`);
+                      } catch (err) {
+                        console.error('Test API error:', err);
+                        alert(`❌ API Test Failed\n\n${err instanceof Error ? err.message : 'Unknown error'}`);
+                      } finally {
+                        setIsLoading(false);
+                      }
                     }}
                     size="sm"
                     variant="outline"
