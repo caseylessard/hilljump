@@ -40,27 +40,35 @@ export const useSocialFeed = (userId: string | null) => {
     try {
       setLoading(true);
       
-      // Fetch posts with profiles
+      // Fetch posts
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          *,
-          profiles(username, first_name, last_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;
 
-      // Fetch comments for all posts
+      // Fetch profiles for post authors
+      const postUserIds = postsData?.map(p => p.user_id) || [];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, username, first_name, last_name')
+        .in('id', postUserIds);
+
+      // Fetch comments
       const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select(`
-          *,
-          profiles(username, first_name, last_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: true });
 
       if (commentsError) throw commentsError;
+
+      // Fetch profiles for comment authors
+      const commentUserIds = commentsData?.map(c => c.user_id) || [];
+      const { data: commentProfilesData } = await supabase
+        .from('profiles')
+        .select('id, username, first_name, last_name')
+        .in('id', commentUserIds);
 
       // Fetch follows if user is logged in
       let followsData: any[] = [];
@@ -75,10 +83,20 @@ export const useSocialFeed = (userId: string | null) => {
         }
       }
 
+      // Create profile lookup maps
+      const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+      const commentProfileMap = new Map(commentProfilesData?.map(p => [p.id, p]) || []);
+
       // Combine data
       const postsWithComments = postsData?.map(post => ({
         ...post,
-        comments: commentsData?.filter(c => c.post_id === post.id) || [],
+        profiles: profileMap.get(post.user_id) || null,
+        comments: commentsData
+          ?.filter(c => c.post_id === post.id)
+          .map(c => ({
+            ...c,
+            profiles: commentProfileMap.get(c.user_id) || null,
+          })) || [],
         is_following: followsData.some(f => f.post_id === post.id),
         comment_count: commentsData?.filter(c => c.post_id === post.id).length || 0,
       })) || [];
