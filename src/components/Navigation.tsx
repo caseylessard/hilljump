@@ -38,26 +38,21 @@ const Navigation = () => {
 
   // Base navigation items - always visible
   const baseNavItems = [
+    { href: "/", label: "Feed", icon: "lucide", lucideIcon: Home },
+    { href: "/scanner", label: "Scanner", icon: "lucide", lucideIcon: Target },
     { href: "/ranking", label: "Income", icon: "lucide", lucideIcon: CircleDollarSign },
-    { href: "/scanner", label: "Scanner", icon: "lucide", lucideIcon: Target }
-  ];
-
-  // Auth-only navigation items (for hamburger menu)
-  const authOnlyNavItems = [
     { href: "/portfolio", label: "Portfolio", icon: "lucide", lucideIcon: Briefcase }
   ];
 
-  // Build hamburger nav items (portfolio is now icon-only on mobile, not in hamburger)
+  // Build hamburger nav items
   const hamburgerNavItems: any[] = [];
 
-  // Build desktop nav items (includes all items) - now includes portfolio for all users
-  const navItems = [...baseNavItems, ...authOnlyNavItems];
+  // Build desktop nav items
+  const navItems = [...baseNavItems];
 
   // Add admin-only links for admin users
   if (isAdmin) {
-    hamburgerNavItems.push({ href: "/options", label: "Options", icon: "lucide", lucideIcon: TrendingUp });
     hamburgerNavItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: LockKeyhole });
-    navItems.push({ href: "/options", label: "Options", icon: "lucide", lucideIcon: TrendingUp });
     navItems.push({ href: "/admin", label: "Admin", icon: "lucide", lucideIcon: LockKeyhole });
   }
 
@@ -71,13 +66,18 @@ const Navigation = () => {
         </a>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
-              <a href="/ranking" aria-label="Income">
-                <CircleDollarSign className="h-5 w-5" />
+              <a href="/" aria-label="Feed">
+                <Home className="h-5 w-5" />
               </a>
             </Button>
             <Button variant="ghost" size="icon" asChild>
               <a href="/scanner" aria-label="Scanner">
                 <Target className="h-5 w-5" />
+              </a>
+            </Button>
+            <Button variant="ghost" size="icon" asChild>
+              <a href="/ranking" aria-label="Income">
+                <CircleDollarSign className="h-5 w-5" />
               </a>
             </Button>
             <Button variant="ghost" size="icon" asChild>

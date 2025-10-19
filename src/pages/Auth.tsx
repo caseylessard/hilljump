@@ -323,13 +323,15 @@ const Auth = () => {
                   <Mail className="w-4 h-4 mr-2" />
                   {loading ? "Signing in..." : "Sign in with Email"}
                 </Button>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot password?
-                </button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               </form>
 
               <div className="relative">

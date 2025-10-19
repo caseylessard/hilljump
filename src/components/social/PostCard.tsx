@@ -3,27 +3,23 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MessageSquare, Bell, BellOff } from 'lucide-react';
+import { MessageSquare, Bell, BellOff, Heart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import type { Post } from '@/hooks/useSocialFeed';
+import type { Post, Comment } from '@/hooks/useSocialFeed';
 
 interface PostCardProps {
   post: Post;
-  onAddComment: (postId: string, content: string) => void;
+  onAddComment: (postId: string, content: string, parentCommentId?: string | null) => void;
   onToggleFollow: (postId: string, isFollowing: boolean) => void;
+  onToggleLike: (postId: string, isLiked: boolean) => void;
   isAuthenticated: boolean;
+  showFullContent?: boolean;
 }
 
-export function PostCard({ post, onAddComment, onToggleFollow, isAuthenticated }: PostCardProps) {
+export function PostCard({ post, onAddComment, onToggleFollow, onToggleLike, isAuthenticated, showFullContent = true }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
-
-  const handleAddComment = () => {
-    if (commentText.trim()) {
-      onAddComment(post.id, commentText);
-      setCommentText('');
-    }
-  };
+  const [replyTo, setReplyTo] = useState<{ commentId: string; username: string } | null>(null);
 
   const getDisplayName = (profile: any) => {
     if (profile?.username) return profile.username;
@@ -37,6 +33,46 @@ export function PostCard({ post, onAddComment, onToggleFollow, isAuthenticated }
     const name = getDisplayName(profile);
     return name.substring(0, 2).toUpperCase();
   };
+
+  const handleAddComment = () => {
+    if (commentText.trim()) {
+      onAddComment(post.id, commentText, replyTo?.commentId || null);
+      setCommentText('');
+      setReplyTo(null);
+    }
+  };
+
+  const renderComment = (comment: Comment, isReply = false) => (
+    <div key={comment.id} className={`${isReply ? 'ml-8 mt-2' : 'mt-4'} flex gap-3`}>
+      <Avatar className="w-8 h-8">
+        <AvatarFallback>{getInitials(comment.profiles)}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm">{getDisplayName(comment.profiles)}</span>
+          <span className="text-xs text-muted-foreground">
+            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+          </span>
+        </div>
+        <p className="text-sm mt-1">{comment.content}</p>
+        {isAuthenticated && !isReply && (
+          <button
+            onClick={() => setReplyTo({ commentId: comment.id, username: getDisplayName(comment.profiles) })}
+            className="text-xs text-primary hover:underline mt-1"
+          >
+            Reply
+          </button>
+        )}
+        {comment.replies && comment.replies.length > 0 && (
+          <div className="mt-2">
+            {comment.replies.map((reply) => renderComment(reply, true))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const truncatedContent = showFullContent ? post.content : post.content.split('\n')[0];
 
   return (
     <Card className="w-full">
@@ -76,11 +112,23 @@ export function PostCard({ post, onAddComment, onToggleFollow, isAuthenticated }
       </CardHeader>
       
       <CardContent>
-        <p className="whitespace-pre-wrap">{post.content}</p>
+        <p className="whitespace-pre-wrap">{truncatedContent}</p>
+        {!showFullContent && post.content.split('\n').length > 1 && (
+          <span className="text-muted-foreground text-sm">...</span>
+        )}
       </CardContent>
 
       <CardFooter className="flex-col gap-4">
         <div className="flex items-center gap-4 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleLike(post.id, post.is_liked || false)}
+            disabled={!isAuthenticated}
+          >
+            <Heart className={`w-4 h-4 mr-2 ${post.is_liked ? 'fill-current text-red-500' : ''}`} />
+            {post.like_count || 0}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -94,39 +142,37 @@ export function PostCard({ post, onAddComment, onToggleFollow, isAuthenticated }
         {showComments && (
           <div className="w-full space-y-4">
             {/* Comments list */}
-            <div className="space-y-3">
-              {post.comments?.map((comment) => (
-                <div key={comment.id} className="flex gap-3 pl-4 border-l-2 border-muted">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="text-xs">
-                      {getInitials(comment.profiles)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">{getDisplayName(comment.profiles)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                      </p>
-                    </div>
-                    <p className="text-sm mt-1">{comment.content}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {post.comments && post.comments.length > 0 && (
+              <div className="space-y-2">
+                {post.comments.map((comment) => renderComment(comment))}
+              </div>
+            )}
 
             {/* Add comment */}
             {isAuthenticated && (
-              <div className="flex gap-2">
-                <Textarea
-                  placeholder="Write a comment..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  className="min-h-[60px]"
-                />
-                <Button onClick={handleAddComment} disabled={!commentText.trim()}>
-                  Post
-                </Button>
+              <div className="space-y-2">
+                {replyTo && (
+                  <div className="text-sm text-muted-foreground">
+                    Replying to {replyTo.username}
+                    <button
+                      onClick={() => setReplyTo(null)}
+                      className="ml-2 text-primary hover:underline"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Write a comment..."}
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    className="min-h-[60px]"
+                  />
+                  <Button onClick={handleAddComment} disabled={!commentText.trim()}>
+                    Post
+                  </Button>
+                </div>
               </div>
             )}
           </div>

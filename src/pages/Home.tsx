@@ -13,7 +13,7 @@ const Home = () => {
   const [user, setUser] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
-  const { posts, loading, createPost, addComment, toggleFollow } = useSocialFeed(user?.id || null);
+  const { posts, loading, createPost, addComment, toggleFollow, toggleLike } = useSocialFeed(user?.id || null);
 
   useEffect(() => {
     // Check authentication status
@@ -83,7 +83,9 @@ const Home = () => {
                   post={post}
                   onAddComment={addComment}
                   onToggleFollow={toggleFollow}
+                  onToggleLike={toggleLike}
                   isAuthenticated={isAuthenticated}
+                  showFullContent={isAuthenticated}
                 />
               ))
             )}

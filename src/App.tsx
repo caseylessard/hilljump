@@ -12,7 +12,7 @@ import OptionsScanner from "./pages/OptionsScanner";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
-import Options from "./pages/Options";
+
 import Crypto from "./pages/Crypto";
 import Portfolio from "./pages/Portfolio";
 import Bots from "./pages/Bots";
@@ -33,7 +33,7 @@ const AppContent = () => {
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/bots" element={<Bots />} />
           <Route path="/breakout" element={<Breakout />} />
-          <Route path="/options" element={<Options />} />
+          
           <Route path="/crypto" element={<Crypto />} />
           <Route path="/scanner" element={<OptionsScanner />} />
           <Route path="/profile" element={<Profile />} />
