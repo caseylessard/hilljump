@@ -67,11 +67,11 @@ serve(async (req) => {
     
     const data: EODHDPrice[] = await response.json();
     
-    // Return the data (limit to 365 days)
+    // Return the most recent 365 days of data
     return new Response(
       JSON.stringify({
         ticker,
-        historicalPrices: data.slice(0, 365)
+        historicalPrices: data.slice(-365)  // Get last 365 days (most recent)
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
