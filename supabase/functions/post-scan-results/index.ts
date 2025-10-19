@@ -11,10 +11,10 @@ interface ScanResult {
   ticker: string;
   conviction: number;
   rr: number;
-  direction: 'LONG' | 'SHORT';
-  entryPrice: number;
-  targetPrice: number;
-  stopPrice: number;
+  direction: 'CALL' | 'PUT';
+  entry: number;
+  target: number;
+  stop: number;
 }
 
 interface ScanSummary {
@@ -115,9 +115,9 @@ function formatScanResults(results: ScanSummary): string {
   const topSignals = signals.slice(0, 5);
   
   topSignals.forEach((signal, index) => {
-    const emoji = signal.direction === 'LONG' ? '📈' : '📉';
+    const emoji = signal.direction === 'CALL' ? '📈' : '📉';
     content += `${emoji} **${signal.ticker}** (${signal.conviction.toFixed(0)}% conviction)\n`;
-    content += `   ${signal.direction} | Entry: $${signal.entryPrice.toFixed(2)} | Target: $${signal.targetPrice.toFixed(2)} | R/R: ${signal.rr.toFixed(1)}:1\n\n`;
+    content += `   ${signal.direction} | Entry: $${signal.entry.toFixed(2)} | Target: $${signal.target.toFixed(2)} | R/R: ${signal.rr.toFixed(1)}:1\n\n`;
   });
 
   if (qualifiedSignals > 5) {
