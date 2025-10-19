@@ -8,6 +8,7 @@ import { ProgressBar } from '@/components/scanner/ProgressBar';
 import { SignalCard } from '@/components/scanner/SignalCard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DEFAULT_CONFIG } from '@/lib/constants';
+import Navigation from '@/components/Navigation';
 import type { ScannerConfig } from '@/types/scanner';
 
 export default function OptionsScanner() {
@@ -64,14 +65,13 @@ export default function OptionsScanner() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
+      <Navigation />
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
-        <div className="text-center mb-8 pb-8 border-b border-border/50">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            ⚡ HILLJUMP CAPITAL
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Quantitative Options Scanner
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Quantitative Options Scanner</h1>
+          <p className="text-muted-foreground">
+            Advanced momentum and relative strength analysis for options trading
           </p>
         </div>
 
