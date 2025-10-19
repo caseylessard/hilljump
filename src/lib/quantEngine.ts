@@ -11,7 +11,8 @@ export class QuantEngine {
     const highs = tickerData.historicalPrices.map(d => d.high).reverse();
     const lows = tickerData.historicalPrices.map(d => d.low).reverse();
     
-    const currentPrice = closes[closes.length - 1];
+    // After reversing, index 0 is the most recent price
+    const currentPrice = closes[0];
 
     return {
       ticker: tickerData.ticker,
