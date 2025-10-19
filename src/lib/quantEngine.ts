@@ -157,7 +157,7 @@ export class QuantEngine {
     for (let i = 1; i <= period; i++) {
       const high = highs[i];
       const low = lows[i];
-      const prevClose = closes[i - 1]; // Previous day's close (newer/more recent)
+      const prevClose = closes[i + 1]; // Previous day's close (the day BEFORE this bar)
 
       const tr = Math.max(
         high - low, // Today's range
