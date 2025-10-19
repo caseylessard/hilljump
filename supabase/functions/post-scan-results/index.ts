@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const HILLJUMP_USER_ID = '00000000-0000-0000-0000-000000000001';
+const HILLJUMP_USER_ID = '34abc915-397a-47f1-a137-397af4f93f7e';
 
 interface ScanResult {
   ticker: string;
