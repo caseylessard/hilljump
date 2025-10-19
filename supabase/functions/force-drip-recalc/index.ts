@@ -11,6 +11,18 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Authentication check
+  const apiSecret = Deno.env.get('INTERNAL_API_SECRET');
+  const providedSecret = req.headers.get('X-API-Secret');
+  
+  if (!apiSecret || providedSecret !== apiSecret) {
+    console.error('❌ Unauthorized access attempt to force-drip-recalc');
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
     console.log('🚀 Forcing DRIP recalculation for all ETFs');
 
