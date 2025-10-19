@@ -309,24 +309,49 @@ export class QuantEngine {
 
     // ATR-based targets & stops (FIXED: Using 2x ATR for stops as requested)
     const targetMultiple = strategy === 'Z_SCORE_REVERSION' ? 2.5 : 3.0;
-    const targetDistance = atr * targetMultiple;
-
-    // CRITICAL FIX: Stops at entry ± 2x ATR
-    const stopPrice = direction === 'CALL' ? 
-      price - (atr * 2) : 
-      price + (atr * 2);
+    
+    // CRITICAL FIX: Stops FIRST, then targets, then R/R calculation
+    // For CALLS: Stop below entry, target above entry
+    // For PUTS: Stop above entry, target below entry
+    let stopPrice: number;
+    let targetPrice: number;
+    
+    if (direction === 'CALL') {
+      stopPrice = price - (atr * 2);
+      targetPrice = price + (atr * targetMultiple);
+    } else {
+      // PUT
+      stopPrice = price + (atr * 2);
+      targetPrice = price - (atr * targetMultiple);
       
-    const targetPrice = direction === 'CALL' ? 
-      price + targetDistance : 
-      price - targetDistance;
+      // Ensure target price is never negative or too low
+      if (targetPrice < price * 0.2) {
+        // If target would be below 20% of entry, adjust to 20% of entry
+        targetPrice = price * 0.2;
+      }
+      if (targetPrice <= 0) {
+        // Skip signals with invalid targets
+        return null;
+      }
+    }
 
-    // Calculate ACTUAL risk/reward ratio (not forced to 2:1)
-    const reward = Math.abs(targetPrice - price);
-    const risk = Math.abs(price - stopPrice);
+    // Calculate ACTUAL risk/reward ratio based on direction
+    let reward: number;
+    let risk: number;
+    
+    if (direction === 'CALL') {
+      reward = targetPrice - price;  // How much we can gain
+      risk = price - stopPrice;       // How much we can lose
+    } else {
+      // PUT
+      reward = price - targetPrice;   // How much we can gain (entry - target)
+      risk = stopPrice - price;       // How much we can lose (stop - entry)
+    }
+    
     const rr = reward / risk;
 
-    // Only require R/R > 1.5 (was 2.0)
-    if (rr < 1.5) return null;
+    // Only require R/R > 1.5
+    if (rr < 1.5 || risk <= 0 || reward <= 0) return null;
 
     const exitDate = new Date();
     exitDate.setDate(exitDate.getDate() + timeframe);
@@ -339,29 +364,29 @@ export class QuantEngine {
     let estimatedDelta: number;
     
     if (expectedMovePercent < 5) {
-      // Small move: Use ITM strikes (delta ~0.75)
-      estimatedDelta = 0.75;
+      // Small move: Use ATM or slightly ITM strikes (delta ~0.60-0.70)
+      estimatedDelta = 0.65;
       if (direction === 'CALL') {
-        const targetStrike = price * 0.95; // 5% ITM
+        // For calls, use ATM or slightly ITM
         if (price < 50) {
-          strike = Math.floor(targetStrike);
+          strike = Math.floor(price);
         } else if (price < 200) {
-          strike = Math.floor(targetStrike / 5) * 5;
+          strike = Math.floor(price / 5) * 5;
         } else {
-          strike = Math.floor(targetStrike / 10) * 10;
+          strike = Math.floor(price / 10) * 10;
         }
       } else {
-        const targetStrike = price * 1.05; // 5% ITM
+        // For puts with small moves, use ATM or slightly OTM (closer to current price)
         if (price < 50) {
-          strike = Math.ceil(targetStrike);
+          strike = Math.ceil(price);
         } else if (price < 200) {
-          strike = Math.ceil(targetStrike / 5) * 5;
+          strike = Math.ceil(price / 5) * 5;
         } else {
-          strike = Math.ceil(targetStrike / 10) * 10;
+          strike = Math.ceil(price / 10) * 10;
         }
       }
     } else if (expectedMovePercent < 15) {
-      // Medium move: Use ATM strikes (delta ~0.55)
+      // Medium move: Use ATM strikes (delta ~0.50-0.55)
       estimatedDelta = 0.55;
       if (price < 50) {
         strike = Math.round(price);
@@ -371,7 +396,7 @@ export class QuantEngine {
         strike = Math.round(price / 10) * 10;
       }
     } else {
-      // Large move: Use slightly OTM strikes (delta ~0.45)
+      // Large move: Use slightly OTM strikes (delta ~0.40-0.45)
       estimatedDelta = 0.45;
       if (direction === 'CALL') {
         const targetStrike = price * 1.05; // 5% OTM
