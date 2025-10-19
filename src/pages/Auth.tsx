@@ -31,6 +31,17 @@ const Auth = () => {
   const { validateField, getFieldError, clearErrors, hasErrors } = useInputValidation();
   const { logFailedLogin, logSuccessfulLogin, logSuspiciousActivity } = useSecurityMonitoring();
 
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/profile");
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
   // SEO
   useEffect(() => {
     document.title = "HillJump — Sign In / Sign Up";
@@ -192,15 +203,21 @@ const Auth = () => {
         return;
       }
 
+      console.log('[Password Reset] Sending reset email to:', sanitizedEmail);
+
       const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
-        redirectTo: `${window.location.origin}/auth`,
+        redirectTo: `${window.location.origin}/profile`,
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[Password Reset] Error:', error);
+        throw error;
+      }
       
+      console.log('[Password Reset] Reset email sent successfully to:', sanitizedEmail);
       toast({ 
         title: "Reset email sent", 
-        description: "Check your email for the password reset link" 
+        description: `Check ${sanitizedEmail} for the password reset link` 
       });
       setShowForgotPassword(false);
       setResetEmail("");
