@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { UNIVERSE, TEST_TICKERS } from '@/lib/constants';
 import type { ScannerConfig } from '@/types/scanner';
 
 interface ScannerControlsProps {
@@ -107,7 +108,7 @@ export function ScannerControls({
           variant="secondary"
           className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
         >
-          🧪 Test (5)
+          🧪 Test ({TEST_TICKERS.length})
         </Button>
         
         <Button
@@ -115,7 +116,7 @@ export function ScannerControls({
           disabled={isScanning}
           className="bg-gradient-to-r from-primary to-primary/80"
         >
-          🚀 Full Scan (84)
+          🚀 Full Scan ({UNIVERSE.length})
         </Button>
         
         <Button

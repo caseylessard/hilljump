@@ -103,8 +103,8 @@ export const UNIVERSE = [
   'BBAI', 'AI', 'ARBE', 'ACHR', 'RDW', 'ASTS', 'BE', 'FCEL', 'MARA', 'RIOT',
   'MSTR', 'CRSP', 'BEAM', 'NTLA', 'CORZ', 'RACE', 'RR', 'CRWV', 'SERV', 'ORCL',
   'RGTI', 'QBTS', 'QS', 'AA', 'TXN', 'LRCX', 'APH', 'GEV', 'IBM', 'VRT', 'B',
-  'SLV', 'RUN', 'MRK', 'PFE', 'UUUU', 'USAR', 'CCJ', 'CIEN', 'RBLX', 'AMKR',
-  'NFLX', 'SE'
+  'SLV', 'RUN', 'MRK', 'PFE', 'UUUU', 'SOUN', 'USAR', 'CCJ', 'CIEN', 'RBLX', 
+  'AMKR', 'NFLX', 'SE'
 ];
 
 export const TEST_TICKERS = ['RACE', 'AMD', 'NVDA', 'GOOGL', 'BA'];
