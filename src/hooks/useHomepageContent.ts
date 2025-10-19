@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 interface HomepageContent {
@@ -20,16 +20,10 @@ const defaultContent: HomepageContent = {
 };
 
 export const useHomepageContent = () => {
-  const [content, setContent] = useState<HomepageContent>(defaultContent);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadContent();
-  }, []);
-
-  const loadContent = async (forceRefresh = false) => {
-    try {
-      console.log(`🔄 Loading homepage content ${forceRefresh ? '(forced refresh)' : ''}`);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['homepage-content'],
+    queryFn: async () => {
+      console.log('🔄 Loading homepage content from database');
       
       const { data, error } = await supabase
         .from('homepage_content')
@@ -37,25 +31,26 @@ export const useHomepageContent = () => {
       
       if (error) {
         console.error('Error loading homepage content:', error);
-        setLoading(false);
-        return;
+        throw error;
       }
       
-      const contentMap: any = { ...defaultContent };
+      const contentMap: HomepageContent = { ...defaultContent };
       data?.forEach(item => {
-        contentMap[item.content_key] = item.content_value;
+        contentMap[item.content_key as keyof HomepageContent] = item.content_value;
       });
       
       console.log('✅ Homepage content loaded:', Object.keys(contentMap));
-      setContent(contentMap);
-    } catch (error) {
-      console.error('Error loading homepage content:', error);
-    } finally {
-      setLoading(false);
-    }
+      return contentMap;
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour - content rarely changes
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours - keep in cache
+    initialData: defaultContent, // Start with defaults for instant render
+  });
+
+  return { 
+    content: data || defaultContent, 
+    loading: isLoading, 
+    refresh: refetch,
+    forceRefresh: refetch 
   };
-
-  const forceRefresh = () => loadContent(true);
-
-  return { content, loading, refresh: loadContent, forceRefresh };
 };
