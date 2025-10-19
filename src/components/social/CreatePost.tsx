@@ -24,12 +24,18 @@ export function CreatePost({ onCreatePost }: CreatePostProps) {
         <CardTitle>Create a Post</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Textarea
-          placeholder="What's on your mind?"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className="min-h-[120px]"
-        />
+        <div className="space-y-2">
+          <Textarea
+            placeholder="What's on your mind?"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="min-h-[120px]"
+            maxLength={10000}
+          />
+          <div className="text-xs text-muted-foreground text-right">
+            {content.length} / 10,000 characters
+          </div>
+        </div>
         <Button 
           onClick={handleSubmit} 
           disabled={!content.trim()}

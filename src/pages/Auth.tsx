@@ -203,18 +203,18 @@ const Auth = () => {
         return;
       }
 
-      console.log('[Password Reset] Sending reset email to:', sanitizedEmail);
+      // Password reset email being sent
 
       const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
         redirectTo: `${window.location.origin}/profile`,
       });
       
       if (error) {
-        console.error('[Password Reset] Error:', error);
+        // Password reset error occurred
         throw error;
       }
       
-      console.log('[Password Reset] Reset email sent successfully to:', sanitizedEmail);
+      // Password reset email sent successfully
       toast({ 
         title: "Reset email sent", 
         description: `Check ${sanitizedEmail} for the password reset link` 

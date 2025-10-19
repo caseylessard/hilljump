@@ -1,4 +1,4 @@
-// Real security monitoring with database persistence
+// Real security monitoring with database persistence via edge function
 import { supabase } from "@/integrations/supabase/client";
 
 const getUserInfo = () => {
@@ -19,14 +19,19 @@ export const useSecurityMonitoring = () => {
   ) => {
     try {
       const userInfo = getUserInfo();
-      await supabase.from('security_events').insert({
-        event_type,
-        user_id: user_id || null,
-        metadata,
-        ip_address: userInfo.ip_address,
-        user_agent: userInfo.user_agent
+      
+      // Call edge function instead of direct insert (prevents log poisoning)
+      await supabase.functions.invoke('log-security-event', {
+        body: {
+          event_type,
+          user_id: user_id || null,
+          metadata,
+          ip_address: userInfo.ip_address,
+          user_agent: userInfo.user_agent
+        }
       });
     } catch (error) {
+      // Silently fail to prevent blocking user actions
       console.error('Failed to log security event:', error);
     }
   };
