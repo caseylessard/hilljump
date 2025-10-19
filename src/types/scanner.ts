@@ -72,6 +72,8 @@ export interface TradingSignal {
   estimatedDelta: number;
   extremeZScore: boolean;
   atrPercent: number;
+  riskTier: 'Conservative' | 'Moderate' | 'Aggressive';
+  daysToExpiration: number;
 }
 
 export interface ScannerConfig {
