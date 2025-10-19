@@ -37,6 +37,7 @@ import { ETFOrchestrator } from "@/components/admin/ETFOrchestrator";
 import { StalePriceUpdater } from "@/components/admin/StalePriceUpdater";
 import { SEOSettings } from "@/components/admin/SEOSettings";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
+import { UserManagement } from "@/components/admin/UserManagement";
 import Footer from "@/components/Footer";
 
 const AdminDashboard = () => {
@@ -189,6 +190,9 @@ const AdminDashboard = () => {
                   </TabsTrigger>
                   <TabsTrigger value="settings" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
                     Settings
+                  </TabsTrigger>
+                  <TabsTrigger value="users" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Users
                   </TabsTrigger>
                   <TabsTrigger value="monitoring" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground">
                     Monitor
@@ -432,6 +436,12 @@ const AdminDashboard = () => {
                     <HomepageEditor />
                   </CardContent>
                 </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="users" className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6">
+                <UserManagement />
               </div>
             </TabsContent>
 

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import Navigation from "@/components/Navigation";
 import { Bot, Download, Code, TrendingUp, Zap, Shield } from "lucide-react";
 import Footer from "@/components/Footer";
+import { PageHeader } from "@/components/PageHeader";
 
 const Bots = () => {
   // SEO setup
@@ -24,17 +25,13 @@ const Bots = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <header className="container py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2 sm:gap-3 mb-4">
-          <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Trading Bots</h1>
-        </div>
-        <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-          Professional Pine Script trading bots for TradingView. Automated strategies based on HillJump ETF analysis.
-        </p>
-      </header>
+      <main className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <PageHeader
+          icon={Bot}
+          title="Trading Bots"
+          description="Professional Pine Script trading bots for TradingView. Automated strategies based on HillJump ETF analysis."
+        />
 
-      <main className="container pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         {/* Features Section */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
           <Card>

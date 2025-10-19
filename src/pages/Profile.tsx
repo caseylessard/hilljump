@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UserBadge } from "@/components/UserBadge";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Loader2 } from "lucide-react";
+import { Loader2, User } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { useAdmin } from "@/hooks/useAdmin";
 import Footer from "@/components/Footer";
+import { PageHeader } from "@/components/PageHeader";
 interface Position { id: string; user_id: string; ticker: string; shares: number; created_at: string; }
 
 const Profile = () => {
@@ -372,8 +373,12 @@ const Profile = () => {
     <div>
       <Navigation />
 
-      <main className="container py-4 px-3 sm:py-8 sm:px-6 grid gap-4 sm:gap-6 max-w-full">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Profile</h1>
+      <main className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <PageHeader
+          icon={User}
+          title="Profile"
+          description="Manage your account, portfolio, and preferences"
+        />
         
         {!userId ? (
           <Card className="p-4 sm:p-6">

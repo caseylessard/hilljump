@@ -3,9 +3,19 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MessageSquare, Bell, BellOff, Heart } from 'lucide-react';
+import { MessageSquare, Bell, BellOff, Heart, Flag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { Post, Comment } from '@/hooks/useSocialFeed';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface PostCardProps {
   post: Post;
@@ -20,6 +30,10 @@ export function PostCard({ post, onAddComment, onToggleFollow, onToggleLike, isA
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState<{ commentId: string; username: string } | null>(null);
+  const [showFlagDialog, setShowFlagDialog] = useState(false);
+  const [flagCommentId, setFlagCommentId] = useState<string | null>(null);
+  const [flagReason, setFlagReason] = useState('');
+  const { toast } = useToast();
 
   const getDisplayName = (profile: any) => {
     if (profile?.username) return profile.username;
@@ -42,6 +56,37 @@ export function PostCard({ post, onAddComment, onToggleFollow, onToggleLike, isA
     }
   };
 
+  const handleFlagComment = async () => {
+    if (!flagCommentId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('comment_flags')
+        .insert({
+          comment_id: flagCommentId,
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          reason: flagReason,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Comment flagged",
+        description: "Thank you for reporting. Admins will review this content.",
+      });
+      
+      setShowFlagDialog(false);
+      setFlagCommentId(null);
+      setFlagReason('');
+    } catch (error: any) {
+      toast({
+        title: "Failed to flag comment",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderComment = (comment: Comment, isReply = false) => (
     <div key={comment.id} className={`${isReply ? 'ml-8 mt-2' : 'mt-4'} flex gap-3`}>
       <Avatar className="w-8 h-8">
@@ -56,12 +101,24 @@ export function PostCard({ post, onAddComment, onToggleFollow, onToggleLike, isA
         </div>
         <p className="text-sm mt-1">{comment.content}</p>
         {isAuthenticated && !isReply && (
-          <button
-            onClick={() => setReplyTo({ commentId: comment.id, username: getDisplayName(comment.profiles) })}
-            className="text-xs text-primary hover:underline mt-1"
-          >
-            Reply
-          </button>
+          <div className="flex gap-3 mt-1">
+            <button
+              onClick={() => setReplyTo({ commentId: comment.id, username: getDisplayName(comment.profiles) })}
+              className="text-xs text-primary hover:underline"
+            >
+              Reply
+            </button>
+            <button
+              onClick={() => {
+                setFlagCommentId(comment.id);
+                setShowFlagDialog(true);
+              }}
+              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1"
+            >
+              <Flag className="h-3 w-3" />
+              Flag
+            </button>
+          </div>
         )}
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-2">
@@ -178,6 +235,39 @@ export function PostCard({ post, onAddComment, onToggleFollow, onToggleLike, isA
           </div>
         )}
       </CardFooter>
+
+      <Dialog open={showFlagDialog} onOpenChange={setShowFlagDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Flag Comment</DialogTitle>
+            <DialogDescription>
+              Report this comment to admins for review. Please describe why this content is inappropriate.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Reason for flagging (optional)..."
+            value={flagReason}
+            onChange={(e) => setFlagReason(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowFlagDialog(false);
+                setFlagCommentId(null);
+                setFlagReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleFlagComment} variant="destructive">
+              <Flag className="h-4 w-4 mr-2" />
+              Flag Comment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Search, X } from 'lucide-react';
+import { Search, X, TrendingUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ETFTable } from '@/components/dashboard/ETFTable';
 import { OptimizedETFTable } from '@/components/dashboard/OptimizedETFTable';
@@ -29,6 +29,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Lock } from 'lucide-react';
 import Footer from '@/components/Footer';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { PageHeader } from '@/components/PageHeader';
 
 type FilterType = 'all' | 'canada' | 'usa' | 'high-yield';
 
@@ -514,32 +515,26 @@ const Ranking = () => {
   return (
     <div className="min-h-screen">
       <Navigation />
-      <header className="relative overflow-hidden">
-        <div className="absolute inset-0 ambient-spotlight pointer-events-none" aria-hidden="true" />
-        <div className="container py-8 grid md:grid-cols-[1.2fr,0.8fr] gap-6 items-center">
-          <div className="space-y-3">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Income ETFs</h1>
-          </div>
-          <div className="flex justify-end gap-2">
-            <RefreshDataButton 
-              type="both"
-              tickers={tickers}
-              taxPreferences={{ country: taxCountry, enabled: false, rate: 0 }}
-              weights={weights}
-              country={taxCountry}
-            />
+      
+      <main className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <PageHeader
+            icon={TrendingUp}
+            title="Income ETFs"
+          />
+          <div className="flex gap-2 flex-shrink-0">
+            <RefreshDataButton type="both" />
+            <UserBadge />
           </div>
         </div>
         
-        <div className="container">
+        <div>
           {/* Detailed loading progress tracking */}
           {(isLoading || pricesLoading || scoresLoading || (dripLoadingTaxFree && dripLoadingTaxed) || Object.keys(distributions).length === 0 && etfs.length > 0) && (
             <LoadingScreen message="Loading ETF data and rankings..." />
           )}
         </div>
-      </header>
 
-      <main className="container grid gap-8 pb-16">
         <section id="ranking" aria-labelledby="ranking-title" className="grid gap-4">
           {/* Tab Navigation - Show for all users, default to Canada behavior for non-authenticated */}
           {(profile?.country === 'CA' || !profile) ? (

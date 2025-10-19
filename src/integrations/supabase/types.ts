@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      comment_flags: {
+        Row: {
+          comment_id: string
+          created_at: string | null
+          id: string
+          reason: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_flags_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -1221,6 +1262,14 @@ export type Database = {
       clean_expired_options_cache: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_user_engagement_stats: {
+        Args: { target_user_id: string }
+        Returns: {
+          comment_count: number
+          flag_count: number
+          post_count: number
+        }[]
       }
       has_role: {
         Args: {

@@ -8,6 +8,8 @@ import { useSocialFeed } from "@/hooks/useSocialFeed";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/PageHeader";
+import { MessageSquare } from "lucide-react";
 
 const Home = () => {
   const [user, setUser] = useState<any>(null);
@@ -46,22 +48,21 @@ const Home = () => {
     <div className="min-h-screen flex flex-col">
       <Navigation />
       
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="text-center space-y-4 mb-8">
-            <h1 className="text-4xl font-bold">Community Feed</h1>
-            <p className="text-muted-foreground">
-              Share insights, discuss strategies, and connect with fellow investors
-            </p>
-            {!isAuthenticated && (
-              <div className="flex gap-4 justify-center">
-                <Button asChild>
-                  <Link to="/auth">Sign In to Post</Link>
-                </Button>
-              </div>
-            )}
-          </div>
+      <main className="flex-1 container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <PageHeader 
+          icon={MessageSquare}
+          title="Community Feed"
+          description="Share insights, discuss strategies, and connect with fellow investors"
+        />
+        
+        <div className="space-y-6">
+          {!isAuthenticated && (
+            <div className="flex gap-4 justify-center">
+              <Button asChild>
+                <Link to="/auth">Sign In to Post</Link>
+              </Button>
+            </div>
+          )}
 
           {/* Create Post */}
           {isAuthenticated && (
