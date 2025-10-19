@@ -1,6 +1,6 @@
 export const COMPANY_NAMES: Record<string, string> = {
   'SPX': 'S&P 500',
-  'NDQ': 'Nasdaq',
+  'NDX': 'Nasdaq-100',
   'VIX': 'VIX',
   'DJI': 'Dow',
   'NVDA': 'NVIDIA',
@@ -74,7 +74,7 @@ export const COMPANY_NAMES: Record<string, string> = {
 };
 
 export const UNIVERSE = [
-  'SPX', 'NDQ', 'VIX', 'DJI', 'NVDA', 'MSFT', 'GOOGL', 'AAPL', 'META', 'AMZN',
+  'SPX', 'NDX', 'VIX', 'DJI', 'NVDA', 'MSFT', 'GOOGL', 'AAPL', 'META', 'AMZN',
   'TSLA', 'PLTR', 'AVGO', 'AMD', 'SMCI', 'JPM', 'BAC', 'V', 'MA', 'LLY',
   'UNH', 'JNJ', 'LMT', 'RTX', 'BA', 'SOFI', 'AFRM', 'SQ', 'COIN', 'HOOD',
   'SNOW', 'DDOG', 'NET', 'CRWD', 'RIVN', 'LCID', 'ALB', 'LAC', 'INTC', 'QCOM',
