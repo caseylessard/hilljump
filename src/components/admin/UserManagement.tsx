@@ -17,13 +17,18 @@ import {
 
 interface UserData {
   id: string;
-  email: string;
+  email: string | null;
   username: string | null;
   first_name: string | null;
   last_name: string | null;
   country: string;
   approved: boolean;
   created_at: string;
+  roles: string[];
+  subscription: {
+    subscribed: boolean;
+    tier: string | null;
+  };
   post_count?: number;
   comment_count?: number;
   flag_count?: number;
@@ -45,47 +50,20 @@ export const UserManagement = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      // Get all user profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username, first_name, last_name, country, approved, created_at')
-        .order('created_at', { ascending: false });
-
-      if (profilesError) throw profilesError;
-
-      // Get user emails from auth.users (admin only)
-      const { data, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.error('Error fetching auth users:', authError);
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        throw new Error('Not authenticated');
       }
 
-      // Create a map of user emails
-      const emailMap = new Map<string, string>();
-      const authUsers = data?.users || [];
-      authUsers.forEach(u => {
-        if (u.id && u.email) {
-          emailMap.set(u.id, u.email);
+      const response = await supabase.functions.invoke('admin-get-users', {
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`
         }
       });
 
-      // Get engagement stats for each user
-      const usersWithStats: UserData[] = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { data: stats } = await supabase
-            .rpc('get_user_engagement_stats', { target_user_id: profile.id });
-
-          return {
-            ...profile,
-            email: emailMap.get(profile.id) || 'No email',
-            post_count: stats?.[0]?.post_count || 0,
-            comment_count: stats?.[0]?.comment_count || 0,
-            flag_count: stats?.[0]?.flag_count || 0,
-          } as UserData;
-        })
-      );
-
-      setUsers(usersWithStats);
+      if (response.error) throw response.error;
+      
+      setUsers(response.data.users || []);
     } catch (error: any) {
       toast({
         title: "Failed to load users",
@@ -94,6 +72,48 @@ export const UserManagement = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleRole = async (userId: string, role: 'admin' | 'subscriber' | 'premium', currentlyHas: boolean) => {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) throw new Error('Not authenticated');
+
+      const response = await supabase.functions.invoke('admin-update-user-role', {
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`
+        },
+        body: {
+          targetUserId: userId,
+          role,
+          action: currentlyHas ? 'remove' : 'add'
+        }
+      });
+
+      if (response.error) throw response.error;
+
+      // Update local state
+      setUsers(users.map(u => {
+        if (u.id === userId) {
+          const newRoles = currentlyHas 
+            ? u.roles.filter(r => r !== role)
+            : [...u.roles, role];
+          return { ...u, roles: newRoles };
+        }
+        return u;
+      }));
+
+      toast({
+        title: "Role updated",
+        description: `${role} role ${currentlyHas ? 'removed' : 'added'} successfully.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -205,13 +225,14 @@ export const UserManagement = () => {
                   <TableHead className="text-center">Comments</TableHead>
                   <TableHead className="text-center">Flags</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Roles</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-mono text-sm">{user.email}</TableCell>
+                    <TableCell className="font-mono text-sm">{user.email || 'No email'}</TableCell>
                     <TableCell>{user.username || '-'}</TableCell>
                     <TableCell>
                       {user.first_name || user.last_name
@@ -249,6 +270,31 @@ export const UserManagement = () => {
                       )}
                     </TableCell>
                     <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant={user.roles.includes('admin') ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleRole(user.id, 'admin', user.roles.includes('admin'))}
+                        >
+                          Admin
+                        </Button>
+                        <Button
+                          variant={user.roles.includes('subscriber') ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleRole(user.id, 'subscriber', user.roles.includes('subscriber'))}
+                        >
+                          Subscriber
+                        </Button>
+                        <Button
+                          variant={user.roles.includes('premium') ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleRole(user.id, 'premium', user.roles.includes('premium'))}
+                        >
+                          Premium
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
@@ -257,16 +303,18 @@ export const UserManagement = () => {
                         >
                           {user.approved ? 'Revoke' : 'Approve'}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setShowResetDialog(true);
-                          }}
-                        >
-                          <Mail className="h-4 w-4" />
-                        </Button>
+                        {user.email && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowResetDialog(true);
+                            }}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
