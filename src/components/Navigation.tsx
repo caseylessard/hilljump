@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/UserBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, CircleDollarSign, LockKeyhole, Home, Briefcase, User, TrendingUp } from "lucide-react";
+import { Menu, CircleDollarSign, LockKeyhole, Home, Briefcase, User, TrendingUp, Target } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -38,7 +38,8 @@ const Navigation = () => {
 
   // Base navigation items - always visible
   const baseNavItems = [
-    { href: "/ranking", label: "Income", icon: "lucide", lucideIcon: CircleDollarSign }
+    { href: "/ranking", label: "Income", icon: "lucide", lucideIcon: CircleDollarSign },
+    { href: "/scanner", label: "Scanner", icon: "lucide", lucideIcon: Target }
   ];
 
   // Auth-only navigation items (for hamburger menu)
@@ -72,6 +73,11 @@ const Navigation = () => {
             <Button variant="ghost" size="icon" asChild>
               <a href="/ranking" aria-label="Income">
                 <CircleDollarSign className="h-5 w-5" />
+              </a>
+            </Button>
+            <Button variant="ghost" size="icon" asChild>
+              <a href="/scanner" aria-label="Scanner">
+                <Target className="h-5 w-5" />
               </a>
             </Button>
             <Button variant="ghost" size="icon" asChild>

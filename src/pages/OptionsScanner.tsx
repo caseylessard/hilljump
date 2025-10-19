@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { useScanner } from '@/hooks/useScanner';
 import { ScannerControls } from '@/components/scanner/ScannerControls';
 import { ScannerStats } from '@/components/scanner/ScannerStats';
@@ -10,6 +12,8 @@ import type { ScannerConfig } from '@/types/scanner';
 
 export default function OptionsScanner() {
   const [config, setConfig] = useState<ScannerConfig>(DEFAULT_CONFIG);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const navigate = useNavigate();
   
   const {
     isScanning,
@@ -18,6 +22,41 @@ export default function OptionsScanner() {
     runScan,
     clearCache,
   } = useScanner();
+
+  // Check authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        navigate('/auth');
+        return;
+      }
+      
+      setIsAuthenticated(true);
+    };
+    
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session?.user) {
+        navigate('/auth');
+      } else {
+        setIsAuthenticated(true);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  // Show nothing while checking auth
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   const handleScan = (testMode: boolean) => {
     runScan(config, testMode);
