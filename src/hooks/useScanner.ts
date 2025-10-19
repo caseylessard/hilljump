@@ -145,6 +145,19 @@ export function useScanner() {
         description: `Found ${topSignals.length} high-conviction signals`,
       });
 
+      // Post results to community feed (fire and forget)
+      if (!testMode) {
+        supabase.functions.invoke('post-scan-results', {
+          body: { scanResults: scanResult }
+        }).then(({ error }) => {
+          if (error) {
+            console.error('Failed to post scan results:', error);
+          } else {
+            console.log('✅ Posted scan results to community feed');
+          }
+        });
+      }
+
     } catch (error) {
       console.error('Scan error:', error);
       toast({

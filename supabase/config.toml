@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.fetch-eodhd-data]
 verify_jwt = false
+
+[functions.post-scan-results]
+verify_jwt = false
