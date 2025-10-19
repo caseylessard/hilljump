@@ -71,6 +71,7 @@ export function ScannerControls({
               <SelectItem value="5">5</SelectItem>
               <SelectItem value="7">7</SelectItem>
               <SelectItem value="10">10</SelectItem>
+              <SelectItem value="9999">All</SelectItem>
             </SelectContent>
           </Select>
         </div>
