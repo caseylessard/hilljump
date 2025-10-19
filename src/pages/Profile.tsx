@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserBadge } from "@/components/UserBadge";
+import { AvatarUpload } from "@/components/AvatarUpload";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Loader2, User } from "lucide-react";
@@ -29,6 +30,7 @@ const Profile = () => {
   const [username, setUsername] = useState<string>("");
   const [approved, setApproved] = useState<boolean>(false);
   const [country, setCountry] = useState<'US' | 'CA'>('CA');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [weights, setWeights] = useState({ r: 15, y: 25, k: 20, d: 20, t4: 8, t52: 2, h: 6 });
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
@@ -88,7 +90,7 @@ const Profile = () => {
     (async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('username, first_name, last_name, country, approved')
+        .select('username, first_name, last_name, country, approved, avatar_url')
         .eq('id', userId)
         .maybeSingle();
       if (!error && data) {
@@ -97,12 +99,14 @@ const Profile = () => {
         setLastName((data as any).last_name ?? '');
         setCountry(((data as any).country as 'US' | 'CA') ?? 'CA');
         setApproved(Boolean((data as any).approved));
+        setAvatarUrl((data as any).avatar_url ?? null);
       } else {
         setUsername('');
         setFirstName('');
         setLastName('');
         setCountry('CA');
         setApproved(false);
+        setAvatarUrl(null);
       }
     })();
   }, [userId]);
@@ -390,6 +394,17 @@ const Profile = () => {
             {/* User Info - Always at top and persistent */}
             <Card className="p-4 grid gap-3">
               <h2 className="text-lg font-semibold">User Information</h2>
+              
+              {/* Avatar Upload */}
+              <div className="flex justify-center py-4">
+                <AvatarUpload
+                  userId={userId}
+                  avatarUrl={avatarUrl}
+                  onAvatarUpdate={setAvatarUrl}
+                  initials={firstName?.substring(0, 1)?.toUpperCase() || username?.substring(0, 1)?.toUpperCase() || 'U'}
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
                 <div className="sm:col-span-1">
                   <label className="block text-sm mb-1">Username</label>

@@ -13,6 +13,7 @@ export interface Comment {
     username: string | null;
     first_name: string | null;
     last_name: string | null;
+    avatar_url: string | null;
   };
   replies?: Comment[];
 }
@@ -27,6 +28,7 @@ export interface Post {
     username: string | null;
     first_name: string | null;
     last_name: string | null;
+    avatar_url: string | null;
   };
   comments?: Comment[];
   is_following?: boolean;
@@ -56,7 +58,7 @@ export const useSocialFeed = (userId: string | null) => {
       const postUserIds = postsData?.map(p => p.user_id) || [];
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, username, first_name, last_name')
+        .select('id, username, first_name, last_name, avatar_url')
         .in('id', postUserIds);
 
       // Fetch comments
@@ -71,7 +73,7 @@ export const useSocialFeed = (userId: string | null) => {
       const commentUserIds = commentsData?.map(c => c.user_id) || [];
       const { data: commentProfilesData } = await supabase
         .from('profiles')
-        .select('id, username, first_name, last_name')
+        .select('id, username, first_name, last_name, avatar_url')
         .in('id', commentUserIds);
 
       // Fetch all likes

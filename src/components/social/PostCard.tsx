@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageSquare, Bell, BellOff, Heart, Flag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { Post, Comment } from '@/hooks/useSocialFeed';
@@ -90,6 +90,7 @@ export function PostCard({ post, onAddComment, onToggleFollow, onToggleLike, isA
   const renderComment = (comment: Comment, isReply = false) => (
     <div key={comment.id} className={`${isReply ? 'ml-8 mt-2' : 'mt-4'} flex gap-3`}>
       <Avatar className="w-8 h-8">
+        <AvatarImage src={comment.profiles?.avatar_url || undefined} alt="User avatar" />
         <AvatarFallback>{getInitials(comment.profiles)}</AvatarFallback>
       </Avatar>
       <div className="flex-1">
@@ -137,6 +138,7 @@ export function PostCard({ post, onAddComment, onToggleFollow, onToggleLike, isA
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <Avatar>
+              <AvatarImage src={post.profiles?.avatar_url || undefined} alt="User avatar" />
               <AvatarFallback>{getInitials(post.profiles)}</AvatarFallback>
             </Avatar>
             <div>

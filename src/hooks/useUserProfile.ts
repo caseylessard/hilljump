@@ -8,6 +8,7 @@ export type UserProfile = {
   last_name: string | null;
   country: 'US' | 'CA';
   approved: boolean;
+  avatar_url: string | null;
 };
 
 export function useUserProfile() {
@@ -39,7 +40,7 @@ export function useUserProfile() {
     setLoading(true);
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, first_name, last_name, country, approved")
+      .select("id, username, first_name, last_name, country, approved, avatar_url")
       .eq("id", uid)
       .maybeSingle();
     if (!error && data) {
@@ -49,11 +50,12 @@ export function useUserProfile() {
         first_name: data.first_name ?? null,
         last_name: data.last_name ?? null,
         country: (data.country as any) ?? 'CA',
-        approved: Boolean(data.approved)
+        approved: Boolean(data.approved),
+        avatar_url: data.avatar_url ?? null
       });
     } else {
       // No row yet: use defaults for display
-      setProfile({ id: uid, username: null, first_name: null, last_name: null, country: 'CA', approved: false });
+      setProfile({ id: uid, username: null, first_name: null, last_name: null, country: 'CA', approved: false, avatar_url: null });
     }
     setLoading(false);
   }
