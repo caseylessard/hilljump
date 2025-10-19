@@ -25,6 +25,9 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [tab, setTab] = useState("signin");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
   const { validateField, getFieldError, clearErrors, hasErrors } = useInputValidation();
   const { logFailedLogin, logSuccessfulLogin, logSuspiciousActivity } = useSecurityMonitoring();
 
@@ -179,6 +182,35 @@ const Auth = () => {
     }
   };
 
+  const sendPasswordResetEmail = async () => {
+    try {
+      setResetLoading(true);
+      
+      const sanitizedEmail = sanitizeEmail(resetEmail);
+      if (!sanitizedEmail) {
+        toast({ title: "Invalid email", description: "Please enter a valid email address", variant: "destructive" });
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+      
+      if (error) throw error;
+      
+      toast({ 
+        title: "Reset email sent", 
+        description: "Check your email for the password reset link" 
+      });
+      setShowForgotPassword(false);
+      setResetEmail("");
+    } catch (e: any) {
+      toast({ title: "Failed to send reset email", description: e.message, variant: "destructive" });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <div>
       <Navigation />
@@ -192,8 +224,44 @@ const Auth = () => {
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             <TabsContent value="signin" className="space-y-4">
-              {/* SSO Options */}
-              <div className="space-y-2">
+              {showForgotPassword ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h2 className="text-lg font-semibold">Reset Password</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Enter your email address and we'll send you a link to reset your password.
+                    </p>
+                  </div>
+                  <Input 
+                    type="email" 
+                    placeholder="Email" 
+                    value={resetEmail} 
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    maxLength={254}
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={sendPasswordResetEmail} 
+                      disabled={resetLoading || !resetEmail}
+                      className="flex-1"
+                    >
+                      {resetLoading ? "Sending..." : "Send Reset Link"}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowForgotPassword(false);
+                        setResetEmail("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* SSO Options */}
+                  <div className="space-y-2">
                 <Button 
                   variant="outline" 
                   onClick={signInWithGoogle} 
@@ -255,6 +323,13 @@ const Auth = () => {
                   <Mail className="w-4 h-4 mr-2" />
                   {loading ? "Signing in..." : "Sign in with Email"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
               </form>
 
               <div className="relative">
@@ -280,6 +355,8 @@ const Auth = () => {
                   {phoneLoading ? "Sending SMS..." : "Sign in with Phone"}
                 </Button>
               </div>
+                </>
+              )}
             </TabsContent>
             <TabsContent value="signup" className="space-y-4">
               {/* SSO Options */}
