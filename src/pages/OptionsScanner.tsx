@@ -8,8 +8,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DEFAULT_CONFIG } from '@/lib/constants';
 import type { ScannerConfig } from '@/types/scanner';
 
-const EODHD_API_KEY = import.meta.env.VITE_EODHD_API_KEY || 'demo';
-
 export default function OptionsScanner() {
   const [config, setConfig] = useState<ScannerConfig>(DEFAULT_CONFIG);
   
@@ -19,7 +17,7 @@ export default function OptionsScanner() {
     result,
     runScan,
     clearCache,
-  } = useScanner({ eodhd_api_key: EODHD_API_KEY });
+  } = useScanner();
 
   const handleScan = (testMode: boolean) => {
     runScan(config, testMode);
@@ -52,11 +50,7 @@ export default function OptionsScanner() {
           <AlertDescription className="text-sm">
             <strong>📡 Data Source:</strong> Using EODHD for 365-day historical data. 
             Metrics include 50-day z-scores, ATR-based risk management, and relative strength vs SPY.
-            {EODHD_API_KEY === 'demo' && (
-              <span className="text-destructive ml-2 font-semibold">
-                ⚠️ Demo mode - Set VITE_EODHD_API_KEY in .env for full access
-              </span>
-            )}
+            All API calls are securely processed through backend functions.
           </AlertDescription>
         </Alert>
 

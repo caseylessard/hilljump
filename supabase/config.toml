@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.polygon-options-scanner]
 verify_jwt = false
+
+[functions.fetch-eodhd-data]
+verify_jwt = false

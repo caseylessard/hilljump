@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { QuantEngine } from '@/lib/quantEngine';
 import { ScannerCache } from '@/lib/scannerCache';
 import { UNIVERSE, TEST_TICKERS } from '@/lib/constants';
@@ -11,40 +12,32 @@ import type {
   EODHDData 
 } from '@/types/scanner';
 
-interface UseScannerProps {
-  eodhd_api_key: string;
-}
-
-export function useScanner({ eodhd_api_key }: UseScannerProps) {
+export function useScanner() {
   const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
 
   /**
-   * Fetch EODHD data for a ticker
+   * Fetch EODHD data for a ticker via edge function
    */
   const fetchEODHD = useCallback(async (ticker: string): Promise<EODHDData | null> => {
     try {
-      const url = `https://eodhd.com/api/eod/${ticker}.US?api_token=${eodhd_api_key}&period=d&fmt=json`;
-      const response = await fetch(url);
+      const { data, error } = await supabase.functions.invoke('fetch-eodhd-data', {
+        body: { ticker }
+      });
       
-      if (!response.ok) {
-        console.error(`EODHD error for ${ticker}: ${response.status}`);
+      if (error) {
+        console.error(`EODHD error for ${ticker}:`, error);
         return null;
       }
       
-      const data = await response.json();
-      
-      return {
-        ticker,
-        historicalPrices: data.slice(0, 365)
-      };
+      return data as EODHDData;
     } catch (error) {
       console.error(`Fetch error for ${ticker}:`, error);
       return null;
     }
-  }, [eodhd_api_key]);
+  }, []);
 
   /**
    * Analyze a single stock
