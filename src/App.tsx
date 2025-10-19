@@ -8,7 +8,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import Ranking from "./pages/Ranking";
 import Home from "./pages/Home";
 import AdminDashboard from "./pages/AdminDashboard";
-
+import OptionsScanner from "./pages/OptionsScanner";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
@@ -35,6 +35,7 @@ const AppContent = () => {
           <Route path="/breakout" element={<Breakout />} />
           <Route path="/options" element={<Options />} />
           <Route path="/crypto" element={<Crypto />} />
+          <Route path="/scanner" element={<OptionsScanner />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/auth" element={<Auth />} />
