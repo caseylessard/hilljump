@@ -18,9 +18,10 @@ export class QuantEngine {
       ticker: tickerData.ticker,
       currentPrice,
       
-      prices20d: closes.slice(-20),
-      prices50d: closes.slice(-50),
-      prices100d: closes.slice(-100),
+      // After reversing, take from the beginning for most recent data
+      prices20d: closes.slice(0, 20),
+      prices50d: closes.slice(0, 50),
+      prices100d: closes.slice(0, 100),
       
       rsi: this.calculateRSI(closes, 14),
       momentumScore: this.calculateMomentum(closes, 20),
@@ -31,8 +32,9 @@ export class QuantEngine {
       
       atr: this.calculateATR(highs, lows, closes, 14),
       
-      high52Week: Math.max(...closes.slice(-252)),
-      low52Week: Math.min(...closes.slice(-252)),
+      // Take most recent 252 days (1 year) for 52-week high/low
+      high52Week: Math.max(...closes.slice(0, Math.min(252, closes.length))),
+      low52Week: Math.min(...closes.slice(0, Math.min(252, closes.length))),
       
       relativeStrength: spyData ? 
         this.calculateRelativeStrength(closes, spyData.historicalPrices.map(d => d.close).reverse(), 50) : 
@@ -40,61 +42,65 @@ export class QuantEngine {
     };
   }
 
-  /**
-   * Calculate RSI (Relative Strength Index)
-   */
-  private static calculateRSI(closes: number[], period = 14): number {
-    if (closes.length < period + 1) return 50;
-    
-    let gains = 0;
-    let losses = 0;
-    
-    for (let i = closes.length - period; i < closes.length; i++) {
-      const change = closes[i] - closes[i - 1];
-      if (change > 0) gains += change;
-      else losses -= change;
-    }
-    
-    const avgGain = gains / period;
-    const avgLoss = losses / period;
-    
-    if (avgLoss === 0) return 100;
-    
-    const rs = avgGain / avgLoss;
-    const rsi = 100 - (100 / (1 + rs));
-    
-    return Math.round(rsi);
-  }
+   /**
+    * Calculate RSI (Relative Strength Index)
+    * Closes array is newest-first after reversal
+    */
+   private static calculateRSI(closes: number[], period = 14): number {
+     if (closes.length < period + 1) return 50;
+     
+     let gains = 0;
+     let losses = 0;
+     
+     // Process most recent 'period' days (indices 0 to period)
+     for (let i = 1; i <= period; i++) {
+       const change = closes[i - 1] - closes[i];
+       if (change > 0) gains += change;
+       else losses -= change;
+     }
+     
+     const avgGain = gains / period;
+     const avgLoss = losses / period;
+     
+     if (avgLoss === 0) return 100;
+     
+     const rs = avgGain / avgLoss;
+     const rsi = 100 - (100 / (1 + rs));
+     
+     return Math.round(rsi);
+   }
 
-  /**
-   * Calculate momentum score (0-100)
-   */
-  private static calculateMomentum(closes: number[], period = 20): number {
-    if (closes.length < period) return 50;
-    
-    const recentPrices = closes.slice(-period);
-    const currentPrice = closes[closes.length - 1];
-    
-    const min = Math.min(...recentPrices);
-    const max = Math.max(...recentPrices);
-    
-    if (max === min) return 50;
-    
-    const momentum = ((currentPrice - min) / (max - min)) * 100;
-    return Math.round(momentum);
-  }
+   /**
+    * Calculate momentum score (0-100)
+    * Closes array is newest-first after reversal
+    */
+   private static calculateMomentum(closes: number[], period = 20): number {
+     if (closes.length < period) return 50;
+     
+     const recentPrices = closes.slice(0, period);
+     const currentPrice = closes[0];
+     
+     const min = Math.min(...recentPrices);
+     const max = Math.max(...recentPrices);
+     
+     if (max === min) return 50;
+     
+     const momentum = ((currentPrice - min) / (max - min)) * 100;
+     return Math.round(momentum);
+   }
 
-  /**
-   * Calculate price change percentage
-   */
-  private static calculatePriceChange(closes: number[], periods = 1): number {
-    if (closes.length < periods + 1) return 0;
-    
-    const currentPrice = closes[closes.length - 1];
-    const oldPrice = closes[closes.length - 1 - periods];
-    
-    return ((currentPrice - oldPrice) / oldPrice) * 100;
-  }
+   /**
+    * Calculate price change percentage
+    * Closes array is newest-first after reversal
+    */
+   private static calculatePriceChange(closes: number[], periods = 1): number {
+     if (closes.length < periods + 1) return 0;
+     
+     const currentPrice = closes[0];
+     const oldPrice = closes[periods];
+     
+     return ((currentPrice - oldPrice) / oldPrice) * 100;
+   }
 
   /**
    * Calculate volume ratio (current vs average)
@@ -158,27 +164,28 @@ export class QuantEngine {
     return trueRanges.reduce((a, b) => a + b, 0) / period;
   }
 
-  /**
-   * Calculate Relative Strength vs SPY
-   */
-  private static calculateRelativeStrength(tickerCloses: number[], spyCloses: number[], period = 50): number {
-    if (tickerCloses.length < period || spyCloses.length < period) {
-      return 50;
-    }
-    
-    const tickerStart = tickerCloses[tickerCloses.length - period];
-    const tickerEnd = tickerCloses[tickerCloses.length - 1];
-    const tickerReturn = (tickerEnd - tickerStart) / tickerStart;
-    
-    const spyStart = spyCloses[spyCloses.length - period];
-    const spyEnd = spyCloses[spyCloses.length - 1];
-    const spyReturn = (spyEnd - spyStart) / spyStart;
-    
-    const relativeReturn = tickerReturn - spyReturn;
-    const normalized = 50 + (relativeReturn * 250);
-    
-    return Math.max(0, Math.min(100, Math.round(normalized)));
-  }
+   /**
+    * Calculate Relative Strength vs SPY
+    * Both arrays are newest-first after reversal
+    */
+   private static calculateRelativeStrength(tickerCloses: number[], spyCloses: number[], period = 50): number {
+     if (tickerCloses.length < period || spyCloses.length < period) {
+       return 50;
+     }
+     
+     const tickerEnd = tickerCloses[0];
+     const tickerStart = tickerCloses[period - 1];
+     const tickerReturn = (tickerEnd - tickerStart) / tickerStart;
+     
+     const spyEnd = spyCloses[0];
+     const spyStart = spyCloses[period - 1];
+     const spyReturn = (spyEnd - spyStart) / spyStart;
+     
+     const relativeReturn = tickerReturn - spyReturn;
+     const normalized = 50 + (relativeReturn * 250);
+     
+     return Math.max(0, Math.min(100, Math.round(normalized)));
+   }
 
   /**
    * Generate trading signal from metrics
@@ -297,7 +304,8 @@ export class QuantEngine {
       return null;
     }
 
-    conviction = Math.min(85, Math.max(50, conviction));
+    // Allow conviction to vary between 50-95%
+    conviction = Math.min(95, Math.max(50, conviction));
 
     // ATR-based targets & stops
     const stopDistance = atr * 1.5;
@@ -321,9 +329,28 @@ export class QuantEngine {
     const exitDate = new Date();
     exitDate.setDate(exitDate.getDate() + timeframe);
 
-    const strike = direction === 'CALL' ?
-      Math.ceil(price / 5) * 5 :
-      Math.floor(price / 5) * 5;
+    // Smart strike selection: ATM or slightly OTM (target 0.60-0.70 delta)
+    // For calls: round up slightly (1-5% OTM), for puts: round down slightly
+    let strike: number;
+    if (direction === 'CALL') {
+      const targetStrike = price * 1.025; // 2.5% OTM for calls
+      if (price < 50) {
+        strike = Math.ceil(targetStrike);
+      } else if (price < 200) {
+        strike = Math.ceil(targetStrike / 5) * 5;
+      } else {
+        strike = Math.ceil(targetStrike / 10) * 10;
+      }
+    } else {
+      const targetStrike = price * 0.975; // 2.5% OTM for puts
+      if (price < 50) {
+        strike = Math.floor(targetStrike);
+      } else if (price < 200) {
+        strike = Math.floor(targetStrike / 5) * 5;
+      } else {
+        strike = Math.floor(targetStrike / 10) * 10;
+      }
+    }
 
     // Reasoning
     let reasoning = '';
