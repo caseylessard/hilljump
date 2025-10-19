@@ -104,13 +104,15 @@ export class QuantEngine {
 
   /**
    * Calculate volume ratio (current vs average)
+   * Volumes array is newest-first after reversal
    */
   private static calculateVolumeRatio(volumes: number[], period = 20): number {
     if (volumes.length < period + 1) return 1.0;
     
-    const recentVolumes = volumes.slice(-period - 1, -1);
+    // After reversal: index 0 is newest, so we need to skip it for historical average
+    const recentVolumes = volumes.slice(1, period + 1); // Skip current, take next 'period' days
     const avgVolume = recentVolumes.reduce((a, b) => a + b, 0) / period;
-    const currentVolume = volumes[volumes.length - 1];
+    const currentVolume = volumes[0]; // Most recent volume
     
     if (avgVolume === 0) return 1.0;
     
@@ -119,12 +121,14 @@ export class QuantEngine {
 
   /**
    * Determine volume trend direction
+   * Volumes array is newest-first after reversal
    */
   private static calculateVolumeTrend(volumes: number[], period = 10): 'increasing' | 'decreasing' | 'neutral' {
     if (volumes.length < period * 2) return 'neutral';
     
-    const recent = volumes.slice(-period);
-    const previous = volumes.slice(-period * 2, -period);
+    // After reversal: index 0 is newest
+    const recent = volumes.slice(0, period);           // Most recent 'period' days
+    const previous = volumes.slice(period, period * 2); // Previous 'period' days (older)
     
     const recentAvg = recent.reduce((a, b) => a + b, 0) / period;
     const previousAvg = previous.reduce((a, b) => a + b, 0) / period;
