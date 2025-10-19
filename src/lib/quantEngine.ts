@@ -1,106 +1,106 @@
-import type { EODHDData, StockMetrics, TradingSignal } from '@/types/scanner';
-import { COMPANY_NAMES } from './constants';
+import type { EODHDData, StockMetrics, TradingSignal } from "@/types/scanner";
+import { COMPANY_NAMES } from "./constants";
 
 export class QuantEngine {
   /**
    * Calculate all metrics from raw EODHD data
    */
   static calculateMetrics(tickerData: EODHDData, spyData?: EODHDData): StockMetrics {
-    const closes = tickerData.historicalPrices.map(d => d.close).reverse();
-    const volumes = tickerData.historicalPrices.map(d => d.volume).reverse();
-    const highs = tickerData.historicalPrices.map(d => d.high).reverse();
-    const lows = tickerData.historicalPrices.map(d => d.low).reverse();
-    
+    const closes = tickerData.historicalPrices.map((d) => d.close).reverse();
+    const volumes = tickerData.historicalPrices.map((d) => d.volume).reverse();
+    const highs = tickerData.historicalPrices.map((d) => d.high).reverse();
+    const lows = tickerData.historicalPrices.map((d) => d.low).reverse();
+
     // After reversing, index 0 is the most recent price
     const currentPrice = closes[0];
 
     return {
       ticker: tickerData.ticker,
       currentPrice,
-      
+
       // After reversing, take from the beginning for most recent data
       prices20d: closes.slice(0, 20),
       prices50d: closes.slice(0, 50),
       prices100d: closes.slice(0, 100),
-      
+
       rsi: this.calculateRSI(closes, 14),
       momentumScore: this.calculateMomentum(closes, 20),
       priceChangePercent: this.calculatePriceChange(closes, 1),
-      
+
       volumeRatio: this.calculateVolumeRatio(volumes, 20),
       volumeTrend: this.calculateVolumeTrend(volumes, 10),
-      
+
       atr: this.calculateATR(highs, lows, closes, 14),
-      
+
       // Take most recent 252 days (1 year) for 52-week high/low
       high52Week: Math.max(...closes.slice(0, Math.min(252, closes.length))),
       low52Week: Math.min(...closes.slice(0, Math.min(252, closes.length))),
-      
-      relativeStrength: spyData ? 
-        this.calculateRelativeStrength(closes, spyData.historicalPrices.map(d => d.close).reverse(), 50) : 
-        50,
+
+      relativeStrength: spyData
+        ? this.calculateRelativeStrength(closes, spyData.historicalPrices.map((d) => d.close).reverse(), 50)
+        : 50,
     };
   }
 
-   /**
-    * Calculate RSI (Relative Strength Index)
-    * Closes array is newest-first after reversal
-    */
-   private static calculateRSI(closes: number[], period = 14): number {
-     if (closes.length < period + 1) return 50;
-     
-     let gains = 0;
-     let losses = 0;
-     
-     // Process most recent 'period' days (indices 0 to period)
-     for (let i = 1; i <= period; i++) {
-       const change = closes[i - 1] - closes[i];
-       if (change > 0) gains += change;
-       else losses -= change;
-     }
-     
-     const avgGain = gains / period;
-     const avgLoss = losses / period;
-     
-     if (avgLoss === 0) return 100;
-     
-     const rs = avgGain / avgLoss;
-     const rsi = 100 - (100 / (1 + rs));
-     
-     return Math.round(rsi);
-   }
+  /**
+   * Calculate RSI (Relative Strength Index)
+   * Closes array is newest-first after reversal
+   */
+  private static calculateRSI(closes: number[], period = 14): number {
+    if (closes.length < period + 1) return 50;
 
-   /**
-    * Calculate momentum score (0-100)
-    * Closes array is newest-first after reversal
-    */
-   private static calculateMomentum(closes: number[], period = 20): number {
-     if (closes.length < period) return 50;
-     
-     const recentPrices = closes.slice(0, period);
-     const currentPrice = closes[0];
-     
-     const min = Math.min(...recentPrices);
-     const max = Math.max(...recentPrices);
-     
-     if (max === min) return 50;
-     
-     const momentum = ((currentPrice - min) / (max - min)) * 100;
-     return Math.round(momentum);
-   }
+    let gains = 0;
+    let losses = 0;
 
-   /**
-    * Calculate price change percentage
-    * Closes array is newest-first after reversal
-    */
-   private static calculatePriceChange(closes: number[], periods = 1): number {
-     if (closes.length < periods + 1) return 0;
-     
-     const currentPrice = closes[0];
-     const oldPrice = closes[periods];
-     
-     return ((currentPrice - oldPrice) / oldPrice) * 100;
-   }
+    // Process most recent 'period' days (indices 0 to period)
+    for (let i = 1; i <= period; i++) {
+      const change = closes[i - 1] - closes[i];
+      if (change > 0) gains += change;
+      else losses -= change;
+    }
+
+    const avgGain = gains / period;
+    const avgLoss = losses / period;
+
+    if (avgLoss === 0) return 100;
+
+    const rs = avgGain / avgLoss;
+    const rsi = 100 - 100 / (1 + rs);
+
+    return Math.round(rsi);
+  }
+
+  /**
+   * Calculate momentum score (0-100)
+   * Closes array is newest-first after reversal
+   */
+  private static calculateMomentum(closes: number[], period = 20): number {
+    if (closes.length < period) return 50;
+
+    const recentPrices = closes.slice(0, period);
+    const currentPrice = closes[0];
+
+    const min = Math.min(...recentPrices);
+    const max = Math.max(...recentPrices);
+
+    if (max === min) return 50;
+
+    const momentum = ((currentPrice - min) / (max - min)) * 100;
+    return Math.round(momentum);
+  }
+
+  /**
+   * Calculate price change percentage
+   * Closes array is newest-first after reversal
+   */
+  private static calculatePriceChange(closes: number[], periods = 1): number {
+    if (closes.length < periods + 1) return 0;
+
+    const currentPrice = closes[0];
+    const oldPrice = closes[periods];
+
+    return ((currentPrice - oldPrice) / oldPrice) * 100;
+  }
 
   /**
    * Calculate volume ratio (current vs average)
@@ -108,14 +108,14 @@ export class QuantEngine {
    */
   private static calculateVolumeRatio(volumes: number[], period = 20): number {
     if (volumes.length < period + 1) return 1.0;
-    
+
     // After reversal: index 0 is newest, so we need to skip it for historical average
     const recentVolumes = volumes.slice(1, period + 1); // Skip current, take next 'period' days
     const avgVolume = recentVolumes.reduce((a, b) => a + b, 0) / period;
     const currentVolume = volumes[0]; // Most recent volume
-    
+
     if (avgVolume === 0) return 1.0;
-    
+
     return currentVolume / avgVolume;
   }
 
@@ -123,21 +123,21 @@ export class QuantEngine {
    * Determine volume trend direction
    * Volumes array is newest-first after reversal
    */
-  private static calculateVolumeTrend(volumes: number[], period = 10): 'increasing' | 'decreasing' | 'neutral' {
-    if (volumes.length < period * 2) return 'neutral';
-    
+  private static calculateVolumeTrend(volumes: number[], period = 10): "increasing" | "decreasing" | "neutral" {
+    if (volumes.length < period * 2) return "neutral";
+
     // After reversal: index 0 is newest
-    const recent = volumes.slice(0, period);           // Most recent 'period' days
+    const recent = volumes.slice(0, period); // Most recent 'period' days
     const previous = volumes.slice(period, period * 2); // Previous 'period' days (older)
-    
+
     const recentAvg = recent.reduce((a, b) => a + b, 0) / period;
     const previousAvg = previous.reduce((a, b) => a + b, 0) / period;
-    
+
     const change = (recentAvg - previousAvg) / previousAvg;
-    
-    if (change > 0.15) return 'increasing';
-    if (change < -0.15) return 'decreasing';
-    return 'neutral';
+
+    if (change > 0.15) return "increasing";
+    if (change < -0.15) return "decreasing";
+    return "neutral";
   }
 
   /**
@@ -149,68 +149,94 @@ export class QuantEngine {
       const currentPrice = closes[0];
       return currentPrice * 0.02; // Default 2% if not enough data
     }
-    
+
     const trueRanges: number[] = [];
-    
+
     // Start from index 1 (second newest) because we need previous close
     // Calculate TR for the most recent 'period' bars
     for (let i = 1; i <= period; i++) {
       const high = highs[i];
       const low = lows[i];
       const prevClose = closes[i - 1]; // Previous day's close (newer/more recent)
-      
+
       const tr = Math.max(
-        high - low,                    // Today's range
-        Math.abs(high - prevClose),    // Gap up from previous close
-        Math.abs(low - prevClose)      // Gap down from previous close
+        high - low, // Today's range
+        Math.abs(high - prevClose), // Gap up from previous close
+        Math.abs(low - prevClose), // Gap down from previous close
       );
-      
+
       trueRanges.push(tr);
     }
-    
+
     const atr = trueRanges.reduce((a, b) => a + b, 0) / period;
     const currentPrice = closes[0];
     const atrPercent = (atr / currentPrice) * 100;
-    
+
     // SANITY CHECK: ATR should normally be 2-5% of price
     // If ATR > 10% of price, something is wrong with the data
     if (atrPercent > 10) {
-      console.warn(`⚠️ Suspicious ATR for price ${currentPrice}: ATR=$${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) - capping at 8%`);
+      console.warn(
+        `⚠️ Suspicious ATR for price ${currentPrice}: ATR=$${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) - capping at 8%`,
+      );
       return currentPrice * 0.08; // Cap at 8%
     }
-    
+
     return atr;
   }
 
-   /**
-    * Calculate Relative Strength vs SPY
-    * Both arrays are newest-first after reversal
-    */
-   private static calculateRelativeStrength(tickerCloses: number[], spyCloses: number[], period = 50): number {
-     if (tickerCloses.length < period || spyCloses.length < period) {
-       return 50;
-     }
-     
-     const tickerEnd = tickerCloses[0];
-     const tickerStart = tickerCloses[period - 1];
-     const tickerReturn = (tickerEnd - tickerStart) / tickerStart;
-     
-     const spyEnd = spyCloses[0];
-     const spyStart = spyCloses[period - 1];
-     const spyReturn = (spyEnd - spyStart) / spyStart;
-     
-     const relativeReturn = tickerReturn - spyReturn;
-     const normalized = 50 + (relativeReturn * 250);
-     
-     return Math.max(0, Math.min(100, Math.round(normalized)));
-   }
+  /**
+   * Calculate Relative Strength vs SPY
+   * Both arrays are newest-first after reversal
+   */
+  private static calculateRelativeStrength(tickerCloses: number[], spyCloses: number[], period = 50): number {
+    if (tickerCloses.length < period || spyCloses.length < period) {
+      return 50;
+    }
+
+    const tickerEnd = tickerCloses[0];
+    const tickerStart = tickerCloses[period - 1];
+    const tickerReturn = (tickerEnd - tickerStart) / tickerStart;
+
+    const spyEnd = spyCloses[0];
+    const spyStart = spyCloses[period - 1];
+    const spyReturn = (spyEnd - spyStart) / spyStart;
+
+    const relativeReturn = tickerReturn - spyReturn;
+    const normalized = 50 + relativeReturn * 250;
+
+    return Math.max(0, Math.min(100, Math.round(normalized)));
+  }
+
+  /**
+   * Helper: Round strike price based on price level
+   */
+  private static roundStrike(price: number, direction: "up" | "down" | "nearest"): number {
+    if (price < 50) {
+      // Round to nearest $1
+      return direction === "up" ? Math.ceil(price) : direction === "down" ? Math.floor(price) : Math.round(price);
+    } else if (price < 200) {
+      // Round to nearest $5
+      return direction === "up"
+        ? Math.ceil(price / 5) * 5
+        : direction === "down"
+          ? Math.floor(price / 5) * 5
+          : Math.round(price / 5) * 5;
+    } else {
+      // Round to nearest $10
+      return direction === "up"
+        ? Math.ceil(price / 10) * 10
+        : direction === "down"
+          ? Math.floor(price / 10) * 10
+          : Math.round(price / 10) * 10;
+    }
+  }
 
   /**
    * Generate trading signal from metrics
    */
   static calculateSignal(data: StockMetrics): TradingSignal | null {
     const price = data.currentPrice;
-    const ticker = data.ticker.replace('.US', '');
+    const ticker = data.ticker.replace(".US", "");
 
     // Dual timeframe z-score analysis
     const prices20d = data.prices20d;
@@ -244,7 +270,7 @@ export class QuantEngine {
     // Volume analysis
     const vol = data.volumeRatio;
     const volTrend = data.volumeTrend;
-    const institutionalActivity = vol > 1.5 && volTrend === 'increasing';
+    const institutionalActivity = vol > 1.5 && volTrend === "increasing";
 
     // ATR-based risk
     const atr = data.atr;
@@ -261,64 +287,87 @@ export class QuantEngine {
     const range52 = high52 - low52;
     const position52 = ((price - low52) / range52) * 100;
 
-    let strategy: TradingSignal['strategy'] | null = null;
-    let direction: 'CALL' | 'PUT' | null = null;
+    let strategy: TradingSignal["strategy"] | null = null;
+    let direction: "CALL" | "PUT" | null = null;
     let conviction = 0;
     let timeframe = 45;
-    let qualifier = '';
+    let qualifier = "";
 
     // Strategy 1: Z-Score Mean Reversion
     if (Math.abs(zScore) >= 2.0 && !isTrending) {
-      strategy = 'Z_SCORE_REVERSION';
-      direction = zScore < -2.0 ? 'CALL' : 'PUT';
-      
-      conviction = 60 + (Math.abs(zScore) - 2.0) * 10;
-      
-      if (zScoreAccelerating) conviction += 8;
-      if (!isChopping) conviction += 5;
-      if (institutionalActivity) conviction += 8;
-      if (direction === 'CALL' && rsi < 35) conviction += 7;
-      if (direction === 'PUT' && rsi > 65) conviction += 7;
-      
+      strategy = "Z_SCORE_REVERSION";
+      direction = zScore < -2.0 ? "CALL" : "PUT";
+
+      conviction = 60 + (Math.abs(zScore) - 2.0) * 12; // More variation
+
+      if (zScoreAccelerating) conviction += 10;
+      if (!isChopping) conviction += 6;
+      if (institutionalActivity) conviction += 9;
+      if (direction === "CALL" && rsi < 35) conviction += 8;
+      if (direction === "PUT" && rsi > 65) conviction += 8;
+
+      // Extra boost for extreme z-scores
+      if (Math.abs(zScore) > 2.5) conviction += 5;
+
       timeframe = Math.abs(zScore) > 2.5 ? 30 : 45;
-      qualifier = `${Math.abs(zScore).toFixed(1)}σ (50d)${zScoreAccelerating ? ' 🔥' : ''}`;
+      qualifier = `${Math.abs(zScore).toFixed(1)}σ (50d)${zScoreAccelerating ? " 🔥" : ""}`;
     }
     // Strategy 2: Momentum + Regime Filter
     else if (isTrending && Math.abs(momentum - 50) > 15) {
-      strategy = 'MOMENTUM_REGIME';
-      direction = momentum > 50 ? 'CALL' : 'PUT';
-      
-      if (direction === 'CALL' && !outperformingSPY) return null;
-      if (direction === 'PUT' && !underperformingSPY) return null;
-      
-      conviction = 55 + Math.abs(momentum - 50) / 2;
-      
-      if (direction === 'CALL' && relStrength > 55) conviction += 8;
-      if (direction === 'PUT' && relStrength < 45) conviction += 8;
-      if (institutionalActivity) conviction += 7;
-      if (direction === 'CALL' && change > 2) conviction += 5;
-      if (direction === 'PUT' && change < -2) conviction += 5;
-      
+      strategy = "MOMENTUM_REGIME";
+      direction = momentum > 50 ? "CALL" : "PUT";
+
+      if (direction === "CALL" && !outperformingSPY) return null;
+      if (direction === "PUT" && !underperformingSPY) return null;
+
+      conviction = 55 + Math.abs(momentum - 50) / 1.8; // More variation
+
+      // RS boost - more nuanced
+      if (direction === "CALL") {
+        if (relStrength > 70) conviction += 12;
+        else if (relStrength > 55) conviction += 8;
+      }
+      if (direction === "PUT") {
+        if (relStrength < 30) conviction += 12;
+        else if (relStrength < 45) conviction += 8;
+      }
+
+      if (institutionalActivity) conviction += 9;
+      if (direction === "CALL" && change > 3) conviction += 7;
+      if (direction === "PUT" && change < -3) conviction += 7;
+
+      // Regime strength bonus
+      if (avgRange > 0.25) conviction += 5;
+
       timeframe = 60;
       qualifier = `RS:${relStrength}`;
     }
     // Strategy 3: Relative Strength Divergence
-    else if ((outperformingSPY && momentum > 55 && rsi < 60) || 
-             (underperformingSPY && momentum < 45 && rsi > 40)) {
-      strategy = 'RELATIVE_STRENGTH';
-      direction = outperformingSPY ? 'CALL' : 'PUT';
-      
-      conviction = 58;
-      
-      if (Math.abs(relStrength - 50) > 8) conviction += 8;
-      if (direction === 'CALL' && rsi > 45 && rsi < 60) conviction += 6;
-      if (direction === 'PUT' && rsi < 55 && rsi > 40) conviction += 6;
-      if (vol > 1.2) conviction += 5;
-      
+    else if ((outperformingSPY && momentum > 55 && rsi < 60) || (underperformingSPY && momentum < 45 && rsi > 40)) {
+      strategy = "RELATIVE_STRENGTH";
+      direction = outperformingSPY ? "CALL" : "PUT";
+
+      conviction = 56;
+
+      // More nuanced RS scoring
+      const rsDivergence = Math.abs(relStrength - 50);
+      if (rsDivergence > 15) conviction += 12;
+      else if (rsDivergence > 8) conviction += 8;
+      else conviction += 4;
+
+      if (direction === "CALL" && rsi > 45 && rsi < 58) conviction += 7;
+      if (direction === "PUT" && rsi < 55 && rsi > 42) conviction += 7;
+
+      if (vol > 1.5) conviction += 8;
+      else if (vol > 1.2) conviction += 5;
+
+      // Momentum alignment bonus
+      if (direction === "CALL" && momentum > 60) conviction += 5;
+      if (direction === "PUT" && momentum < 40) conviction += 5;
+
       timeframe = 45;
-      qualifier = 'RS Divergence';
-    }
-    else {
+      qualifier = "RS Divergence";
+    } else {
       return null;
     }
 
@@ -330,39 +379,57 @@ export class QuantEngine {
       console.warn(`❌ Rejecting signal for ${ticker}: ATR too high (${atrPercent.toFixed(1)}%)`);
       return null;
     }
-    
-    // ATR-based targets & stops (FIXED: Using 2x ATR for stops as requested)
-    const targetMultiple = strategy === 'Z_SCORE_REVERSION' ? 2.5 : 3.0;
-    
-    // CRITICAL FIX: Stops FIRST, then targets, then R/R calculation
-    // For CALLS: Stop below entry, target above entry
-    // For PUTS: Stop above entry, target below entry
+
+    // DYNAMIC ATR multipliers based on volatility and regime
+    // Higher volatility = tighter stops, wider targets
+    let stopMultiple = 2.0;
+    let targetMultiple = 3.0;
+
+    if (strategy === "Z_SCORE_REVERSION") {
+      targetMultiple = 2.5;
+      stopMultiple = 1.8;
+    } else if (atrPercent > 6) {
+      // High volatility: tighter stops
+      stopMultiple = 1.5;
+      targetMultiple = 2.8;
+    } else if (atrPercent < 3) {
+      // Low volatility: wider stops
+      stopMultiple = 2.2;
+      targetMultiple = 3.5;
+    }
+
+    // Adjust based on conviction
+    if (conviction > 85) {
+      targetMultiple += 0.5;
+    }
+
+    // Calculate stops and targets
     let stopPrice: number;
     let targetPrice: number;
     let cappedTarget = false;
-    
-    if (direction === 'CALL') {
-      stopPrice = price - (atr * 2);
-      targetPrice = price + (atr * targetMultiple);
-      
+
+    if (direction === "CALL") {
+      stopPrice = price - atr * stopMultiple;
+      targetPrice = price + atr * targetMultiple;
+
       // Cap CALL targets at +50% from entry
-      const maxTarget = price * 1.50;
+      const maxTarget = price * 1.5;
       if (targetPrice > maxTarget) {
         targetPrice = maxTarget;
         cappedTarget = true;
       }
     } else {
       // PUT
-      stopPrice = price + (atr * 2);
-      targetPrice = price - (atr * targetMultiple);
-      
+      stopPrice = price + atr * stopMultiple;
+      targetPrice = price - atr * targetMultiple;
+
       // Cap PUT targets at -30% from entry (70% of entry price)
-      const minTarget = price * 0.70;
+      const minTarget = price * 0.7;
       if (targetPrice < minTarget) {
         targetPrice = minTarget;
         cappedTarget = true;
       }
-      
+
       // Ensure target price is never negative or too low
       if (targetPrice < price * 0.2) {
         targetPrice = price * 0.2;
@@ -377,20 +444,20 @@ export class QuantEngine {
     // Calculate ACTUAL risk/reward ratio based on direction
     let reward: number;
     let risk: number;
-    
-    if (direction === 'CALL') {
-      reward = targetPrice - price;  // How much we can gain
-      risk = price - stopPrice;       // How much we can lose
+
+    if (direction === "CALL") {
+      reward = targetPrice - price; // How much we can gain
+      risk = price - stopPrice; // How much we can lose
     } else {
       // PUT
-      reward = price - targetPrice;   // How much we can gain (entry - target)
-      risk = stopPrice - price;       // How much we can lose (stop - entry)
+      reward = price - targetPrice; // How much we can gain (entry - target)
+      risk = stopPrice - price; // How much we can lose (stop - entry)
     }
-    
+
     const rr = reward / risk;
 
-    // Only require R/R > 1.5
-    if (rr < 1.5 || risk <= 0 || reward <= 0) return null;
+    // Only require R/R > 1.3 to allow more variation
+    if (rr < 1.3 || risk <= 0 || reward <= 0) return null;
 
     const exitDate = new Date();
     exitDate.setDate(exitDate.getDate() + timeframe);
@@ -398,85 +465,77 @@ export class QuantEngine {
     // Calculate expected stock move percentage
     const expectedMovePercent = Math.abs((targetPrice - price) / price) * 100;
 
-    // Smart strike selection based on expected move
+    // FIXED: Smart strike selection based on expected move
     let strike: number;
     let estimatedDelta: number;
-    
+
     if (expectedMovePercent < 5) {
-      // Small move: Use ATM or slightly ITM strikes (delta ~0.60-0.70)
-      estimatedDelta = 0.65;
-      if (direction === 'CALL') {
-        // For calls, use ATM or slightly ITM
-        if (price < 50) {
-          strike = Math.floor(price);
-        } else if (price < 200) {
-          strike = Math.floor(price / 5) * 5;
-        } else {
-          strike = Math.floor(price / 10) * 10;
-        }
+      // Small move (<5%): Use ITM strikes for better delta
+      estimatedDelta = 0.7;
+
+      if (direction === "CALL") {
+        // CALL: Slightly ITM (strike below price)
+        const targetStrike = price * 0.97; // 3% ITM
+        strike = this.roundStrike(targetStrike, "down");
       } else {
-        // For puts with small moves, use ATM or slightly OTM (closer to current price)
-        if (price < 50) {
-          strike = Math.ceil(price);
-        } else if (price < 200) {
-          strike = Math.ceil(price / 5) * 5;
-        } else {
-          strike = Math.ceil(price / 10) * 10;
-        }
+        // PUT: ITM (strike ABOVE price for bearish plays)
+        const targetStrike = price * 1.05; // 5% ITM
+        strike = this.roundStrike(targetStrike, "up");
       }
     } else if (expectedMovePercent < 15) {
-      // Medium move: Use ATM strikes (delta ~0.50-0.55)
+      // Medium move (5-15%): Use ATM strikes
       estimatedDelta = 0.55;
-      if (price < 50) {
-        strike = Math.round(price);
-      } else if (price < 200) {
-        strike = Math.round(price / 5) * 5;
+
+      if (direction === "CALL") {
+        strike = this.roundStrike(price, "nearest");
       } else {
-        strike = Math.round(price / 10) * 10;
+        // PUT: ATM or slightly ITM
+        const targetStrike = price * 1.02; // 2% ITM for better delta
+        strike = this.roundStrike(targetStrike, "up");
       }
     } else {
-      // Large move: Use slightly OTM strikes (delta ~0.40-0.45)
+      // Large move (>15%): Use slightly OTM strikes for leverage
       estimatedDelta = 0.45;
-      if (direction === 'CALL') {
-        const targetStrike = price * 1.05; // 5% OTM
-        if (price < 50) {
-          strike = Math.ceil(targetStrike);
-        } else if (price < 200) {
-          strike = Math.ceil(targetStrike / 5) * 5;
-        } else {
-          strike = Math.ceil(targetStrike / 10) * 10;
-        }
+
+      if (direction === "CALL") {
+        // CALL: 5% OTM
+        const targetStrike = price * 1.05;
+        strike = this.roundStrike(targetStrike, "up");
       } else {
-        const targetStrike = price * 0.95; // 5% OTM
-        if (price < 50) {
-          strike = Math.floor(targetStrike);
-        } else if (price < 200) {
-          strike = Math.floor(targetStrike / 5) * 5;
-        } else {
-          strike = Math.floor(targetStrike / 10) * 10;
-        }
+        // PUT: ATM or very slightly OTM (still needs reasonable delta)
+        const targetStrike = price * 0.98; // 2% OTM
+        strike = this.roundStrike(targetStrike, "down");
       }
     }
 
     // Calculate estimated option return
+    // Formula: stock % move × delta × leverage factor
     const stockMovePercent = ((targetPrice - price) / price) * 100;
-    const leverageFactor = 4; // Options typically provide 3-5x leverage
+    const leverageFactor = 4.5; // Options typically provide 4-5x leverage
     const estimatedOptionReturn = Math.abs(stockMovePercent) * estimatedDelta * leverageFactor;
+
+    // Determine risk tier
+    let riskTier: "Conservative" | "Moderate" | "Aggressive";
+    if (expectedMovePercent < 8) {
+      riskTier = "Conservative";
+    } else if (expectedMovePercent < 15) {
+      riskTier = "Moderate";
+    } else {
+      riskTier = "Aggressive";
+    }
 
     // Flag extreme z-scores (beyond ±3σ)
     const extremeZScore = Math.abs(zScore) > 3 || Math.abs(zScore20) > 3;
 
-    // Reasoning
-    let reasoning = '';
-    
-    if (strategy === 'Z_SCORE_REVERSION') {
-      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? 'below' : 'above'} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? '20-day z-score (' + zScore20.toFixed(1) + 'σ) shows acceleration, confirming setup strength.' : '20-day alignment validates signal.'} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? 'Institutional volume spike (' + vol.toFixed(1) + 'x avg) confirms reversal setup.' : 'Standard volume conditions.'} ATR: $${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) sets stop at 2x ATR = $${(atr * 2).toFixed(2)}.${cappedTarget ? ' Target capped at reasonable limit.' : ''}`;
-    }
-    else if (strategy === 'MOMENTUM_REGIME') {
-      reasoning = `${ticker} shows strong ${direction === 'CALL' ? 'bullish' : 'bearish'} regime (momentum: ${momentum}) with ${relStrength > 50 ? 'relative outperformance' : 'relative underperformance'} vs SPY (RS: ${relStrength}). Trending environment (${(avgRange * 100).toFixed(1)}% 20d range) supports continuation. ${institutionalActivity ? 'Institutional accumulation detected.' : ''} ${timeframe}-day window targets ${targetMultiple}x ATR move.`;
-    }
-    else if (strategy === 'RELATIVE_STRENGTH') {
-      reasoning = `${ticker} displays ${relStrength > 50 ? 'superior' : 'inferior'} relative strength (${relStrength}) vs market while maintaining healthy RSI (${rsi}). This divergence suggests ${direction === 'CALL' ? 'institutional accumulation' : 'distribution'} not yet reflected in momentum. ${vol > 1.2 ? 'Volume confirmation (' + vol.toFixed(1) + 'x) validates.' : ''} Target: ${targetMultiple}x ATR = $${targetPrice.toFixed(2)}.`;
+    // Enhanced reasoning
+    let reasoning = "";
+
+    if (strategy === "Z_SCORE_REVERSION") {
+      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toFixed(1) + "x avg) confirms reversal setup." : ""} Strike: $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targeting ~${Math.round(estimatedOptionReturn)}% option return.${cappedTarget ? " Target capped at reasonable limit." : ""}`;
+    } else if (strategy === "MOMENTUM_REGIME") {
+      reasoning = `${ticker} shows strong ${direction === "CALL" ? "bullish" : "bearish"} regime (momentum: ${momentum}) with ${relStrength > 50 ? "relative outperformance" : "relative underperformance"} vs SPY (RS: ${relStrength}). Trending environment (${(avgRange * 100).toFixed(1)}% 20d range) supports continuation. ${institutionalActivity ? "Institutional accumulation detected (" + vol.toFixed(1) + "x vol). " : ""}${timeframe}-day window targets ${targetMultiple.toFixed(1)}x ATR move. $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targets ~${Math.round(estimatedOptionReturn)}% option return.`;
+    } else if (strategy === "RELATIVE_STRENGTH") {
+      reasoning = `${ticker} displays ${relStrength > 50 ? "superior" : "inferior"} relative strength (${relStrength}) vs market while maintaining healthy RSI (${rsi}). This divergence suggests ${direction === "CALL" ? "institutional accumulation" : "distribution"} not yet reflected in momentum. ${vol > 1.2 ? "Volume confirmation (" + vol.toFixed(1) + "x) validates. " : ""}Target: ${targetMultiple.toFixed(1)}x ATR = $${targetPrice.toFixed(2)}. $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targets ~${Math.round(estimatedOptionReturn)}% option return.`;
     }
 
     return {
@@ -501,12 +560,14 @@ export class QuantEngine {
       relStrength,
       atr: atr.toFixed(2),
       atrPercent: parseFloat(atrPercent.toFixed(2)),
-      regime: isChopping ? 'CHOPPY' : isTrending ? 'TRENDING' : 'NEUTRAL',
+      regime: isChopping ? "CHOPPY" : isTrending ? "TRENDING" : "NEUTRAL",
       qualifier,
       reasoning,
       estimatedOptionReturn: Math.round(estimatedOptionReturn),
       estimatedDelta: parseFloat(estimatedDelta.toFixed(2)),
-      extremeZScore
+      extremeZScore,
+      riskTier,
+      daysToExpiration: timeframe,
     };
   }
 
@@ -514,13 +575,15 @@ export class QuantEngine {
    * Batch process multiple tickers
    */
   static batchCalculate(tickersData: EODHDData[], spyData: EODHDData): StockMetrics[] {
-    return tickersData.map(tickerData => {
-      try {
-        return this.calculateMetrics(tickerData, spyData);
-      } catch (error) {
-        console.error(`Error processing ${tickerData.ticker}:`, error);
-        return null;
-      }
-    }).filter((m): m is StockMetrics => m !== null);
+    return tickersData
+      .map((tickerData) => {
+        try {
+          return this.calculateMetrics(tickerData, spyData);
+        } catch (error) {
+          console.error(`Error processing ${tickerData.ticker}:`, error);
+          return null;
+        }
+      })
+      .filter((m): m is StockMetrics => m !== null);
   }
 }
