@@ -231,12 +231,22 @@ export class QuantEngine {
     }
   }
 
-  /**
-   * Generate trading signal from metrics
-   */
   static calculateSignal(data: StockMetrics): TradingSignal | null {
     const price = data.currentPrice;
     const ticker = data.ticker.replace(".US", "");
+
+    // DATA QUALITY FILTERS
+    // Reject penny stocks and data errors
+    if (price < 1.0) {
+      console.warn(`❌ Rejecting ${ticker}: Price too low ($${price.toFixed(2)})`);
+      return null;
+    }
+
+    // Reject if price seems like stale/corrupt data
+    if (price > 100000) {
+      console.warn(`❌ Rejecting ${ticker}: Price unrealistic ($${price.toFixed(2)})`);
+      return null;
+    }
 
     // Dual timeframe z-score analysis
     const prices20d = data.prices20d;
