@@ -31,7 +31,7 @@ const Breakout = () => {
     <div>
       <Navigation />
       <header className="relative overflow-hidden">
-        <div className="container py-8">
+        <div className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Breakout Alerts</h1>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl">
             Daily equity breakout opportunities with precise entry points, stop losses, and profit targets.
@@ -39,7 +39,7 @@ const Breakout = () => {
         </div>
       </header>
 
-      <main className="container grid gap-8 pb-16">
+      <main className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto grid gap-8 pb-16">
         <section aria-labelledby="alerts-section">
           <h2 id="alerts-section" className="sr-only">Daily Alerts</h2>
           <DailyAlerts />

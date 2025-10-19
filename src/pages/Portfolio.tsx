@@ -677,7 +677,7 @@ const Portfolio = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <header className="container py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
+      <header className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
@@ -690,7 +690,7 @@ const Portfolio = () => {
         </p>
       </header>
 
-      <main className="container pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
+      <main className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-12 sm:pb-16">
         <Tabs defaultValue="my-portfolio" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="my-portfolio">My Portfolio</TabsTrigger>

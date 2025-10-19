@@ -66,7 +66,7 @@ export default function OptionsScanner() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       <Navigation />
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Quantitative Options Scanner</h1>

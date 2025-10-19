@@ -48,7 +48,7 @@ const Home = () => {
     <div className="min-h-screen flex flex-col">
       <Navigation />
       
-      <main className="flex-1 container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      <main className="flex-1 container py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <PageHeader 
           icon={MessageSquare}
           title="Community Feed"
