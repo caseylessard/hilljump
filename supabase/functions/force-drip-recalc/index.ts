@@ -11,24 +11,52 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Authentication check
-  const apiSecret = Deno.env.get('INTERNAL_API_SECRET');
-  const providedSecret = req.headers.get('X-API-Secret');
-  
-  if (!apiSecret || providedSecret !== apiSecret) {
-    console.error('❌ Unauthorized access attempt to force-drip-recalc');
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-
   try {
-    console.log('🚀 Forcing DRIP recalculation for all ETFs');
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get JWT from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ Missing Authorization header');
+      return new Response(JSON.stringify({ error: 'Unauthorized - Missing token' }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Verify user is admin
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.error('❌ Invalid token');
+      return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .single();
+
+    if (roleError || !roleData) {
+      console.error('❌ Non-admin access attempt by user:', user.id);
+      return new Response(JSON.stringify({ error: 'Unauthorized - Admin access required' }), { 
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log('✅ Admin verified:', user.email);
+
+    console.log('🚀 Forcing DRIP recalculation for all ETFs');
 
     // Clear existing DRIP cache to force fresh calculations
     console.log('🗑️ Clearing existing DRIP cache...');

@@ -85,7 +85,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.force-drip-recalc]
-verify_jwt = false
+verify_jwt = true
 
 [functions.update-stale-prices]
 verify_jwt = false
