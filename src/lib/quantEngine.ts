@@ -157,7 +157,7 @@ export class QuantEngine {
     for (let i = 1; i <= period; i++) {
       const high = highs[i];
       const low = lows[i];
-      const prevClose = closes[i + 1]; // Previous day's close (the day BEFORE this bar)
+      const prevClose = closes[i + 1]; // ✓ Correct - the day BEFORE the bar
 
       const tr = Math.max(
         high - low, // Today's range
@@ -231,11 +231,17 @@ export class QuantEngine {
     }
   }
 
+  /**
+   * Generate trading signal from metrics
+   */
   static calculateSignal(data: StockMetrics): TradingSignal | null {
     const price = data.currentPrice;
     const ticker = data.ticker.replace(".US", "");
 
+    // ============================================
     // DATA QUALITY FILTERS
+    // ============================================
+
     // Reject penny stocks and data errors
     if (price < 1.0) {
       console.warn(`❌ Rejecting ${ticker}: Price too low ($${price.toFixed(2)})`);
@@ -475,46 +481,67 @@ export class QuantEngine {
     // Calculate expected stock move percentage
     const expectedMovePercent = Math.abs((targetPrice - price) / price) * 100;
 
-    // FIXED: Smart strike selection based on expected move
+    // ============================================
+    // CORRECTED STRIKE SELECTION
+    // ============================================
     let strike: number;
     let estimatedDelta: number;
 
     if (expectedMovePercent < 5) {
-      // Small move (<5%): Use ITM strikes for better delta
+      // VERY SMALL MOVE (<5%): Need high delta, use ITM
       estimatedDelta = 0.7;
 
       if (direction === "CALL") {
-        // CALL: Slightly ITM (strike below price)
-        const targetStrike = price * 0.97; // 3% ITM
+        // CALL: 3% ITM
+        const targetStrike = price * 0.97;
         strike = this.roundStrike(targetStrike, "down");
       } else {
-        // PUT: ITM (strike ABOVE price for bearish plays)
-        const targetStrike = price * 1.05; // 5% ITM
+        // PUT: 5% ITM (strike ABOVE price for bearish)
+        const targetStrike = price * 1.05;
         strike = this.roundStrike(targetStrike, "up");
       }
     } else if (expectedMovePercent < 15) {
-      // Medium move (5-15%): Use ATM strikes
-      estimatedDelta = 0.55;
+      // MEDIUM MOVE (5-15%): Use ATM or slightly ITM
+      estimatedDelta = 0.6;
 
       if (direction === "CALL") {
+        // CALL: ATM
         strike = this.roundStrike(price, "nearest");
       } else {
-        // PUT: ATM or slightly ITM
-        const targetStrike = price * 1.02; // 2% ITM for better delta
+        // PUT: 2-3% ITM for medium bearish moves
+        const targetStrike = price * 1.03;
         strike = this.roundStrike(targetStrike, "up");
       }
     } else {
-      // Large move (>15%): Use slightly OTM strikes for leverage
-      estimatedDelta = 0.45;
+      // LARGE MOVE (>15%): Different logic for calls vs puts
 
       if (direction === "CALL") {
-        // CALL: 5% OTM
-        const targetStrike = price * 1.05;
+        // CALL: Can use OTM for leverage on large bullish moves
+        estimatedDelta = 0.45;
+        const targetStrike = price * 1.05; // 5% OTM
         strike = this.roundStrike(targetStrike, "up");
       } else {
-        // PUT: ATM or very slightly OTM (still needs reasonable delta)
-        const targetStrike = price * 0.98; // 2% OTM
+        // PUT: CRITICAL - Need ATM or ITM even for large moves
+        // Large bearish moves need delta to capture the move
+        estimatedDelta = 0.55;
+        const targetStrike = price * 1.02; // 2% ITM
+        strike = this.roundStrike(targetStrike, "up");
+      }
+    }
+
+    // Special handling for Z-SCORE REVERSION trades
+    if (strategy === "Z_SCORE_REVERSION") {
+      // Mean reversion needs HIGH delta - always use ITM
+      estimatedDelta = 0.7;
+
+      if (direction === "CALL") {
+        // Reversion UP: 5% ITM
+        const targetStrike = price * 0.95;
         strike = this.roundStrike(targetStrike, "down");
+      } else {
+        // Reversion DOWN: 5% ITM
+        const targetStrike = price * 1.05;
+        strike = this.roundStrike(targetStrike, "up");
       }
     }
 
@@ -541,7 +568,7 @@ export class QuantEngine {
     let reasoning = "";
 
     if (strategy === "Z_SCORE_REVERSION") {
-      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toFixed(1) + "x avg) confirms reversal setup." : ""} Strike: $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targeting ~${Math.round(estimatedOptionReturn)}% option return.${cappedTarget ? " Target capped at reasonable limit." : ""}`;
+      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toFixed(1) + "x avg) confirms reversal setup. " : ""}Strike: $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targeting ~${Math.round(estimatedOptionReturn)}% option return.${cappedTarget ? " Target capped at reasonable limit." : ""}`;
     } else if (strategy === "MOMENTUM_REGIME") {
       reasoning = `${ticker} shows strong ${direction === "CALL" ? "bullish" : "bearish"} regime (momentum: ${momentum}) with ${relStrength > 50 ? "relative outperformance" : "relative underperformance"} vs SPY (RS: ${relStrength}). Trending environment (${(avgRange * 100).toFixed(1)}% 20d range) supports continuation. ${institutionalActivity ? "Institutional accumulation detected (" + vol.toFixed(1) + "x vol). " : ""}${timeframe}-day window targets ${targetMultiple.toFixed(1)}x ATR move. $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targets ~${Math.round(estimatedOptionReturn)}% option return.`;
     } else if (strategy === "RELATIVE_STRENGTH") {
