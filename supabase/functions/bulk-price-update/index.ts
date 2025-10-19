@@ -69,11 +69,50 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔄 Starting bulk price update...');
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get JWT from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ Missing Authorization header');
+      return new Response(JSON.stringify({ error: 'Unauthorized - Missing token' }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Verify user is admin
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.error('❌ Invalid token');
+      return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .single();
+
+    if (roleError || !roleData) {
+      console.error('❌ Non-admin access attempt by user:', user.id);
+      return new Response(JSON.stringify({ error: 'Unauthorized - Admin access required' }), { 
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log('✅ Admin verified:', user.email);
+    console.log('🔄 Starting bulk price update...');
 
     // Get all tickers with null current_price
     const { data: etfsWithoutPrices, error: fetchError } = await supabase

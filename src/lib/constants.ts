@@ -70,7 +70,28 @@ export const COMPANY_NAMES: Record<string, string> = {
   'SERV': 'Serve Robotics',
   'ORCL': 'Oracle',
   'RGTI': 'Rigetti',
-  'QBTS': 'D-Wave'
+  'QBTS': 'D-Wave',
+  'QS': 'QuantumScape',
+  'AA': 'Alcoa',
+  'TXN': 'Texas Instruments',
+  'LRCX': 'Lam Research',
+  'APH': 'Amphenol',
+  'GEV': 'GE Vernova',
+  'IBM': 'IBM',
+  'VRT': 'Vertiv',
+  'B': 'Barnes Group',
+  'SLV': 'iShares Silver Trust',
+  'RUN': 'Sunrun',
+  'MRK': 'Merck',
+  'PFE': 'Pfizer',
+  'UUUU': 'Energy Fuels',
+  'USAR': 'American Strategic Investment',
+  'CCJ': 'Cameco',
+  'CIEN': 'Ciena',
+  'RBLX': 'Roblox',
+  'AMKR': 'Amkor Technology',
+  'NFLX': 'Netflix',
+  'SE': 'Sea Limited'
 };
 
 export const UNIVERSE = [
@@ -81,7 +102,9 @@ export const UNIVERSE = [
   'MRVL', 'ASML', 'SHOP', 'ETSY', 'W', 'CHWY', 'ENPH', 'FSLR', 'PLUG', 'SOUN',
   'BBAI', 'AI', 'ARBE', 'ACHR', 'RDW', 'ASTS', 'BE', 'FCEL', 'MARA', 'RIOT',
   'MSTR', 'CRSP', 'BEAM', 'NTLA', 'CORZ', 'RACE', 'RR', 'CRWV', 'SERV', 'ORCL',
-  'RGTI', 'QBTS'
+  'RGTI', 'QBTS', 'QS', 'AA', 'TXN', 'LRCX', 'APH', 'GEV', 'IBM', 'VRT', 'B',
+  'SLV', 'RUN', 'MRK', 'PFE', 'UUUU', 'USAR', 'CCJ', 'CIEN', 'RBLX', 'AMKR',
+  'NFLX', 'SE'
 ];
 
 export const TEST_TICKERS = ['RACE', 'AMD', 'NVDA', 'GOOGL', 'BA'];
