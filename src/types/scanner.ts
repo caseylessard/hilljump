@@ -71,6 +71,7 @@ export interface TradingSignal {
   estimatedOptionReturn: number;
   estimatedDelta: number;
   extremeZScore: boolean;
+  atrPercent: number;
 }
 
 export interface ScannerConfig {

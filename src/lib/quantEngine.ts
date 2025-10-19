@@ -137,31 +137,45 @@ export class QuantEngine {
   }
 
   /**
-   * Calculate Average True Range (ATR)
+   * Calculate Average True Range (ATR) - 14 period standard
+   * Arrays are newest-first after reversal
    */
   private static calculateATR(highs: number[], lows: number[], closes: number[], period = 14): number {
     if (highs.length < period + 1) {
-      const currentPrice = closes[closes.length - 1];
-      return currentPrice * 0.02;
+      const currentPrice = closes[0];
+      return currentPrice * 0.02; // Default 2% if not enough data
     }
     
     const trueRanges: number[] = [];
     
-    for (let i = highs.length - period; i < highs.length; i++) {
+    // Start from index 1 (second newest) because we need previous close
+    // Calculate TR for the most recent 'period' bars
+    for (let i = 1; i <= period; i++) {
       const high = highs[i];
       const low = lows[i];
-      const prevClose = closes[i - 1];
+      const prevClose = closes[i - 1]; // Previous day's close (newer/more recent)
       
       const tr = Math.max(
-        high - low,
-        Math.abs(high - prevClose),
-        Math.abs(low - prevClose)
+        high - low,                    // Today's range
+        Math.abs(high - prevClose),    // Gap up from previous close
+        Math.abs(low - prevClose)      // Gap down from previous close
       );
       
       trueRanges.push(tr);
     }
     
-    return trueRanges.reduce((a, b) => a + b, 0) / period;
+    const atr = trueRanges.reduce((a, b) => a + b, 0) / period;
+    const currentPrice = closes[0];
+    const atrPercent = (atr / currentPrice) * 100;
+    
+    // SANITY CHECK: ATR should normally be 2-5% of price
+    // If ATR > 10% of price, something is wrong with the data
+    if (atrPercent > 10) {
+      console.warn(`⚠️ Suspicious ATR for price ${currentPrice}: ATR=$${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) - capping at 8%`);
+      return currentPrice * 0.08; // Cap at 8%
+    }
+    
+    return atr;
   }
 
    /**
@@ -307,6 +321,12 @@ export class QuantEngine {
     // Allow conviction to vary between 50-95%
     conviction = Math.min(95, Math.max(50, conviction));
 
+    // Flag signals with suspicious ATR values (>10% is unrealistic)
+    if (atrPercent > 10) {
+      console.warn(`❌ Rejecting signal for ${ticker}: ATR too high (${atrPercent.toFixed(1)}%)`);
+      return null;
+    }
+    
     // ATR-based targets & stops (FIXED: Using 2x ATR for stops as requested)
     const targetMultiple = strategy === 'Z_SCORE_REVERSION' ? 2.5 : 3.0;
     
@@ -315,22 +335,37 @@ export class QuantEngine {
     // For PUTS: Stop above entry, target below entry
     let stopPrice: number;
     let targetPrice: number;
+    let cappedTarget = false;
     
     if (direction === 'CALL') {
       stopPrice = price - (atr * 2);
       targetPrice = price + (atr * targetMultiple);
+      
+      // Cap CALL targets at +50% from entry
+      const maxTarget = price * 1.50;
+      if (targetPrice > maxTarget) {
+        targetPrice = maxTarget;
+        cappedTarget = true;
+      }
     } else {
       // PUT
       stopPrice = price + (atr * 2);
       targetPrice = price - (atr * targetMultiple);
       
+      // Cap PUT targets at -30% from entry (70% of entry price)
+      const minTarget = price * 0.70;
+      if (targetPrice < minTarget) {
+        targetPrice = minTarget;
+        cappedTarget = true;
+      }
+      
       // Ensure target price is never negative or too low
       if (targetPrice < price * 0.2) {
-        // If target would be below 20% of entry, adjust to 20% of entry
         targetPrice = price * 0.2;
+        cappedTarget = true;
       }
       if (targetPrice <= 0) {
-        // Skip signals with invalid targets
+        console.warn(`❌ Rejecting ${ticker} PUT: Invalid target price`);
         return null;
       }
     }
@@ -431,7 +466,7 @@ export class QuantEngine {
     let reasoning = '';
     
     if (strategy === 'Z_SCORE_REVERSION') {
-      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? 'below' : 'above'} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? '20-day z-score (' + zScore20.toFixed(1) + 'σ) shows acceleration, confirming setup strength.' : '20-day alignment validates signal.'} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? 'Institutional volume spike (' + vol.toFixed(1) + 'x avg) confirms reversal setup.' : 'Standard volume conditions.'} ATR: $${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) sets stop at 2x ATR = $${(atr * 2).toFixed(2)}.`;
+      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? 'below' : 'above'} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? '20-day z-score (' + zScore20.toFixed(1) + 'σ) shows acceleration, confirming setup strength.' : '20-day alignment validates signal.'} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? 'Institutional volume spike (' + vol.toFixed(1) + 'x avg) confirms reversal setup.' : 'Standard volume conditions.'} ATR: $${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) sets stop at 2x ATR = $${(atr * 2).toFixed(2)}.${cappedTarget ? ' Target capped at reasonable limit.' : ''}`;
     }
     else if (strategy === 'MOMENTUM_REGIME') {
       reasoning = `${ticker} shows strong ${direction === 'CALL' ? 'bullish' : 'bearish'} regime (momentum: ${momentum}) with ${relStrength > 50 ? 'relative outperformance' : 'relative underperformance'} vs SPY (RS: ${relStrength}). Trending environment (${(avgRange * 100).toFixed(1)}% 20d range) supports continuation. ${institutionalActivity ? 'Institutional accumulation detected.' : ''} ${timeframe}-day window targets ${targetMultiple}x ATR move.`;
@@ -461,6 +496,7 @@ export class QuantEngine {
       zScore20: zScore20.toFixed(2),
       relStrength,
       atr: atr.toFixed(2),
+      atrPercent: parseFloat(atrPercent.toFixed(2)),
       regime: isChopping ? 'CHOPPY' : isTrending ? 'TRENDING' : 'NEUTRAL',
       qualifier,
       reasoning,

@@ -133,7 +133,7 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
                   <DetailItem label="Z-Score (50d)" value={`${signal.zScore}σ`} />
                   <DetailItem label="Z-Score (20d)" value={`${signal.zScore20}σ`} />
                   <DetailItem label="Rel Strength" value={signal.relStrength.toString()} />
-                  <DetailItem label="ATR" value={`$${signal.atr}`} />
+                  <DetailItem label="ATR" value={`$${signal.atr} (${signal.atrPercent.toFixed(1)}%)`} />
                   <DetailItem label="Regime" value={signal.regime} />
                   <DetailItem label="Stop" value={`$${signal.stop.toFixed(2)}`} valueClass="text-red-500" />
                   <DetailItem label="RSI" value={signal.rsi.toString()} />
@@ -229,8 +229,13 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
               <div className="text-2xl font-semibold">{signal.relStrength}</div>
             </DesktopMetric>
 
-            <DesktopMetric label="ATR (Stop Basis)">
-              <div className="text-2xl font-semibold">${signal.atr}</div>
+            <DesktopMetric label="ATR (% of Price)">
+              <div className="text-2xl font-semibold">
+                ${signal.atr}
+                <span className="text-lg text-muted-foreground ml-2">
+                  ({signal.atrPercent.toFixed(1)}%)
+                </span>
+              </div>
             </DesktopMetric>
 
             <DesktopMetric label="Market Regime">
