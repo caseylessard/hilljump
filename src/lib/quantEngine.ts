@@ -307,56 +307,106 @@ export class QuantEngine {
     // Allow conviction to vary between 50-95%
     conviction = Math.min(95, Math.max(50, conviction));
 
-    // ATR-based targets & stops
-    const stopDistance = atr * 1.5;
+    // ATR-based targets & stops (FIXED: Using 2x ATR for stops as requested)
     const targetMultiple = strategy === 'Z_SCORE_REVERSION' ? 2.5 : 3.0;
     const targetDistance = atr * targetMultiple;
 
+    // CRITICAL FIX: Stops at entry ± 2x ATR
     const stopPrice = direction === 'CALL' ? 
-      price - stopDistance : 
-      price + stopDistance;
+      price - (atr * 2) : 
+      price + (atr * 2);
       
     const targetPrice = direction === 'CALL' ? 
       price + targetDistance : 
       price - targetDistance;
 
+    // Calculate ACTUAL risk/reward ratio (not forced to 2:1)
     const reward = Math.abs(targetPrice - price);
     const risk = Math.abs(price - stopPrice);
     const rr = reward / risk;
 
-    if (rr < 2.0) return null;
+    // Only require R/R > 1.5 (was 2.0)
+    if (rr < 1.5) return null;
 
     const exitDate = new Date();
     exitDate.setDate(exitDate.getDate() + timeframe);
 
-    // Smart strike selection: ATM or slightly OTM (target 0.60-0.70 delta)
-    // For calls: round up slightly (1-5% OTM), for puts: round down slightly
+    // Calculate expected stock move percentage
+    const expectedMovePercent = Math.abs((targetPrice - price) / price) * 100;
+
+    // Smart strike selection based on expected move
     let strike: number;
-    if (direction === 'CALL') {
-      const targetStrike = price * 1.025; // 2.5% OTM for calls
-      if (price < 50) {
-        strike = Math.ceil(targetStrike);
-      } else if (price < 200) {
-        strike = Math.ceil(targetStrike / 5) * 5;
+    let estimatedDelta: number;
+    
+    if (expectedMovePercent < 5) {
+      // Small move: Use ITM strikes (delta ~0.75)
+      estimatedDelta = 0.75;
+      if (direction === 'CALL') {
+        const targetStrike = price * 0.95; // 5% ITM
+        if (price < 50) {
+          strike = Math.floor(targetStrike);
+        } else if (price < 200) {
+          strike = Math.floor(targetStrike / 5) * 5;
+        } else {
+          strike = Math.floor(targetStrike / 10) * 10;
+        }
       } else {
-        strike = Math.ceil(targetStrike / 10) * 10;
+        const targetStrike = price * 1.05; // 5% ITM
+        if (price < 50) {
+          strike = Math.ceil(targetStrike);
+        } else if (price < 200) {
+          strike = Math.ceil(targetStrike / 5) * 5;
+        } else {
+          strike = Math.ceil(targetStrike / 10) * 10;
+        }
+      }
+    } else if (expectedMovePercent < 15) {
+      // Medium move: Use ATM strikes (delta ~0.55)
+      estimatedDelta = 0.55;
+      if (price < 50) {
+        strike = Math.round(price);
+      } else if (price < 200) {
+        strike = Math.round(price / 5) * 5;
+      } else {
+        strike = Math.round(price / 10) * 10;
       }
     } else {
-      const targetStrike = price * 0.975; // 2.5% OTM for puts
-      if (price < 50) {
-        strike = Math.floor(targetStrike);
-      } else if (price < 200) {
-        strike = Math.floor(targetStrike / 5) * 5;
+      // Large move: Use slightly OTM strikes (delta ~0.45)
+      estimatedDelta = 0.45;
+      if (direction === 'CALL') {
+        const targetStrike = price * 1.05; // 5% OTM
+        if (price < 50) {
+          strike = Math.ceil(targetStrike);
+        } else if (price < 200) {
+          strike = Math.ceil(targetStrike / 5) * 5;
+        } else {
+          strike = Math.ceil(targetStrike / 10) * 10;
+        }
       } else {
-        strike = Math.floor(targetStrike / 10) * 10;
+        const targetStrike = price * 0.95; // 5% OTM
+        if (price < 50) {
+          strike = Math.floor(targetStrike);
+        } else if (price < 200) {
+          strike = Math.floor(targetStrike / 5) * 5;
+        } else {
+          strike = Math.floor(targetStrike / 10) * 10;
+        }
       }
     }
+
+    // Calculate estimated option return
+    const stockMovePercent = ((targetPrice - price) / price) * 100;
+    const leverageFactor = 4; // Options typically provide 3-5x leverage
+    const estimatedOptionReturn = Math.abs(stockMovePercent) * estimatedDelta * leverageFactor;
+
+    // Flag extreme z-scores (beyond ±3σ)
+    const extremeZScore = Math.abs(zScore) > 3 || Math.abs(zScore20) > 3;
 
     // Reasoning
     let reasoning = '';
     
     if (strategy === 'Z_SCORE_REVERSION') {
-      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? 'below' : 'above'} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? '20-day z-score (' + zScore20.toFixed(1) + 'σ) shows acceleration, confirming setup strength.' : '20-day alignment validates signal.'} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? 'Institutional volume spike (' + vol.toFixed(1) + 'x avg) confirms reversal setup.' : 'Standard volume conditions.'} ATR: $${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) sets dynamic ${stopDistance.toFixed(2)} stop.`;
+      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? 'below' : 'above'} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? '20-day z-score (' + zScore20.toFixed(1) + 'σ) shows acceleration, confirming setup strength.' : '20-day alignment validates signal.'} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? 'Institutional volume spike (' + vol.toFixed(1) + 'x avg) confirms reversal setup.' : 'Standard volume conditions.'} ATR: $${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) sets stop at 2x ATR = $${(atr * 2).toFixed(2)}.`;
     }
     else if (strategy === 'MOMENTUM_REGIME') {
       reasoning = `${ticker} shows strong ${direction === 'CALL' ? 'bullish' : 'bearish'} regime (momentum: ${momentum}) with ${relStrength > 50 ? 'relative outperformance' : 'relative underperformance'} vs SPY (RS: ${relStrength}). Trending environment (${(avgRange * 100).toFixed(1)}% 20d range) supports continuation. ${institutionalActivity ? 'Institutional accumulation detected.' : ''} ${timeframe}-day window targets ${targetMultiple}x ATR move.`;
@@ -388,7 +438,10 @@ export class QuantEngine {
       atr: atr.toFixed(2),
       regime: isChopping ? 'CHOPPY' : isTrending ? 'TRENDING' : 'NEUTRAL',
       qualifier,
-      reasoning
+      reasoning,
+      estimatedOptionReturn: Math.round(estimatedOptionReturn),
+      estimatedDelta: parseFloat(estimatedDelta.toFixed(2)),
+      extremeZScore
     };
   }
 

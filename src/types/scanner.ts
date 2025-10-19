@@ -68,6 +68,9 @@ export interface TradingSignal {
   regime: 'CHOPPY' | 'TRENDING' | 'NEUTRAL';
   qualifier: string;
   reasoning: string;
+  estimatedOptionReturn: number;
+  estimatedDelta: number;
+  extremeZScore: boolean;
 }
 
 export interface ScannerConfig {
