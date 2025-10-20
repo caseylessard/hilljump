@@ -1,4 +1,4 @@
-import type { EODHDData, StockMetrics, TradingSignal } from "@/types/scanner";
+import type { EODHDData, StockMetrics, TradingSignal, EarningsHistory } from "@/types/scanner";
 import { COMPANY_NAMES } from "./constants";
 
 export class QuantEngine {
@@ -173,7 +173,6 @@ export class QuantEngine {
     const atrPercent = (atr / currentPrice) * 100;
 
     // SANITY CHECK: ATR should normally be 2-5% of price
-    // If ATR > 10% of price, something is wrong with the data
     if (atrPercent > 10) {
       console.warn(
         `⚠️ Suspicious ATR for price ${currentPrice}: ATR=$${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) - capping at 8%`,
@@ -228,6 +227,142 @@ export class QuantEngine {
         : direction === "down"
           ? Math.floor(price / 10) * 10
           : Math.round(price / 10) * 10;
+    }
+  }
+
+  /**
+   * ============================================
+   * PHASE 1 + 2: EARNINGS ENRICHMENT
+   * ============================================
+   * Fetch earnings data and enrich signal with:
+   * - Next earnings date
+   * - Historical beat rate
+   * - Adjusted conviction
+   * - Warnings and adjusted expiry
+   */
+  static async enrichWithEarnings(signal: TradingSignal, apiKey: string): Promise<TradingSignal> {
+    try {
+      const ticker = signal.ticker;
+
+      // Fetch fundamentals data from EODHD
+      const response = await fetch(`https://eodhd.com/api/fundamentals/${ticker}.US?api_token=${apiKey}`);
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch earnings data for ${ticker}`);
+        return signal;
+      }
+
+      const data = await response.json();
+
+      // Extract earnings date and time
+      const earningsCalendar = data?.Earnings?.History;
+      const nextEarnings = data?.Earnings?.Trend;
+
+      let earningsDate: string | undefined;
+      let earningsTime: string | undefined;
+
+      // Try to get next earnings date from trend data
+      if (nextEarnings && Object.keys(nextEarnings).length > 0) {
+        const dates = Object.keys(nextEarnings).sort();
+        const futureDate = dates.find((d) => new Date(d) > new Date());
+        if (futureDate) {
+          earningsDate = futureDate;
+          earningsTime = nextEarnings[futureDate]?.time || "time-not-supplied";
+        }
+      }
+
+      // Calculate days to earnings
+      const daysToEarnings = earningsDate
+        ? Math.ceil((new Date(earningsDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        : undefined;
+
+      // PHASE 2: Calculate beat rates from historical data
+      let epsBeatRate: number | undefined;
+      let revenueBeatRate: number | undefined;
+
+      if (earningsCalendar && Array.isArray(earningsCalendar)) {
+        // Take last 8 quarters
+        const recentEarnings = earningsCalendar.slice(0, 8);
+
+        let epsBeats = 0;
+        let revenueBeats = 0;
+        let epsCount = 0;
+        let revenueCount = 0;
+
+        recentEarnings.forEach((quarter: any) => {
+          if (quarter.epsEstimate !== null && quarter.epsActual !== null) {
+            epsCount++;
+            if (quarter.epsActual >= quarter.epsEstimate) epsBeats++;
+          }
+          if (quarter.revenueEstimate !== null && quarter.revenueActual !== null) {
+            revenueCount++;
+            if (quarter.revenueActual >= quarter.revenueEstimate) revenueBeats++;
+          }
+        });
+
+        epsBeatRate = epsCount > 0 ? (epsBeats / epsCount) * 100 : undefined;
+        revenueBeatRate = revenueCount > 0 ? (revenueBeats / revenueCount) * 100 : undefined;
+      }
+
+      // PHASE 1: Apply earnings-based adjustments
+      const warnings: string[] = [];
+      let adjustedConviction = signal.conviction;
+      let suggestedExpiry = signal.exitDate;
+
+      if (daysToEarnings !== undefined) {
+        if (daysToEarnings < 0) {
+          // Earnings already passed
+          // No adjustment needed
+        } else if (daysToEarnings < 7) {
+          // CRITICAL: Very close to earnings
+          warnings.push(`⚠️ Earnings in ${daysToEarnings}d - High IV crush risk`);
+          adjustedConviction = Math.max(50, adjustedConviction - 15);
+        } else if (daysToEarnings <= 21) {
+          // Earnings window - potential catalyst
+          const earningsTiming =
+            earningsTime === "bmo" ? "before market" : earningsTime === "amc" ? "after market" : "";
+          warnings.push(`📊 Earnings in ${daysToEarnings}d ${earningsTiming ? `(${earningsTiming})` : ""}`);
+
+          // PHASE 2: Boost conviction if beat rate is high
+          if (epsBeatRate && epsBeatRate >= 75) {
+            warnings.push(`📈 Strong beat history (${Math.round(epsBeatRate)}% EPS beats)`);
+            adjustedConviction = Math.min(95, adjustedConviction + 5);
+          }
+
+          // Suggest expiry 7-10 days after earnings to capture move
+          suggestedExpiry = new Date(earningsDate!);
+          suggestedExpiry.setDate(suggestedExpiry.getDate() + 7);
+
+          warnings.push(
+            `💡 Consider ${suggestedExpiry.toLocaleDateString("en-US", { month: "short", day: "numeric" })} expiry`,
+          );
+        }
+      }
+
+      // PHASE 2: Boost conviction for consistent beaters (regardless of earnings timing)
+      if (epsBeatRate && epsBeatRate >= 87.5) {
+        // 7/8 or 8/8 beats = very consistent
+        adjustedConviction = Math.min(95, adjustedConviction + 8);
+      } else if (epsBeatRate && epsBeatRate >= 75) {
+        // 6/8 beats = solid
+        adjustedConviction = Math.min(95, adjustedConviction + 5);
+      }
+
+      return {
+        ...signal,
+        conviction: Math.round(adjustedConviction),
+        earningsDate,
+        daysToEarnings,
+        earningsTime,
+        epsBeatRate: epsBeatRate ? Math.round(epsBeatRate) : undefined,
+        revenueBeatRate: revenueBeatRate ? Math.round(revenueBeatRate) : undefined,
+        earningsWarnings: warnings.length > 0 ? warnings : undefined,
+        suggestedExpiry:
+          daysToEarnings !== undefined && daysToEarnings > 0 && daysToEarnings <= 21 ? suggestedExpiry : undefined,
+      };
+    } catch (error) {
+      console.error(`Error enriching ${signal.ticker} with earnings:`, error);
+      return signal;
     }
   }
 
@@ -314,7 +449,7 @@ export class QuantEngine {
       strategy = "Z_SCORE_REVERSION";
       direction = zScore < -2.0 ? "CALL" : "PUT";
 
-      conviction = 60 + (Math.abs(zScore) - 2.0) * 12; // More variation
+      conviction = 60 + (Math.abs(zScore) - 2.0) * 12;
 
       if (zScoreAccelerating) conviction += 10;
       if (!isChopping) conviction += 6;
@@ -322,7 +457,6 @@ export class QuantEngine {
       if (direction === "CALL" && rsi < 35) conviction += 8;
       if (direction === "PUT" && rsi > 65) conviction += 8;
 
-      // Extra boost for extreme z-scores
       if (Math.abs(zScore) > 2.5) conviction += 5;
 
       timeframe = Math.abs(zScore) > 2.5 ? 30 : 45;
@@ -336,9 +470,8 @@ export class QuantEngine {
       if (direction === "CALL" && !outperformingSPY) return null;
       if (direction === "PUT" && !underperformingSPY) return null;
 
-      conviction = 55 + Math.abs(momentum - 50) / 1.8; // More variation
+      conviction = 55 + Math.abs(momentum - 50) / 1.8;
 
-      // RS boost - more nuanced
       if (direction === "CALL") {
         if (relStrength > 70) conviction += 12;
         else if (relStrength > 55) conviction += 8;
@@ -352,7 +485,6 @@ export class QuantEngine {
       if (direction === "CALL" && change > 3) conviction += 7;
       if (direction === "PUT" && change < -3) conviction += 7;
 
-      // Regime strength bonus
       if (avgRange > 0.25) conviction += 5;
 
       timeframe = 60;
@@ -365,7 +497,6 @@ export class QuantEngine {
 
       conviction = 56;
 
-      // More nuanced RS scoring
       const rsDivergence = Math.abs(relStrength - 50);
       if (rsDivergence > 15) conviction += 12;
       else if (rsDivergence > 8) conviction += 8;
@@ -377,7 +508,6 @@ export class QuantEngine {
       if (vol > 1.5) conviction += 8;
       else if (vol > 1.2) conviction += 5;
 
-      // Momentum alignment bonus
       if (direction === "CALL" && momentum > 60) conviction += 5;
       if (direction === "PUT" && momentum < 40) conviction += 5;
 
@@ -387,17 +517,13 @@ export class QuantEngine {
       return null;
     }
 
-    // Allow conviction to vary between 50-95%
     conviction = Math.min(95, Math.max(50, conviction));
 
-    // Flag signals with suspicious ATR values (>10% is unrealistic)
     if (atrPercent > 10) {
       console.warn(`❌ Rejecting signal for ${ticker}: ATR too high (${atrPercent.toFixed(1)}%)`);
       return null;
     }
 
-    // DYNAMIC ATR multipliers based on volatility and regime
-    // Higher volatility = tighter stops, wider targets
     let stopMultiple = 2.0;
     let targetMultiple = 3.0;
 
@@ -405,21 +531,17 @@ export class QuantEngine {
       targetMultiple = 2.5;
       stopMultiple = 1.8;
     } else if (atrPercent > 6) {
-      // High volatility: tighter stops
       stopMultiple = 1.5;
       targetMultiple = 2.8;
     } else if (atrPercent < 3) {
-      // Low volatility: wider stops
       stopMultiple = 2.2;
       targetMultiple = 3.5;
     }
 
-    // Adjust based on conviction
     if (conviction > 85) {
       targetMultiple += 0.5;
     }
 
-    // Calculate stops and targets
     let stopPrice: number;
     let targetPrice: number;
     let cappedTarget = false;
@@ -428,25 +550,21 @@ export class QuantEngine {
       stopPrice = price - atr * stopMultiple;
       targetPrice = price + atr * targetMultiple;
 
-      // Cap CALL targets at +50% from entry
       const maxTarget = price * 1.5;
       if (targetPrice > maxTarget) {
         targetPrice = maxTarget;
         cappedTarget = true;
       }
     } else {
-      // PUT
       stopPrice = price + atr * stopMultiple;
       targetPrice = price - atr * targetMultiple;
 
-      // Cap PUT targets at -30% from entry (70% of entry price)
       const minTarget = price * 0.7;
       if (targetPrice < minTarget) {
         targetPrice = minTarget;
         cappedTarget = true;
       }
 
-      // Ensure target price is never negative or too low
       if (targetPrice < price * 0.2) {
         targetPrice = price * 0.2;
         cappedTarget = true;
@@ -457,101 +575,76 @@ export class QuantEngine {
       }
     }
 
-    // Calculate ACTUAL risk/reward ratio based on direction
     let reward: number;
     let risk: number;
 
     if (direction === "CALL") {
-      reward = targetPrice - price; // How much we can gain
-      risk = price - stopPrice; // How much we can lose
+      reward = targetPrice - price;
+      risk = price - stopPrice;
     } else {
-      // PUT
-      reward = price - targetPrice; // How much we can gain (entry - target)
-      risk = stopPrice - price; // How much we can lose (stop - entry)
+      reward = price - targetPrice;
+      risk = stopPrice - price;
     }
 
     const rr = reward / risk;
 
-    // Only require R/R > 1.3 to allow more variation
     if (rr < 1.3 || risk <= 0 || reward <= 0) return null;
 
     const exitDate = new Date();
     exitDate.setDate(exitDate.getDate() + timeframe);
 
-    // Calculate expected stock move percentage
     const expectedMovePercent = Math.abs((targetPrice - price) / price) * 100;
 
-    // ============================================
-    // CORRECTED STRIKE SELECTION
-    // ============================================
     let strike: number;
     let estimatedDelta: number;
 
     if (expectedMovePercent < 5) {
-      // VERY SMALL MOVE (<5%): Need high delta, use ITM
       estimatedDelta = 0.7;
 
       if (direction === "CALL") {
-        // CALL: 3% ITM
         const targetStrike = price * 0.97;
         strike = this.roundStrike(targetStrike, "down");
       } else {
-        // PUT: 5% ITM (strike ABOVE price for bearish)
         const targetStrike = price * 1.05;
         strike = this.roundStrike(targetStrike, "up");
       }
     } else if (expectedMovePercent < 15) {
-      // MEDIUM MOVE (5-15%): Use ATM or slightly ITM
       estimatedDelta = 0.6;
 
       if (direction === "CALL") {
-        // CALL: ATM
         strike = this.roundStrike(price, "nearest");
       } else {
-        // PUT: 2-3% ITM for medium bearish moves
         const targetStrike = price * 1.03;
         strike = this.roundStrike(targetStrike, "up");
       }
     } else {
-      // LARGE MOVE (>15%): Different logic for calls vs puts
-
       if (direction === "CALL") {
-        // CALL: Can use OTM for leverage on large bullish moves
         estimatedDelta = 0.45;
-        const targetStrike = price * 1.05; // 5% OTM
+        const targetStrike = price * 1.05;
         strike = this.roundStrike(targetStrike, "up");
       } else {
-        // PUT: CRITICAL - Need ATM or ITM even for large moves
-        // Large bearish moves need delta to capture the move
         estimatedDelta = 0.55;
-        const targetStrike = price * 1.02; // 2% ITM
+        const targetStrike = price * 1.02;
         strike = this.roundStrike(targetStrike, "up");
       }
     }
 
-    // Special handling for Z-SCORE REVERSION trades
     if (strategy === "Z_SCORE_REVERSION") {
-      // Mean reversion needs HIGH delta - always use ITM
       estimatedDelta = 0.7;
 
       if (direction === "CALL") {
-        // Reversion UP: 5% ITM
         const targetStrike = price * 0.95;
         strike = this.roundStrike(targetStrike, "down");
       } else {
-        // Reversion DOWN: 5% ITM
         const targetStrike = price * 1.05;
         strike = this.roundStrike(targetStrike, "up");
       }
     }
 
-    // Calculate estimated option return
-    // Formula: stock % move × delta × leverage factor
     const stockMovePercent = ((targetPrice - price) / price) * 100;
-    const leverageFactor = 4.5; // Options typically provide 4-5x leverage
+    const leverageFactor = 4.5;
     const estimatedOptionReturn = Math.abs(stockMovePercent) * estimatedDelta * leverageFactor;
 
-    // Determine risk tier
     let riskTier: "Conservative" | "Moderate" | "Aggressive";
     if (expectedMovePercent < 8) {
       riskTier = "Conservative";
@@ -561,10 +654,8 @@ export class QuantEngine {
       riskTier = "Aggressive";
     }
 
-    // Flag extreme z-scores (beyond ±3σ)
     const extremeZScore = Math.abs(zScore) > 3 || Math.abs(zScore20) > 3;
 
-    // Enhanced reasoning
     let reasoning = "";
 
     if (strategy === "Z_SCORE_REVERSION") {
