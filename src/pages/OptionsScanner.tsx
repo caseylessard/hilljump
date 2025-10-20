@@ -1,52 +1,50 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useScanner } from '@/hooks/useScanner';
-import { ScannerControls } from '@/components/scanner/ScannerControls';
-import { ScannerStats } from '@/components/scanner/ScannerStats';
-import { ProgressBar } from '@/components/scanner/ProgressBar';
-import { SignalCard } from '@/components/scanner/SignalCard';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { DEFAULT_CONFIG } from '@/lib/constants';
-import Navigation from '@/components/Navigation';
-import type { ScannerConfig } from '@/types/scanner';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useScanner } from "@/hooks/useScanner";
+import { ScannerControls } from "@/components/scanner/ScannerControls";
+import { ScannerStats } from "@/components/scanner/ScannerStats";
+import { ProgressBar } from "@/components/scanner/ProgressBar";
+import { SignalCard } from "@/components/scanner/SignalCard";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DEFAULT_CONFIG } from "@/lib/constants";
+import Navigation from "@/components/Navigation";
+import type { ScannerConfig } from "@/types/scanner";
 
 export default function OptionsScanner() {
   const [config, setConfig] = useState<ScannerConfig>(DEFAULT_CONFIG);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const navigate = useNavigate();
-  
-  const {
-    isScanning,
-    progress,
-    result,
-    runScan,
-    clearCache,
-  } = useScanner();
+
+  const { isScanning, progress, result, runScan, clearCache } = useScanner();
 
   // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session?.user) {
-        navigate('/auth');
+        navigate("/auth");
         return;
       }
-      
+
       setIsAuthenticated(true);
     };
-    
+
     checkAuth();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session?.user) {
-        navigate('/auth');
+        navigate("/auth");
       } else {
         setIsAuthenticated(true);
       }
     });
-    
+
     return () => subscription.unsubscribe();
   }, [navigate]);
 
@@ -70,9 +68,7 @@ export default function OptionsScanner() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Quantitative Options Scanner</h1>
-          <p className="text-muted-foreground">
-            Advanced momentum and relative strength analysis for options trading
-          </p>
+          <p className="text-muted-foreground">Advanced momentum and relative strength analysis for options trading</p>
         </div>
 
         {/* Controls */}
@@ -87,19 +83,15 @@ export default function OptionsScanner() {
         {/* API Info Alert */}
         <Alert className="mb-6 bg-primary/5 border-primary/20">
           <AlertDescription className="text-sm">
-            <strong>📡 Data Source:</strong> Using EODHD for 365-day historical data. 
-            Metrics include 50-day z-scores, ATR-based risk management, and relative strength vs SPY.
-            All API calls are securely processed through backend functions.
+            <strong>📡 Data Source:</strong> Using EODHD for 365-day historical data. Metrics include 50-day z-scores,
+            ATR-based risk management, and relative strength vs SPY. All API calls are securely processed through
+            backend functions.
           </AlertDescription>
         </Alert>
 
         {/* Progress Bar */}
         {isScanning && progress && (
-          <ProgressBar
-            current={progress.current}
-            total={progress.total}
-            ticker={progress.ticker}
-          />
+          <ProgressBar current={progress.current} total={progress.total} ticker={progress.ticker} />
         )}
 
         {/* Stats */}
@@ -115,9 +107,7 @@ export default function OptionsScanner() {
         {/* Signals */}
         {result && result.signals.length > 0 && !isScanning && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-primary uppercase tracking-wide">
-              Top Signals
-            </h2>
+            <h2 className="text-2xl font-semibold text-primary uppercase tracking-wide">Top Signals</h2>
             <div className="space-y-4">
               {result.signals.map((signal, index) => (
                 <SignalCard key={`${signal.ticker}-${index}`} signal={signal} rank={index + 1} />
@@ -143,5 +133,9 @@ export default function OptionsScanner() {
         )}
       </div>
     </div>
+  );
+  // After generating signals
+  const enrichedSignals = await Promise.all(
+    signals.map((signal) => QuantEngine.enrichWithEarnings(signal, EODHD_API_KEY)),
   );
 }
