@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { QuantEngine } from '@/lib/quantEngine';
@@ -17,6 +17,14 @@ export function useScanner() {
   const [isScanning, setIsScanning] = useState(false);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
+
+  // Load saved scan result on mount
+  useEffect(() => {
+    const savedResult = ScannerCache.getScanResult();
+    if (savedResult) {
+      setResult(savedResult);
+    }
+  }, []);
 
   /**
    * Fetch EODHD data for a ticker via edge function
@@ -139,6 +147,9 @@ export function useScanner() {
       };
 
       setResult(scanResult);
+      
+      // Save to localStorage for persistence
+      ScannerCache.saveScanResult(scanResult);
 
       toast({
         title: "Scan complete!",
@@ -176,9 +187,11 @@ export function useScanner() {
    */
   const clearCache = useCallback(() => {
     const count = ScannerCache.clear();
+    ScannerCache.clearScanResult();
+    setResult(null);
     toast({
       title: "Cache cleared",
-      description: `Removed ${count} cached stocks`,
+      description: `Removed ${count} cached stocks and scan results`,
     });
   }, [toast]);
 

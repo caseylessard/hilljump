@@ -1,5 +1,7 @@
-import type { TradingSignal, CachedSignal } from '@/types/scanner';
+import type { TradingSignal, CachedSignal, ScanResult } from '@/types/scanner';
 import { CACHE_KEY_PREFIX } from './constants';
+
+const SCAN_RESULT_KEY = 'scanner_last_result';
 
 export class ScannerCache {
   /**
@@ -96,5 +98,50 @@ export class ScannerCache {
       expired,
       valid
     };
+  }
+
+  /**
+   * Save scan result to localStorage
+   */
+  static saveScanResult(result: ScanResult): void {
+    try {
+      localStorage.setItem(SCAN_RESULT_KEY, JSON.stringify(result));
+    } catch (error) {
+      console.error('Failed to save scan result:', error);
+    }
+  }
+
+  /**
+   * Get last scan result from localStorage
+   */
+  static getScanResult(): ScanResult | null {
+    try {
+      const data = localStorage.getItem(SCAN_RESULT_KEY);
+      if (!data) return null;
+
+      const result: ScanResult = JSON.parse(data);
+      
+      // Rehydrate Date objects in signals
+      result.signals = result.signals.map(signal => ({
+        ...signal,
+        exitDate: new Date(signal.exitDate)
+      }));
+
+      return result;
+    } catch (error) {
+      console.error('Failed to load scan result:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear saved scan result
+   */
+  static clearScanResult(): void {
+    try {
+      localStorage.removeItem(SCAN_RESULT_KEY);
+    } catch (error) {
+      console.error('Failed to clear scan result:', error);
+    }
   }
 }
