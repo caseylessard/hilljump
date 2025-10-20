@@ -1,16 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { QuantEngine } from '@/lib/quantEngine';
-import { ScannerCache } from '@/lib/scannerCache';
-import { UNIVERSE, TEST_TICKERS } from '@/lib/constants';
-import type { 
-  ScannerConfig, 
-  ScanProgress, 
-  ScanResult, 
-  TradingSignal,
-  EODHDData 
-} from '@/types/scanner';
+import { useState, useCallback, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { QuantEngine } from "@/lib/quantEngine";
+import { ScannerCache } from "@/lib/scannerCache";
+import { UNIVERSE, TEST_TICKERS } from "@/lib/constants";
+import type { ScannerConfig, ScanProgress, ScanResult, TradingSignal, EODHDData } from "@/types/scanner";
 
 export function useScanner() {
   const { toast } = useToast();
@@ -31,15 +25,15 @@ export function useScanner() {
    */
   const fetchEODHD = useCallback(async (ticker: string): Promise<EODHDData | null> => {
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-eodhd-data', {
-        body: { ticker }
+      const { data, error } = await supabase.functions.invoke("fetch-eodhd-data", {
+        body: { ticker },
       });
-      
+
       if (error) {
         console.error(`EODHD error for ${ticker}:`, error);
         return null;
       }
-      
+
       return data as EODHDData;
     } catch (error) {
       console.error(`Fetch error for ${ticker}:`, error);
@@ -50,137 +44,175 @@ export function useScanner() {
   /**
    * Analyze a single stock
    */
-  const analyzeStock = useCallback(async (
-    ticker: string,
-    spyData: EODHDData,
-    config: ScannerConfig
-  ): Promise<TradingSignal | null> => {
-    // Check cache first
-    if (config.cacheDuration > 0) {
-      const cached = ScannerCache.get(ticker);
-      if (cached) return cached;
-    }
+  const analyzeStock = useCallback(
+    async (ticker: string, spyData: EODHDData, config: ScannerConfig): Promise<TradingSignal | null> => {
+      // Check cache first
+      if (config.cacheDuration > 0) {
+        const cached = ScannerCache.get(ticker);
+        if (cached) return cached;
+      }
 
-    // Fetch fresh data
-    const tickerData = await fetchEODHD(ticker);
-    if (!tickerData) return null;
+      // Fetch fresh data
+      const tickerData = await fetchEODHD(ticker);
+      if (!tickerData) return null;
 
-    // Calculate metrics
-    const metrics = QuantEngine.calculateMetrics(tickerData, spyData);
-    
-    // Generate signal
-    const signal = QuantEngine.calculateSignal(metrics);
-    
-    // Cache if valid
-    if (signal && config.cacheDuration > 0) {
-      ScannerCache.set(ticker, signal, config.cacheDuration);
-    }
-    
-    return signal;
-  }, [fetchEODHD]);
+      // Calculate metrics
+      const metrics = QuantEngine.calculateMetrics(tickerData, spyData);
+
+      // Generate signal
+      const signal = QuantEngine.calculateSignal(metrics);
+
+      // Cache if valid
+      if (signal && config.cacheDuration > 0) {
+        ScannerCache.set(ticker, signal, config.cacheDuration);
+      }
+
+      return signal;
+    },
+    [fetchEODHD],
+  );
 
   /**
    * Run a full scan
    */
-  const runScan = useCallback(async (
-    config: ScannerConfig,
-    testMode: boolean = false
-  ) => {
-    setIsScanning(true);
-    setResult(null);
-    
-    const tickersToScan = testMode ? TEST_TICKERS : UNIVERSE;
-    const signals: TradingSignal[] = [];
+  const runScan = useCallback(
+    async (config: ScannerConfig, testMode: boolean = false) => {
+      setIsScanning(true);
+      setResult(null);
 
-    try {
-      // Fetch SPY data once
-      toast({
-        title: "Fetching market benchmark...",
-        description: "Loading SPY data for relative strength calculations",
-      });
+      const tickersToScan = testMode ? TEST_TICKERS : UNIVERSE;
+      const signals: TradingSignal[] = [];
 
-      const spyData = await fetchEODHD('SPY');
-      
-      if (!spyData) {
-        throw new Error('Failed to fetch SPY data');
-      }
-
-      // Scan each ticker
-      for (let i = 0; i < tickersToScan.length; i++) {
-        const ticker = tickersToScan[i];
-        
-        setProgress({
-          current: i + 1,
-          total: tickersToScan.length,
-          ticker
+      try {
+        // Fetch SPY data once
+        toast({
+          title: "Fetching market benchmark...",
+          description: "Loading SPY data for relative strength calculations",
         });
 
-        try {
-          const signal = await analyzeStock(ticker, spyData, config);
-          
-          if (signal && signal.conviction >= config.minConviction) {
-            signals.push(signal);
-          }
-        } catch (error) {
-          console.error(`Error analyzing ${ticker}:`, error);
+        const spyData = await fetchEODHD("SPY");
+
+        if (!spyData) {
+          throw new Error("Failed to fetch SPY data");
         }
 
-        // Small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
+        // Scan each ticker
+        for (let i = 0; i < tickersToScan.length; i++) {
+          const ticker = tickersToScan[i];
 
-      // Sort by conviction and take top N
-      signals.sort((a, b) => b.conviction - a.conviction);
-      const topSignals = signals.slice(0, config.maxSignals);
+          setProgress({
+            current: i + 1,
+            total: tickersToScan.length,
+            ticker,
+          });
 
-      // Calculate stats
-      const scanResult: ScanResult = {
-        signals: topSignals,
-        totalAnalyzed: tickersToScan.length,
-        qualifiedSignals: signals.length,
-        avgConviction: signals.length > 0 
-          ? Math.round(signals.reduce((sum, s) => sum + s.conviction, 0) / signals.length)
-          : 0,
-        avgRR: signals.length > 0
-          ? Number((signals.reduce((sum, s) => sum + s.rr, 0) / signals.length).toFixed(1))
-          : 0,
-      };
+          try {
+            const signal = await analyzeStock(ticker, spyData, config);
 
-      setResult(scanResult);
-      
-      // Save to localStorage for persistence
-      ScannerCache.saveScanResult(scanResult);
-
-      toast({
-        title: "Scan complete!",
-        description: `Found ${topSignals.length} high-conviction signals`,
-      });
-
-      // Post results to community feed (fire and forget)
-      if (!testMode) {
-        supabase.functions.invoke('post-scan-results', {
-          body: { scanResults: scanResult }
-        }).then(({ error }) => {
-          if (error) {
-            console.error('Failed to post scan results:', error);
-          } else {
-            console.log('✅ Posted scan results to community feed');
+            if (signal && signal.conviction >= config.minConviction) {
+              signals.push(signal);
+            }
+          } catch (error) {
+            console.error(`Error analyzing ${ticker}:`, error);
           }
-        });
-      }
 
-    } catch (error) {
-      console.error('Scan error:', error);
-      toast({
-        title: "Scan failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsScanning(false);
-      setProgress(null);
-    }
-  }, [analyzeStock, fetchEODHD, toast]);
+          // Small delay to avoid rate limits
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+
+        // Sort by conviction and take top N
+        signals.sort((a, b) => b.conviction - a.conviction);
+        const topSignals = signals.slice(0, config.maxSignals);
+
+        // ============================================
+        // ⭐ PHASE 1 + 2: ENRICH WITH EARNINGS DATA
+        // ============================================
+        toast({
+          title: "Enriching with earnings data...",
+          description: "Adding earnings dates and beat history",
+        });
+
+        // Get API key from environment variable
+        const apiKey = import.meta.env.VITE_EODHD_API_KEY;
+
+        if (!apiKey) {
+          console.warn("⚠️ EODHD API key not found - skipping earnings enrichment");
+        }
+
+        let enrichedSignals = topSignals;
+
+        if (apiKey) {
+          try {
+            enrichedSignals = await Promise.all(
+              topSignals.map((signal) => QuantEngine.enrichWithEarnings(signal, apiKey)),
+            );
+
+            console.log("✅ Successfully enriched signals with earnings data");
+          } catch (error) {
+            console.error("❌ Error enriching signals:", error);
+            // Fall back to non-enriched signals if enrichment fails
+            enrichedSignals = topSignals;
+          }
+        }
+
+        // Re-sort after enrichment (conviction may have changed)
+        enrichedSignals.sort((a, b) => b.conviction - a.conviction);
+
+        // ============================================
+        // Calculate stats (using enriched signals)
+        // ============================================
+        const scanResult: ScanResult = {
+          signals: enrichedSignals, // ← Use enriched signals
+          totalAnalyzed: tickersToScan.length,
+          qualifiedSignals: signals.length,
+          avgConviction:
+            enrichedSignals.length > 0
+              ? Math.round(enrichedSignals.reduce((sum, s) => sum + s.conviction, 0) / enrichedSignals.length)
+              : 0,
+          avgRR:
+            enrichedSignals.length > 0
+              ? Number((enrichedSignals.reduce((sum, s) => sum + s.rr, 0) / enrichedSignals.length).toFixed(1))
+              : 0,
+        };
+
+        setResult(scanResult);
+
+        // Save to localStorage for persistence
+        ScannerCache.saveScanResult(scanResult);
+
+        toast({
+          title: "Scan complete!",
+          description: `Found ${enrichedSignals.length} high-conviction signals`,
+        });
+
+        // Post results to community feed (fire and forget)
+        if (!testMode) {
+          supabase.functions
+            .invoke("post-scan-results", {
+              body: { scanResults: scanResult },
+            })
+            .then(({ error }) => {
+              if (error) {
+                console.error("Failed to post scan results:", error);
+              } else {
+                console.log("✅ Posted scan results to community feed");
+              }
+            });
+        }
+      } catch (error) {
+        console.error("Scan error:", error);
+        toast({
+          title: "Scan failed",
+          description: error instanceof Error ? error.message : "Unknown error occurred",
+          variant: "destructive",
+        });
+      } finally {
+        setIsScanning(false);
+        setProgress(null);
+      }
+    },
+    [analyzeStock, fetchEODHD, toast],
+  );
 
   /**
    * Clear cache
