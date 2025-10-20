@@ -16,38 +16,38 @@ export interface EODHDData {
 export interface StockMetrics {
   ticker: string;
   currentPrice: number;
-  
+
   // Price arrays for z-score
   prices20d: number[];
   prices50d: number[];
   prices100d?: number[];
-  
+
   // Technical indicators
   rsi: number;
   momentumScore: number;
   priceChangePercent: number;
-  
+
   // Volume analysis
   volumeRatio: number;
-  volumeTrend: 'increasing' | 'decreasing' | 'neutral';
-  
+  volumeTrend: "increasing" | "decreasing" | "neutral";
+
   // Volatility
   atr: number;
-  
+
   // 52-week stats
   high52Week: number;
   low52Week: number;
-  
+
   // Relative strength
   relativeStrength: number;
 }
 
-export type SignalStrategy = 'Z_SCORE_REVERSION' | 'MOMENTUM_REGIME' | 'RELATIVE_STRENGTH';
+export type SignalStrategy = "Z_SCORE_REVERSION" | "MOMENTUM_REGIME" | "RELATIVE_STRENGTH";
 
 export interface TradingSignal {
   ticker: string;
   company: string;
-  direction: 'CALL' | 'PUT';
+  direction: "CALL" | "PUT";
   strategy: SignalStrategy;
   conviction: number;
   entry: number;
@@ -65,14 +65,14 @@ export interface TradingSignal {
   zScore20: string;
   relStrength: number;
   atr: string;
-  regime: 'CHOPPY' | 'TRENDING' | 'NEUTRAL';
+  regime: "CHOPPY" | "TRENDING" | "NEUTRAL";
   qualifier: string;
   reasoning: string;
   estimatedOptionReturn: number;
   estimatedDelta: number;
   extremeZScore: boolean;
   atrPercent: number;
-  riskTier: 'Conservative' | 'Moderate' | 'Aggressive';
+  riskTier: "Conservative" | "Moderate" | "Aggressive";
   daysToExpiration: number;
 }
 
@@ -99,4 +99,27 @@ export interface ScanResult {
 export interface CachedSignal {
   signal: TradingSignal;
   expiry: number;
+}
+
+export interface TradingSignal {
+  // ... existing fields ...
+
+  // NEW: Earnings data
+  earningsDate?: string;
+  daysToEarnings?: number;
+  earningsTime?: string; // 'bmo' | 'amc' | 'time-not-supplied'
+  epsBeatRate?: number; // 0-100%
+  revenueBeatRate?: number; // 0-100%
+  earningsWarnings?: string[];
+  suggestedExpiry?: Date;
+}
+
+// NEW: Earnings history data structure
+export interface EarningsHistory {
+  date: string;
+  epsEstimate: number;
+  epsActual: number;
+  revenueEstimate: number;
+  revenueActual: number;
+  epsSurprisePercent?: number;
 }
