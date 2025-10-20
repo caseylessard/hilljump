@@ -134,8 +134,4 @@ export default function OptionsScanner() {
       </div>
     </div>
   );
-  // After generating signals
-  const enrichedSignals = await Promise.all(
-    signals.map((signal) => QuantEngine.enrichWithEarnings(signal, EODHD_API_KEY)),
-  );
 }
