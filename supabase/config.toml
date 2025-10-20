@@ -1,5 +1,8 @@
 project_id = "lyjfwnlindbsbbwjzefh"
 
+[functions.fetch-earnings-data]
+verify_jwt = false
+
 [functions.daily-crypto-scanner]
 verify_jwt = false
 
