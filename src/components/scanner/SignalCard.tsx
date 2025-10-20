@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { TradingSignal } from '@/types/scanner';
-import { STRATEGY_LABELS } from '@/lib/constants';
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import type { TradingSignal } from "@/types/scanner";
+import { STRATEGY_LABELS } from "@/lib/constants";
 
 interface SignalCardProps {
   signal: TradingSignal;
@@ -13,21 +13,24 @@ interface SignalCardProps {
 export function SignalCard({ signal, rank }: SignalCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const movePercent = ((signal.target - signal.entry) / signal.entry * 100).toFixed(1);
+  const movePercent = (((signal.target - signal.entry) / signal.entry) * 100).toFixed(1);
   const isPositive = parseFloat(movePercent) > 0;
 
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const d = signal.exitDate;
-  const contract = `${signal.strike} ${signal.direction === 'CALL' ? 'C' : 'P'} ${months[d.getMonth()]} ${d.getDate()} '${d.getFullYear().toString().slice(-2)}`;
+  const contract = `${signal.strike} ${signal.direction === "CALL" ? "C" : "P"} ${months[d.getMonth()]} ${d.getDate()} '${d.getFullYear().toString().slice(-2)}`;
 
-  const directionClass = signal.direction === 'CALL'
-    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/50'
-    : 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/50';
+  const directionClass =
+    signal.direction === "CALL"
+      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/50"
+      : "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/50";
 
-  const strategyColor = 
-    signal.strategy === 'Z_SCORE_REVERSION' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/50' :
-    signal.strategy === 'MOMENTUM_REGIME' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/50' :
-    'bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/50';
+  const strategyColor =
+    signal.strategy === "Z_SCORE_REVERSION"
+      ? "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/50"
+      : signal.strategy === "MOMENTUM_REGIME"
+        ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/50"
+        : "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/50";
 
   return (
     <Card className="overflow-hidden bg-gradient-to-br from-card to-card/50 border-border/50 hover:border-primary/30 transition-colors">
@@ -41,12 +44,8 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
             {/* Header */}
             <div className="flex justify-between items-start mb-3">
               <div>
-                <div className="text-2xl font-bold text-primary">
-                  {signal.ticker}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {signal.company}
-                </div>
+                <div className="text-2xl font-bold text-primary">{signal.ticker}</div>
+                <div className="text-sm text-muted-foreground">{signal.company}</div>
               </div>
               <Badge variant="outline" className={`${directionClass} font-bold text-base px-3 py-1`}>
                 {signal.direction}
@@ -54,9 +53,7 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
             </div>
 
             {/* Contract */}
-            <div className="text-base font-semibold text-primary/80 mb-3">
-              {contract}
-            </div>
+            <div className="text-base font-semibold text-primary/80 mb-3">{contract}</div>
 
             {/* Key Metrics Grid */}
             <div className="grid grid-cols-2 gap-2 mb-3">
@@ -74,8 +71,9 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
                 <div className="text-xl font-semibold">
                   ${signal.entry.toFixed(2)} → ${signal.target.toFixed(2)}
                 </div>
-                <div className={`text-xs font-medium ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {isPositive ? '+' : ''}{movePercent}%
+                <div className={`text-xs font-medium ${isPositive ? "text-emerald-500" : "text-red-500"}`}>
+                  {isPositive ? "+" : ""}
+                  {movePercent}%
                 </div>
               </MetricBox>
 
@@ -109,15 +107,16 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
             <div className="px-4 pb-4 space-y-4 border-t border-border/50">
               {/* Strategy */}
               <div>
-                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
-                  Strategy
-                </h4>
+                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Strategy</h4>
                 <div className="flex gap-2 flex-wrap">
                   <Badge variant="outline" className={strategyColor}>
                     {STRATEGY_LABELS[signal.strategy]}
                   </Badge>
                   {signal.qualifier && (
-                    <Badge variant="outline" className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/50">
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/50"
+                    >
                       {signal.qualifier}
                     </Badge>
                   )}
@@ -126,9 +125,7 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
 
               {/* Quant Metrics */}
               <div>
-                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
-                  Quant Metrics
-                </h4>
+                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Quant Metrics</h4>
                 <div className="grid grid-cols-2 gap-2">
                   <DetailItem label="Z-Score (50d)" value={`${signal.zScore}σ`} />
                   <DetailItem label="Z-Score (20d)" value={`${signal.zScore20}σ`} />
@@ -143,13 +140,43 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
 
               {/* Analysis */}
               <div>
-                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
-                  Analysis
-                </h4>
+                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Analysis</h4>
                 <div className="bg-primary/5 border-l-4 border-primary rounded p-3 text-sm leading-relaxed text-foreground/90">
                   {signal.reasoning}
                 </div>
               </div>
+
+              {/* ⭐ EARNINGS INFORMATION (Mobile) */}
+              {(signal.earningsWarnings || signal.epsBeatRate) && (
+                <div>
+                  <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+                    Earnings Catalyst
+                  </h4>
+
+                  {/* Earnings Warnings */}
+                  {signal.earningsWarnings && signal.earningsWarnings.length > 0 && (
+                    <div className="space-y-1.5 mb-3">
+                      {signal.earningsWarnings.map((warning, idx) => (
+                        <div
+                          key={idx}
+                          className="text-xs px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                        >
+                          {warning}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Beat Rate Badge */}
+                  {signal.epsBeatRate && signal.epsBeatRate >= 75 && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-emerald-500/10 text-xs font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <span>📊</span>
+                      <span>{signal.epsBeatRate}% EPS beat rate</span>
+                      {signal.epsBeatRate >= 87.5 && <span className="text-emerald-500">★</span>}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -162,14 +189,10 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
               <div className="text-3xl font-bold text-primary mb-1">
                 #{rank} {signal.ticker}
               </div>
-              <div className="text-lg text-muted-foreground">
-                {signal.company}
-              </div>
+              <div className="text-lg text-muted-foreground">{signal.company}</div>
             </div>
             <div className="text-right">
-              <div className="text-lg font-semibold text-primary/80 mb-2">
-                {contract}
-              </div>
+              <div className="text-lg font-semibold text-primary/80 mb-2">{contract}</div>
               <Badge variant="outline" className={`${directionClass} font-bold text-lg px-4 py-1.5`}>
                 {signal.direction}
               </Badge>
@@ -177,13 +200,25 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
           </div>
 
           {/* Strategy Badges */}
-          <div className="flex gap-2 mb-6">
+          <div className="flex gap-2 mb-6 flex-wrap">
             <Badge variant="outline" className={strategyColor}>
               {STRATEGY_LABELS[signal.strategy]}
             </Badge>
             {signal.qualifier && (
-              <Badge variant="outline" className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/50">
+              <Badge
+                variant="outline"
+                className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/50"
+              >
                 {signal.qualifier}
+              </Badge>
+            )}
+            {/* Beat Rate Badge (Desktop - in header area) */}
+            {signal.epsBeatRate && signal.epsBeatRate >= 75 && (
+              <Badge
+                variant="outline"
+                className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+              >
+                📊 {signal.epsBeatRate}% EPS beats{signal.epsBeatRate >= 87.5 && " ★"}
               </Badge>
             )}
           </div>
@@ -205,11 +240,12 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
             </DesktopMetric>
 
             <DesktopMetric label="Target Price">
-              <div className={`text-2xl font-semibold ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+              <div className={`text-2xl font-semibold ${isPositive ? "text-emerald-500" : "text-red-500"}`}>
                 ${signal.target.toFixed(2)}
               </div>
-              <div className={`text-sm font-medium ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
-                {isPositive ? '+' : ''}{movePercent}%
+              <div className={`text-sm font-medium ${isPositive ? "text-emerald-500" : "text-red-500"}`}>
+                {isPositive ? "+" : ""}
+                {movePercent}%
               </div>
             </DesktopMetric>
 
@@ -232,9 +268,7 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
             <DesktopMetric label="ATR (% of Price)">
               <div className="text-2xl font-semibold">
                 ${signal.atr}
-                <span className="text-lg text-muted-foreground ml-2">
-                  ({signal.atrPercent.toFixed(1)}%)
-                </span>
+                <span className="text-lg text-muted-foreground ml-2">({signal.atrPercent.toFixed(1)}%)</span>
               </div>
             </DesktopMetric>
 
@@ -254,19 +288,34 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
             </DesktopMetric>
 
             <DesktopMetric label="Stop Loss">
-              <div className="text-2xl font-semibold text-red-500">
-                ${signal.stop.toFixed(2)}
-              </div>
+              <div className="text-2xl font-semibold text-red-500">${signal.stop.toFixed(2)}</div>
             </DesktopMetric>
           </div>
 
           {/* Analysis */}
-          <div className="bg-primary/5 border-l-4 border-primary rounded-lg p-4">
+          <div className="bg-primary/5 border-l-4 border-primary rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-primary mb-2">📈 Quantitative Analysis</h4>
-            <div className="text-sm leading-relaxed text-foreground/90">
-              {signal.reasoning}
-            </div>
+            <div className="text-sm leading-relaxed text-foreground/90">{signal.reasoning}</div>
           </div>
+
+          {/* ⭐ EARNINGS WARNINGS (Desktop) */}
+          {signal.earningsWarnings && signal.earningsWarnings.length > 0 && (
+            <div className="bg-amber-500/5 border-l-4 border-amber-500 rounded-lg p-4">
+              <h4 className="font-semibold text-amber-600 dark:text-amber-400 mb-3">
+                📊 Earnings Catalyst Information
+              </h4>
+              <div className="space-y-2">
+                {signal.earningsWarnings.map((warning, idx) => (
+                  <div
+                    key={idx}
+                    className="text-sm px-3 py-2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
+                  >
+                    {warning}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -278,23 +327,17 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
 function MetricBox({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="bg-secondary/30 rounded-lg p-2">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-        {label}
-      </div>
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{label}</div>
       {children}
     </div>
   );
 }
 
-function DetailItem({ label, value, valueClass = '' }: { label: string; value: string; valueClass?: string }) {
+function DetailItem({ label, value, valueClass = "" }: { label: string; value: string; valueClass?: string }) {
   return (
     <div className="bg-secondary/30 rounded p-2">
-      <div className="text-[9px] text-muted-foreground uppercase mb-0.5">
-        {label}
-      </div>
-      <div className={`text-sm font-semibold ${valueClass}`}>
-        {value}
-      </div>
+      <div className="text-[9px] text-muted-foreground uppercase mb-0.5">{label}</div>
+      <div className={`text-sm font-semibold ${valueClass}`}>{value}</div>
     </div>
   );
 }
@@ -302,9 +345,7 @@ function DetailItem({ label, value, valueClass = '' }: { label: string; value: s
 function DesktopMetric({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="bg-secondary/30 rounded-lg p-4">
-      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-        {label}
-      </div>
+      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{label}</div>
       {children}
     </div>
   );
