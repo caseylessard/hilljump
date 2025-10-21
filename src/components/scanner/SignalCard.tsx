@@ -187,7 +187,14 @@ export function SignalCard({ signal, rank }: SignalCardProps) {
             </div>
             <div>
               <p className="text-muted-foreground">Rel Strength</p>
-              <p className="font-semibold">{signal.relStrength}</p>
+              <div className="flex items-center gap-1">
+                <p className="font-semibold">{signal.relStrength}</p>
+                {signal.daysToEarnings !== undefined && signal.daysToEarnings <= 14 && (
+                  <Badge variant="outline" className="text-xs px-1 py-0">
+                    📊 {signal.daysToEarnings}d
+                  </Badge>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-muted-foreground">ATR</p>
