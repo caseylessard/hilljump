@@ -17,68 +17,57 @@ serve(async (req) => {
       throw new Error("Ticker is required");
     }
 
-    console.log(`📊 Fetching earnings for ${ticker} from Yahoo Finance...`);
+    const apiKey = Deno.env.get("FMP_API_KEY");
 
-    // Yahoo Finance API endpoint
-    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=calendarEvents,earningsHistory`;
-
-    console.log(`🌐 URL: ${url}`);
-
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    console.log(`📡 Response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Yahoo Finance error: ${response.status} - ${errorText}`);
-      throw new Error(`Yahoo Finance API error: ${response.status}`);
+    if (!apiKey) {
+      throw new Error("FMP_API_KEY not configured");
     }
 
-    const data = await response.json();
-    console.log(`📦 Raw data structure:`, JSON.stringify(data, null, 2).substring(0, 500));
+    console.log(`📊 Fetching earnings for ${ticker} from FMP...`);
 
-    if (!data.quoteSummary?.result?.[0]) {
-      console.error("❌ No result in quoteSummary");
-      throw new Error("No data returned from Yahoo Finance");
+    // Get earnings calendar (includes next earnings date)
+    const calendarUrl = `https://financialmodelingprep.com/api/v3/earning_calendar?symbol=${ticker}&apikey=${apiKey}`;
+    const calendarResponse = await fetch(calendarUrl);
+
+    if (!calendarResponse.ok) {
+      throw new Error(`FMP calendar error: ${calendarResponse.status}`);
     }
 
-    const result = data.quoteSummary.result[0];
-    console.log(`✅ Got result for ${ticker}`);
+    const calendarData = await calendarResponse.json();
 
-    // Extract earnings data
-    const calendarEvents = result.calendarEvents || {};
-    const earningsHistory = result.earningsHistory?.history || [];
+    // Get historical earnings (for beat rate)
+    const historyUrl = `https://financialmodelingprep.com/api/v3/historical/earning_calendar/${ticker}?apikey=${apiKey}`;
+    const historyResponse = await fetch(historyUrl);
 
-    console.log(`📅 Calendar events:`, JSON.stringify(calendarEvents, null, 2).substring(0, 300));
-    console.log(`📊 Earnings history count: ${earningsHistory.length}`);
+    if (!historyResponse.ok) {
+      throw new Error(`FMP history error: ${historyResponse.status}`);
+    }
 
-    // Get next earnings date
-    const nextEarnings = calendarEvents.earnings;
+    const historyData = await historyResponse.json();
+
+    console.log(`📅 Calendar entries: ${calendarData.length}`);
+    console.log(`📊 History entries: ${historyData.length}`);
+
+    // Get next earnings date (future dates only)
     let earningsDate: string | undefined;
+    const now = new Date();
 
-    if (nextEarnings?.earningsDate) {
-      // Yahoo returns array of earnings dates
-      if (Array.isArray(nextEarnings.earningsDate) && nextEarnings.earningsDate.length > 0) {
-        const firstDate = nextEarnings.earningsDate[0];
-        earningsDate = firstDate.fmt || firstDate.raw;
-        console.log(`📆 Next earnings date: ${earningsDate}`);
-      }
+    const futureEarnings = calendarData.filter((e: any) => new Date(e.date) > now);
+    if (futureEarnings.length > 0) {
+      earningsDate = futureEarnings[0].date;
+      console.log(`📆 Next earnings: ${earningsDate}`);
     }
 
-    // Calculate beat rates from history (last 8 quarters)
-    const recentHistory = earningsHistory.slice(0, 8);
+    // Calculate beat rate from last 8 quarters
+    const recentHistory = historyData.slice(0, 8);
     let epsBeats = 0;
     let epsCount = 0;
 
     recentHistory.forEach((quarter: any) => {
-      const estimate = quarter.epsEstimate?.raw;
-      const actual = quarter.epsActual?.raw;
+      const estimate = quarter.epsEstimated;
+      const actual = quarter.eps;
 
-      if (estimate !== undefined && actual !== undefined) {
+      if (estimate !== null && actual !== null && estimate !== undefined && actual !== undefined) {
         epsCount++;
         if (actual >= estimate) {
           epsBeats++;
@@ -90,24 +79,22 @@ serve(async (req) => {
 
     console.log(`✅ Beat rate: ${epsBeatRate}% (${epsBeats}/${epsCount})`);
 
-    const earningsData = {
-      ticker,
-      earnings: {
-        nextEarningsDate: earningsDate,
-        earningsHistory: earningsHistory,
-        epsBeatRate: epsBeatRate,
+    return new Response(
+      JSON.stringify({
+        ticker,
+        earnings: {
+          nextEarningsDate: earningsDate,
+          earningsHistory: historyData,
+          epsBeatRate: epsBeatRate,
+        },
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
       },
-    };
-
-    console.log(`✅ Returning earnings data for ${ticker}`);
-
-    return new Response(JSON.stringify(earningsData), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    );
   } catch (error) {
-    console.error(`❌ Error in fetch-earnings-data:`, error.message);
-    console.error(`❌ Stack:`, error.stack);
+    console.error(`❌ Error:`, error.message);
 
     return new Response(
       JSON.stringify({
