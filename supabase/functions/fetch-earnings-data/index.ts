@@ -19,8 +19,10 @@ serve(async (req) => {
 
     console.log(`📊 Fetching earnings for ${ticker} from Yahoo Finance...`);
 
-    // Yahoo Finance API endpoint (free, no key needed!)
+    // Yahoo Finance API endpoint
     const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=calendarEvents,earningsHistory`;
+
+    console.log(`🌐 URL: ${url}`);
 
     const response = await fetch(url, {
       headers: {
@@ -28,29 +30,43 @@ serve(async (req) => {
       },
     });
 
+    console.log(`📡 Response status: ${response.status}`);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Yahoo Finance error: ${response.status} - ${errorText}`);
       throw new Error(`Yahoo Finance API error: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log(`📦 Raw data structure:`, JSON.stringify(data, null, 2).substring(0, 500));
 
     if (!data.quoteSummary?.result?.[0]) {
+      console.error("❌ No result in quoteSummary");
       throw new Error("No data returned from Yahoo Finance");
     }
 
     const result = data.quoteSummary.result[0];
+    console.log(`✅ Got result for ${ticker}`);
 
     // Extract earnings data
     const calendarEvents = result.calendarEvents || {};
     const earningsHistory = result.earningsHistory?.history || [];
 
+    console.log(`📅 Calendar events:`, JSON.stringify(calendarEvents, null, 2).substring(0, 300));
+    console.log(`📊 Earnings history count: ${earningsHistory.length}`);
+
     // Get next earnings date
     const nextEarnings = calendarEvents.earnings;
     let earningsDate: string | undefined;
-    let earningsTime: string | undefined;
 
-    if (nextEarnings?.earningsDate?.[0]?.fmt) {
-      earningsDate = nextEarnings.earningsDate[0].fmt;
+    if (nextEarnings?.earningsDate) {
+      // Yahoo returns array of earnings dates
+      if (Array.isArray(nextEarnings.earningsDate) && nextEarnings.earningsDate.length > 0) {
+        const firstDate = nextEarnings.earningsDate[0];
+        earningsDate = firstDate.fmt || firstDate.raw;
+        console.log(`📆 Next earnings date: ${earningsDate}`);
+      }
     }
 
     // Calculate beat rates from history (last 8 quarters)
@@ -59,9 +75,12 @@ serve(async (req) => {
     let epsCount = 0;
 
     recentHistory.forEach((quarter: any) => {
-      if (quarter.epsEstimate?.raw !== undefined && quarter.epsActual?.raw !== undefined) {
+      const estimate = quarter.epsEstimate?.raw;
+      const actual = quarter.epsActual?.raw;
+
+      if (estimate !== undefined && actual !== undefined) {
         epsCount++;
-        if (quarter.epsActual.raw >= quarter.epsEstimate.raw) {
+        if (actual >= estimate) {
           epsBeats++;
         }
       }
@@ -69,24 +88,26 @@ serve(async (req) => {
 
     const epsBeatRate = epsCount > 0 ? (epsBeats / epsCount) * 100 : undefined;
 
-    console.log(`✅ Earnings data fetched for ${ticker}`);
+    console.log(`✅ Beat rate: ${epsBeatRate}% (${epsBeats}/${epsCount})`);
 
-    return new Response(
-      JSON.stringify({
-        ticker,
-        earnings: {
-          nextEarningsDate: earningsDate,
-          earningsHistory: earningsHistory,
-          epsBeatRate: epsBeatRate,
-        },
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+    const earningsData = {
+      ticker,
+      earnings: {
+        nextEarningsDate: earningsDate,
+        earningsHistory: earningsHistory,
+        epsBeatRate: epsBeatRate,
       },
-    );
+    };
+
+    console.log(`✅ Returning earnings data for ${ticker}`);
+
+    return new Response(JSON.stringify(earningsData), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (error) {
-    console.error("❌ Error:", error.message);
+    console.error(`❌ Error in fetch-earnings-data:`, error.message);
+    console.error(`❌ Stack:`, error.stack);
 
     return new Response(
       JSON.stringify({
@@ -96,7 +117,7 @@ serve(async (req) => {
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200, // Return 200 even on error so enrichment doesn't fail
+        status: 200,
       },
     );
   }
