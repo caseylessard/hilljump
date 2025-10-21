@@ -11,10 +11,10 @@ serve(async (req) => {
   }
 
   try {
-    const { ticker } = await req.json();
+    const { tickers } = await req.json(); // Changed: accept array of tickers
 
-    if (!ticker) {
-      throw new Error("Ticker is required");
+    if (!tickers || !Array.isArray(tickers)) {
+      throw new Error("Tickers array is required");
     }
 
     const apiKey = Deno.env.get("FMP_API_KEY");
@@ -23,122 +23,99 @@ serve(async (req) => {
       throw new Error("FMP_API_KEY not configured");
     }
 
-    console.log(`📊 Fetching earnings for ${ticker} from FMP...`);
+    console.log(`📊 Fetching earnings for ${tickers.length} tickers in ONE API call...`);
 
-    // Try without date filters (free tier limitation)
+    // ONE API call gets ALL earnings
     const url = `https://financialmodelingprep.com/stable/earnings-calendar?apikey=${apiKey}`;
 
-    console.log(`📡 Calling FMP API...`);
-
     const response = await fetch(url);
-
-    console.log(`📡 Response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ FMP error: ${errorText.substring(0, 200)}`);
 
-      // Return empty earnings instead of failing
-      return new Response(
-        JSON.stringify({
-          ticker,
-          earnings: null,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        },
-      );
+      // Return empty earnings for all tickers
+      const results: any = {};
+      tickers.forEach((ticker) => {
+        results[ticker] = null;
+      });
+
+      return new Response(JSON.stringify({ earnings: results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     const allEarnings = await response.json();
+    console.log(`📦 Got ${allEarnings.length} total earnings records from FMP`);
 
-    console.log(`📦 Total earnings records: ${allEarnings.length}`);
-
-    // Filter for this specific ticker
-    const tickerEarnings = allEarnings.filter(
-      (e: any) => e.symbol === ticker || e.symbol === `${ticker}.US` || e.symbol.startsWith(ticker),
-    );
-
-    console.log(`🎯 ${ticker} earnings records: ${tickerEarnings.length}`);
-
-    if (tickerEarnings.length === 0) {
-      console.warn(`⚠️ No earnings data found for ${ticker}`);
-      return new Response(
-        JSON.stringify({
-          ticker,
-          earnings: null,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        },
-      );
-    }
-
-    // Find next earnings date
+    // Process earnings for each ticker
+    const results: any = {};
     const now = new Date();
-    const futureEarnings = tickerEarnings
-      .filter((e: any) => new Date(e.date) > now)
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    let earningsDate: string | undefined;
-    if (futureEarnings.length > 0) {
-      earningsDate = futureEarnings[0].date;
-      console.log(`📆 Next earnings: ${earningsDate}`);
-    }
+    tickers.forEach((ticker) => {
+      // Filter for this ticker
+      const tickerEarnings = allEarnings.filter(
+        (e: any) => e.symbol === ticker || e.symbol === `${ticker}.US` || e.symbol.startsWith(ticker),
+      );
 
-    // Calculate beat rate from last 8 quarters
-    const pastEarnings = tickerEarnings
-      .filter((e: any) => new Date(e.date) <= now && e.epsActual !== null)
-      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 8);
-
-    let epsBeats = 0;
-    let epsCount = 0;
-
-    pastEarnings.forEach((quarter: any) => {
-      const estimate = quarter.epsEstimated;
-      const actual = quarter.epsActual;
-
-      if (estimate !== null && actual !== null && estimate !== undefined && actual !== undefined) {
-        epsCount++;
-        if (actual >= estimate) {
-          epsBeats++;
-        }
+      if (tickerEarnings.length === 0) {
+        results[ticker] = null;
+        return;
       }
+
+      // Find next earnings date
+      const futureEarnings = tickerEarnings
+        .filter((e: any) => new Date(e.date) > now)
+        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      let earningsDate: string | undefined;
+      if (futureEarnings.length > 0) {
+        earningsDate = futureEarnings[0].date;
+      }
+
+      // Calculate beat rate from last 8 quarters
+      const pastEarnings = tickerEarnings
+        .filter((e: any) => new Date(e.date) <= now && e.epsActual !== null)
+        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 8);
+
+      let epsBeats = 0;
+      let epsCount = 0;
+
+      pastEarnings.forEach((quarter: any) => {
+        const estimate = quarter.epsEstimated;
+        const actual = quarter.epsActual;
+
+        if (estimate !== null && actual !== null && estimate !== undefined && actual !== undefined) {
+          epsCount++;
+          if (actual >= estimate) {
+            epsBeats++;
+          }
+        }
+      });
+
+      const epsBeatRate = epsCount > 0 ? (epsBeats / epsCount) * 100 : undefined;
+
+      results[ticker] = {
+        nextEarningsDate: earningsDate,
+        earningsHistory: pastEarnings,
+        epsBeatRate: epsBeatRate,
+      };
     });
 
-    const epsBeatRate = epsCount > 0 ? (epsBeats / epsCount) * 100 : undefined;
+    console.log(`✅ Processed earnings for ${Object.keys(results).length} tickers`);
 
-    console.log(`✅ Beat rate: ${epsBeatRate}% (${epsBeats}/${epsCount})`);
-
-    return new Response(
-      JSON.stringify({
-        ticker,
-        earnings: {
-          nextEarningsDate: earningsDate,
-          earningsHistory: pastEarnings,
-          epsBeatRate: epsBeatRate,
-        },
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      },
-    );
+    return new Response(JSON.stringify({ earnings: results }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (error) {
     console.error(`❌ Error:`, error.message);
 
-    return new Response(
-      JSON.stringify({
-        ticker,
-        earnings: null,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      },
-    );
+    return new Response(JSON.stringify({ earnings: {} }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   }
 });
