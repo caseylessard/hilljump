@@ -16,6 +16,16 @@ interface ContactEmailRequest {
   message: string;
 }
 
+// HTML escape function to prevent XSS
+const escapeHtml = (text: string): string => {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -36,6 +46,26 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Validate length limits
+    if (name.length > 100) {
+      return new Response(
+        JSON.stringify({ error: "Name must be less than 100 characters" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    if (subject.length > 200) {
+      return new Response(
+        JSON.stringify({ error: "Subject must be less than 200 characters" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    if (message.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: "Message must be less than 2000 characters" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Validate email format (basic check)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -48,17 +78,22 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Escape all user inputs to prevent XSS
+    const safeName = escapeHtml(name);
+    const safeSubject = escapeHtml(subject);
+    const safeMessage = escapeHtml(message);
+
     // Send email to HillJump
     const emailResponse = await resend.emails.send({
       from: "HillJump Contact Form <noreply@resend.dev>",
       to: ["info@hilljump.com"],
-      subject: `Contact Form: ${subject}`,
+      subject: `Contact Form: ${safeSubject}`,
       html: `
         <h2>New Contact Form Submission</h2>
-        <p><strong>From:</strong> ${name} (${email})</p>
-        <p><strong>Subject:</strong> ${subject}</p>
+        <p><strong>From:</strong> ${safeName} (${email})</p>
+        <p><strong>Subject:</strong> ${safeSubject}</p>
         <p><strong>Message:</strong></p>
-        <p>${message.replace(/\n/g, '<br>')}</p>
+        <p>${safeMessage.replace(/\n/g, '<br>')}</p>
         <hr>
         <p><small>This message was sent through the HillJump contact form.</small></p>
       `,
@@ -71,11 +106,11 @@ const handler = async (req: Request): Promise<Response> => {
       to: [email],
       subject: "Thank you for contacting HillJump",
       html: `
-        <h2>Thank you for contacting us, ${name}!</h2>
+        <h2>Thank you for contacting us, ${safeName}!</h2>
         <p>We have received your message and will get back to you as soon as possible.</p>
         <p><strong>Your message:</strong></p>
-        <p><em>"${subject}"</em></p>
-        <p>${message.replace(/\n/g, '<br>')}</p>
+        <p><em>"${safeSubject}"</em></p>
+        <p>${safeMessage.replace(/\n/g, '<br>')}</p>
         <p>Best regards,<br>The HillJump Team</p>
       `,
     });
