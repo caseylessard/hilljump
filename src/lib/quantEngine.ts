@@ -124,7 +124,7 @@ export class QuantEngine {
   }
 
   /**
-   * Calculate Average True Range (ATR)
+   * Calculate Average True Range (ATR) - NO CAP, returns REAL volatility
    */
   private static calculateATR(highs: number[], lows: number[], closes: number[], period = 14): number {
     if (highs.length < period + 1) {
@@ -145,16 +145,8 @@ export class QuantEngine {
     }
 
     const atr = trueRanges.reduce((a, b) => a + b, 0) / period;
-    const currentPrice = closes[0];
-    const atrPercent = (atr / currentPrice) * 100;
 
-    if (atrPercent > 10) {
-      console.warn(
-        `⚠️ Suspicious ATR for price ${currentPrice}: ATR=$${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) - capping at 8%`,
-      );
-      return currentPrice * 0.08;
-    }
-
+    // Return REAL ATR - no artificial cap
     return atr;
   }
 
@@ -438,8 +430,41 @@ export class QuantEngine {
 
     conviction = Math.min(95, Math.max(50, conviction));
 
-    if (atrPercent > 10) {
-      console.warn(`❌ Rejecting signal for ${ticker}: ATR too high (${atrPercent.toFixed(1)}%)`);
+    // ============================================
+    // VOLATILITY PENALTY - Reduce conviction for high ATR
+    // ============================================
+    let volatilityWarning: string | undefined;
+
+    if (atrPercent > 13) {
+      // Extreme volatility (penny stocks, micro caps)
+      const penalty = Math.min(25, (atrPercent - 13) * 2.5);
+      conviction -= penalty;
+      volatilityWarning = "EXTREME";
+      console.log(
+        `💀 ${ticker}: Extreme volatility (${atrPercent.toFixed(1)}% ATR) - reducing conviction by ${penalty.toFixed(0)} points`,
+      );
+    } else if (atrPercent > 10) {
+      // High volatility
+      const penalty = Math.min(15, (atrPercent - 10) * 3);
+      conviction -= penalty;
+      volatilityWarning = "HIGH";
+      console.log(
+        `🔴 ${ticker}: High volatility (${atrPercent.toFixed(1)}% ATR) - reducing conviction by ${penalty.toFixed(0)} points`,
+      );
+    } else if (atrPercent > 8) {
+      // Elevated volatility
+      conviction -= 5;
+      volatilityWarning = "ELEVATED";
+      console.log(
+        `🟡 ${ticker}: Elevated volatility (${atrPercent.toFixed(1)}% ATR) - reducing conviction by 5 points`,
+      );
+    }
+
+    conviction = Math.max(50, Math.round(conviction));
+
+    // Reject if ATR is impossibly high (data error protection)
+    if (atrPercent > 25) {
+      console.warn(`❌ Rejecting ${ticker}: ATR too extreme (${atrPercent.toFixed(1)}%) - likely data error`);
       return null;
     }
 
@@ -533,7 +558,7 @@ export class QuantEngine {
       if (direction === "CALL") {
         strike = this.roundStrike(price, "nearest");
       } else {
-        strike = this.roundStrike(price, "nearest"); // ✅ Fixed: ATM for PUTs too
+        strike = this.roundStrike(price, "nearest");
       }
     } else {
       if (direction === "CALL") {
@@ -541,8 +566,8 @@ export class QuantEngine {
         const targetStrike = price * 1.05;
         strike = this.roundStrike(targetStrike, "up");
       } else {
-        estimatedDelta = 0.45; // ✅ Fixed: Same delta as CALL
-        const targetStrike = price * 0.95; // ✅ Fixed: OTM below (not above!)
+        estimatedDelta = 0.45;
+        const targetStrike = price * 0.95; // ✅ OTM below price
         strike = this.roundStrike(targetStrike, "down");
       }
     }
@@ -614,6 +639,7 @@ export class QuantEngine {
       extremeZScore,
       riskTier,
       daysToExpiration: timeframe,
+      volatilityWarning, // ✅ Add volatility warning
     };
   }
 
