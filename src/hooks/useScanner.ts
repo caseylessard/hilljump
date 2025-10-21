@@ -132,27 +132,30 @@ export function useScanner() {
           description: "Adding earnings dates and beat history",
         });
 
-        // Get API key from environment variable
-        const apiKey = import.meta.env.VITE_EODHD_API_KEY;
-
-        if (!apiKey) {
-          console.warn("⚠️ EODHD API key not found - skipping earnings enrichment");
-        }
-
         let enrichedSignals = topSignals;
 
-        if (apiKey) {
-          try {
-            enrichedSignals = await Promise.all(
-              topSignals.map((signal) => QuantEngine.enrichWithEarnings(signal, apiKey)),
-            );
+        try {
+          console.log(`📊 Enriching ${topSignals.length} signals...`);
 
-            console.log("✅ Successfully enriched signals with earnings data");
-          } catch (error) {
-            console.error("❌ Error enriching signals:", error);
-            // Fall back to non-enriched signals if enrichment fails
-            enrichedSignals = topSignals;
-          }
+          enrichedSignals = await Promise.all(
+            topSignals.map((signal) => QuantEngine.enrichWithEarnings(signal, supabase)),
+          );
+
+          console.log("✅ Successfully enriched signals with earnings data");
+
+          toast({
+            title: "✅ Earnings data added",
+            description: `Enriched ${enrichedSignals.length} signals`,
+          });
+        } catch (error) {
+          console.error("❌ Error enriching signals:", error);
+          toast({
+            title: "⚠️ Enrichment failed",
+            description: "Using signals without earnings data",
+            variant: "destructive",
+          });
+          // Fall back to non-enriched signals if enrichment fails
+          enrichedSignals = topSignals;
         }
 
         // Re-sort after enrichment (conviction may have changed)
@@ -162,7 +165,7 @@ export function useScanner() {
         // Calculate stats (using enriched signals)
         // ============================================
         const scanResult: ScanResult = {
-          signals: enrichedSignals, // ← Use enriched signals
+          signals: enrichedSignals,
           totalAnalyzed: tickersToScan.length,
           qualifiedSignals: signals.length,
           avgConviction:
