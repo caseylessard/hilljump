@@ -11,31 +11,22 @@ export class QuantEngine {
     const highs = tickerData.historicalPrices.map((d) => d.high).reverse();
     const lows = tickerData.historicalPrices.map((d) => d.low).reverse();
 
-    // After reversing, index 0 is the most recent price
     const currentPrice = closes[0];
 
     return {
       ticker: tickerData.ticker,
       currentPrice,
-
-      // After reversing, take from the beginning for most recent data
       prices20d: closes.slice(0, 20),
       prices50d: closes.slice(0, 50),
       prices100d: closes.slice(0, 100),
-
       rsi: this.calculateRSI(closes, 14),
       momentumScore: this.calculateMomentum(closes, 20),
       priceChangePercent: this.calculatePriceChange(closes, 1),
-
       volumeRatio: this.calculateVolumeRatio(volumes, 20),
       volumeTrend: this.calculateVolumeTrend(volumes, 10),
-
       atr: this.calculateATR(highs, lows, closes, 14),
-
-      // Take most recent 252 days (1 year) for 52-week high/low
       high52Week: Math.max(...closes.slice(0, Math.min(252, closes.length))),
       low52Week: Math.min(...closes.slice(0, Math.min(252, closes.length))),
-
       relativeStrength: spyData
         ? this.calculateRelativeStrength(closes, spyData.historicalPrices.map((d) => d.close).reverse(), 50)
         : 50,
@@ -44,7 +35,6 @@ export class QuantEngine {
 
   /**
    * Calculate RSI (Relative Strength Index)
-   * Closes array is newest-first after reversal
    */
   private static calculateRSI(closes: number[], period = 14): number {
     if (closes.length < period + 1) return 50;
@@ -52,7 +42,6 @@ export class QuantEngine {
     let gains = 0;
     let losses = 0;
 
-    // Process most recent 'period' days (indices 0 to period)
     for (let i = 1; i <= period; i++) {
       const change = closes[i - 1] - closes[i];
       if (change > 0) gains += change;
@@ -72,7 +61,6 @@ export class QuantEngine {
 
   /**
    * Calculate momentum score (0-100)
-   * Closes array is newest-first after reversal
    */
   private static calculateMomentum(closes: number[], period = 20): number {
     if (closes.length < period) return 50;
@@ -91,7 +79,6 @@ export class QuantEngine {
 
   /**
    * Calculate price change percentage
-   * Closes array is newest-first after reversal
    */
   private static calculatePriceChange(closes: number[], periods = 1): number {
     if (closes.length < periods + 1) return 0;
@@ -104,15 +91,13 @@ export class QuantEngine {
 
   /**
    * Calculate volume ratio (current vs average)
-   * Volumes array is newest-first after reversal
    */
   private static calculateVolumeRatio(volumes: number[], period = 20): number {
     if (volumes.length < period + 1) return 1.0;
 
-    // After reversal: index 0 is newest, so we need to skip it for historical average
-    const recentVolumes = volumes.slice(1, period + 1); // Skip current, take next 'period' days
+    const recentVolumes = volumes.slice(1, period + 1);
     const avgVolume = recentVolumes.reduce((a, b) => a + b, 0) / period;
-    const currentVolume = volumes[0]; // Most recent volume
+    const currentVolume = volumes[0];
 
     if (avgVolume === 0) return 1.0;
 
@@ -121,14 +106,12 @@ export class QuantEngine {
 
   /**
    * Determine volume trend direction
-   * Volumes array is newest-first after reversal
    */
   private static calculateVolumeTrend(volumes: number[], period = 10): "increasing" | "decreasing" | "neutral" {
     if (volumes.length < period * 2) return "neutral";
 
-    // After reversal: index 0 is newest
-    const recent = volumes.slice(0, period); // Most recent 'period' days
-    const previous = volumes.slice(period, period * 2); // Previous 'period' days (older)
+    const recent = volumes.slice(0, period);
+    const previous = volumes.slice(period, period * 2);
 
     const recentAvg = recent.reduce((a, b) => a + b, 0) / period;
     const previousAvg = previous.reduce((a, b) => a + b, 0) / period;
@@ -141,29 +124,22 @@ export class QuantEngine {
   }
 
   /**
-   * Calculate Average True Range (ATR) - 14 period standard
-   * Arrays are newest-first after reversal
+   * Calculate Average True Range (ATR)
    */
   private static calculateATR(highs: number[], lows: number[], closes: number[], period = 14): number {
     if (highs.length < period + 1) {
       const currentPrice = closes[0];
-      return currentPrice * 0.02; // Default 2% if not enough data
+      return currentPrice * 0.02;
     }
 
     const trueRanges: number[] = [];
 
-    // Start from index 1 (second newest) because we need previous close
-    // Calculate TR for the most recent 'period' bars
     for (let i = 1; i <= period; i++) {
       const high = highs[i];
       const low = lows[i];
-      const prevClose = closes[i + 1]; // ✓ Correct - the day BEFORE the bar
+      const prevClose = closes[i + 1];
 
-      const tr = Math.max(
-        high - low, // Today's range
-        Math.abs(high - prevClose), // Gap up from previous close
-        Math.abs(low - prevClose), // Gap down from previous close
-      );
+      const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
 
       trueRanges.push(tr);
     }
@@ -172,12 +148,11 @@ export class QuantEngine {
     const currentPrice = closes[0];
     const atrPercent = (atr / currentPrice) * 100;
 
-    // SANITY CHECK: ATR should normally be 2-5% of price
     if (atrPercent > 10) {
       console.warn(
         `⚠️ Suspicious ATR for price ${currentPrice}: ATR=$${atr.toFixed(2)} (${atrPercent.toFixed(1)}%) - capping at 8%`,
       );
-      return currentPrice * 0.08; // Cap at 8%
+      return currentPrice * 0.08;
     }
 
     return atr;
@@ -185,7 +160,6 @@ export class QuantEngine {
 
   /**
    * Calculate Relative Strength vs SPY
-   * Both arrays are newest-first after reversal
    */
   private static calculateRelativeStrength(tickerCloses: number[], spyCloses: number[], period = 50): number {
     if (tickerCloses.length < period || spyCloses.length < period) {
@@ -211,17 +185,14 @@ export class QuantEngine {
    */
   private static roundStrike(price: number, direction: "up" | "down" | "nearest"): number {
     if (price < 50) {
-      // Round to nearest $1
       return direction === "up" ? Math.ceil(price) : direction === "down" ? Math.floor(price) : Math.round(price);
     } else if (price < 200) {
-      // Round to nearest $5
       return direction === "up"
         ? Math.ceil(price / 5) * 5
         : direction === "down"
           ? Math.floor(price / 5) * 5
           : Math.round(price / 5) * 5;
     } else {
-      // Round to nearest $10
       return direction === "up"
         ? Math.ceil(price / 10) * 10
         : direction === "down"
@@ -232,88 +203,90 @@ export class QuantEngine {
 
   /**
    * ============================================
-   * PHASE 1 + 2: EARNINGS ENRICHMENT (Yahoo Finance)
+   * BATCH EARNINGS ENRICHMENT (Optimized - 1 API call!)
    * ============================================
-   * Fetch earnings data and enrich signal with:
-   * - Next earnings date
-   * - Historical beat rate
-   * - Adjusted conviction
-   * - Warnings and adjusted expiry
    */
-  static async enrichWithEarnings(signal: TradingSignal, supabaseClient: any): Promise<TradingSignal> {
+  static async batchEnrichWithEarnings(signals: TradingSignal[], supabaseClient: any): Promise<TradingSignal[]> {
     try {
-      const ticker = signal.ticker;
+      if (signals.length === 0) return signals;
 
-      // Fetch earnings data via Supabase Edge Function (Yahoo Finance)
+      const tickers = signals.map((s) => s.ticker);
+      console.log(`📊 Batch fetching earnings for ${tickers.length} tickers in ONE call...`);
+
+      // ONE API call for all tickers
       const { data, error } = await supabaseClient.functions.invoke("fetch-earnings-data", {
-        body: { ticker },
+        body: { tickers },
       });
 
       if (error || !data || !data.earnings) {
-        console.warn(`No earnings data for ${ticker}`);
-        return signal;
+        console.warn("No earnings data returned");
+        return signals;
       }
 
-      const earningsInfo = data.earnings;
+      const earningsData = data.earnings;
 
-      // Extract earnings date
-      let earningsDate: string | undefined = earningsInfo.nextEarningsDate;
+      // Enrich each signal
+      return signals.map((signal) => {
+        const earningsInfo = earningsData[signal.ticker];
 
-      // Calculate days to earnings
-      const daysToEarnings = earningsDate
-        ? Math.ceil((new Date(earningsDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-        : undefined;
-
-      // Get beat rate
-      const epsBeatRate = earningsInfo.epsBeatRate;
-
-      // Apply earnings-based adjustments
-      const warnings: string[] = [];
-      let adjustedConviction = signal.conviction;
-      let suggestedExpiry = signal.exitDate;
-
-      if (daysToEarnings !== undefined) {
-        if (daysToEarnings < 0) {
-          // Earnings already passed
-        } else if (daysToEarnings < 7) {
-          warnings.push(`⚠️ Earnings in ${daysToEarnings}d - High IV crush risk`);
-          adjustedConviction = Math.max(50, adjustedConviction - 15);
-        } else if (daysToEarnings <= 21) {
-          warnings.push(`📊 Earnings in ${daysToEarnings}d`);
-
-          if (epsBeatRate && epsBeatRate >= 75) {
-            warnings.push(`📈 Strong beat history (${Math.round(epsBeatRate)}% EPS beats)`);
-            adjustedConviction = Math.min(95, adjustedConviction + 5);
-          }
-
-          suggestedExpiry = new Date(earningsDate!);
-          suggestedExpiry.setDate(suggestedExpiry.getDate() + 7);
-          warnings.push(
-            `💡 Consider ${suggestedExpiry.toLocaleDateString("en-US", { month: "short", day: "numeric" })} expiry`,
-          );
+        if (!earningsInfo) {
+          return signal;
         }
-      }
 
-      // Boost conviction for consistent beaters
-      if (epsBeatRate && epsBeatRate >= 87.5) {
-        adjustedConviction = Math.min(95, adjustedConviction + 8);
-      } else if (epsBeatRate && epsBeatRate >= 75) {
-        adjustedConviction = Math.min(95, adjustedConviction + 5);
-      }
+        let earningsDate: string | undefined = earningsInfo.nextEarningsDate;
 
-      return {
-        ...signal,
-        conviction: Math.round(adjustedConviction),
-        earningsDate,
-        daysToEarnings,
-        epsBeatRate: epsBeatRate ? Math.round(epsBeatRate) : undefined,
-        earningsWarnings: warnings.length > 0 ? warnings : undefined,
-        suggestedExpiry:
-          daysToEarnings !== undefined && daysToEarnings > 0 && daysToEarnings <= 21 ? suggestedExpiry : undefined,
-      };
+        const daysToEarnings = earningsDate
+          ? Math.ceil((new Date(earningsDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+          : undefined;
+
+        const epsBeatRate = earningsInfo.epsBeatRate;
+
+        const warnings: string[] = [];
+        let adjustedConviction = signal.conviction;
+        let suggestedExpiry = signal.exitDate;
+
+        if (daysToEarnings !== undefined) {
+          if (daysToEarnings < 0) {
+            // Earnings already passed
+          } else if (daysToEarnings < 7) {
+            warnings.push(`⚠️ Earnings in ${daysToEarnings}d - High IV crush risk`);
+            adjustedConviction = Math.max(50, adjustedConviction - 15);
+          } else if (daysToEarnings <= 21) {
+            warnings.push(`📊 Earnings in ${daysToEarnings}d`);
+
+            if (epsBeatRate && epsBeatRate >= 75) {
+              warnings.push(`📈 Strong beat history (${Math.round(epsBeatRate)}% EPS beats)`);
+              adjustedConviction = Math.min(95, adjustedConviction + 5);
+            }
+
+            suggestedExpiry = new Date(earningsDate!);
+            suggestedExpiry.setDate(suggestedExpiry.getDate() + 7);
+            warnings.push(
+              `💡 Consider ${suggestedExpiry.toLocaleDateString("en-US", { month: "short", day: "numeric" })} expiry`,
+            );
+          }
+        }
+
+        if (epsBeatRate && epsBeatRate >= 87.5) {
+          adjustedConviction = Math.min(95, adjustedConviction + 8);
+        } else if (epsBeatRate && epsBeatRate >= 75) {
+          adjustedConviction = Math.min(95, adjustedConviction + 5);
+        }
+
+        return {
+          ...signal,
+          conviction: Math.round(adjustedConviction),
+          earningsDate,
+          daysToEarnings,
+          epsBeatRate: epsBeatRate ? Math.round(epsBeatRate) : undefined,
+          earningsWarnings: warnings.length > 0 ? warnings : undefined,
+          suggestedExpiry:
+            daysToEarnings !== undefined && daysToEarnings > 0 && daysToEarnings <= 21 ? suggestedExpiry : undefined,
+        };
+      });
     } catch (error) {
-      console.error(`Error enriching ${signal.ticker}:`, error);
-      return signal;
+      console.error("Error batch enriching signals:", error);
+      return signals;
     }
   }
 
@@ -324,17 +297,12 @@ export class QuantEngine {
     const price = data.currentPrice;
     const ticker = data.ticker.replace(".US", "");
 
-    // ============================================
-    // DATA QUALITY FILTERS
-    // ============================================
-
-    // Reject penny stocks and data errors
+    // Data quality filters
     if (price < 1.0) {
       console.warn(`❌ Rejecting ${ticker}: Price too low ($${price.toFixed(2)})`);
       return null;
     }
 
-    // Reject if price seems like stale/corrupt data
     if (price > 100000) {
       console.warn(`❌ Rejecting ${ticker}: Price unrealistic ($${price.toFixed(2)})`);
       return null;
@@ -565,8 +533,7 @@ export class QuantEngine {
       if (direction === "CALL") {
         strike = this.roundStrike(price, "nearest");
       } else {
-        const targetStrike = price * 1.03;
-        strike = this.roundStrike(targetStrike, "up");
+        strike = this.roundStrike(price, "nearest"); // ✅ Fixed: ATM for PUTs too
       }
     } else {
       if (direction === "CALL") {
@@ -574,9 +541,9 @@ export class QuantEngine {
         const targetStrike = price * 1.05;
         strike = this.roundStrike(targetStrike, "up");
       } else {
-        estimatedDelta = 0.55;
-        const targetStrike = price * 1.02;
-        strike = this.roundStrike(targetStrike, "up");
+        estimatedDelta = 0.45; // ✅ Fixed: Same delta as CALL
+        const targetStrike = price * 0.95; // ✅ Fixed: OTM below (not above!)
+        strike = this.roundStrike(targetStrike, "down");
       }
     }
 
