@@ -669,4 +669,55 @@ export class QuantEngine {
     let reasoning = "";
 
     if (strategy === "Z_SCORE_REVERSION") {
-      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toF
+      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toFixed(1) + "x avg) confirms conviction." : ""}`;
+    } else if (strategy === "MOMENTUM_REGIME") {
+      reasoning = `${ticker} shows ${direction === "CALL" ? "bullish" : "bearish"} momentum in trending regime (range: ${(avgRange * 100).toFixed(1)}%). Relative strength vs SPY: ${relStrength}/100. ${institutionalActivity ? "Volume surge (" + vol.toFixed(1) + "x) validates setup." : ""} ${direction === "CALL" ? "Uptrend" : "Downtrend"} continuation expected.`;
+    } else if (strategy === "RELATIVE_STRENGTH") {
+      reasoning = `${ticker} ${direction === "CALL" ? "outperforming" : "underperforming"} SPY with RS score of ${relStrength}. Momentum: ${momentum}/100, RSI: ${rsi}. ${vol > 1.5 ? "Strong volume (" + vol.toFixed(1) + "x avg) supports divergence." : "Divergence detected."} Setup targets directional continuation.`;
+    }
+
+    const companyName = COMPANY_NAMES[ticker] || ticker;
+    
+    // Determine regime
+    let regime: "CHOPPY" | "TRENDING" | "NEUTRAL";
+    if (isChopping) {
+      regime = "CHOPPY";
+    } else if (isTrending) {
+      regime = "TRENDING";
+    } else {
+      regime = "NEUTRAL";
+    }
+
+    return {
+      ticker,
+      company: companyName,
+      direction,
+      strategy,
+      conviction: Math.round(conviction),
+      entry: price,
+      strike,
+      estimatedDelta,
+      target: targetPrice,
+      stop: stopPrice,
+      rr,
+      estimatedOptionReturn,
+      exitDate,
+      days: timeframe,
+      daysToExpiration: timeframe,
+      position: parseFloat(position52.toFixed(1)),
+      rsi,
+      momentum,
+      vol,
+      zScore: zScore.toFixed(2),
+      zScore20: zScore20.toFixed(2),
+      relStrength,
+      atr: atr.toFixed(2),
+      atrPercent,
+      regime,
+      extremeZScore,
+      riskTier,
+      reasoning,
+      qualifier,
+    };
+  }
+}
