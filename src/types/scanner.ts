@@ -48,7 +48,7 @@ export interface TradingSignal {
   ticker: string;
   company: string;
   direction: "CALL" | "PUT";
-  strategy: SignalStrategy;
+  strategy: "Z_SCORE_REVERSION" | "MOMENTUM_REGIME" | "RELATIVE_STRENGTH";
   conviction: number;
   entry: number;
   target: number;
@@ -65,15 +65,21 @@ export interface TradingSignal {
   zScore20: string;
   relStrength: number;
   atr: string;
+  atrPercent: number;
   regime: "CHOPPY" | "TRENDING" | "NEUTRAL";
   qualifier: string;
   reasoning: string;
   estimatedOptionReturn: number;
   estimatedDelta: number;
   extremeZScore: boolean;
-  atrPercent: number;
   riskTier: "Conservative" | "Moderate" | "Aggressive";
   daysToExpiration: number;
+  earningsDate?: string;
+  daysToEarnings?: number;
+  epsBeatRate?: number;
+  earningsWarnings?: string[];
+  suggestedExpiry?: Date;
+  volatilityWarning?: string; // ✅ Add this
 }
 
 export interface ScannerConfig {
