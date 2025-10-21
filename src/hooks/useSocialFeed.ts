@@ -56,10 +56,12 @@ export const useSocialFeed = (userId: string | null) => {
 
       // Fetch profiles for post authors
       const postUserIds = postsData?.map(p => p.user_id) || [];
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
-        .in('id', postUserIds);
+      const profilesData = postUserIds.length > 0 
+        ? (await supabase
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .in('id', postUserIds)).data
+        : [];
 
       // Fetch comments
       const { data: commentsData, error: commentsError } = await supabase
@@ -71,10 +73,12 @@ export const useSocialFeed = (userId: string | null) => {
 
       // Fetch profiles for comment authors
       const commentUserIds = commentsData?.map(c => c.user_id) || [];
-      const { data: commentProfilesData } = await supabase
-        .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
-        .in('id', commentUserIds);
+      const commentProfilesData = commentUserIds.length > 0
+        ? (await supabase
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .in('id', commentUserIds)).data
+        : [];
 
       // Fetch all likes
       const { data: allLikesData } = await supabase
