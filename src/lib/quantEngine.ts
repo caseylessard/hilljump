@@ -242,63 +242,63 @@ export class QuantEngine {
    */
   static async enrichWithEarnings(
     signal: TradingSignal,
-    supabaseClient: any // Pass Supabase client instead of API key
+    supabaseClient: any, // Pass Supabase client instead of API key
   ): Promise<TradingSignal> {
     try {
       const ticker = signal.ticker;
-      
+
       // Fetch earnings data via Supabase Edge Function
-      const { data, error } = await supabaseClient.functions.invoke('fetch-earnings-data', {
-        body: { ticker }
+      const { data, error } = await supabaseClient.functions.invoke("fetch-earnings-data", {
+        body: { ticker },
       });
-      
+
       if (error) {
         console.warn(`Failed to fetch earnings data for ${ticker}:`, error);
         return signal;
       }
-      
+
       if (!data || !data.earnings) {
         console.warn(`No earnings data returned for ${ticker}`);
         return signal;
       }
-      
+
       const earningsInfo = data.earnings;
-      
+
       // Extract earnings date and time
       const earningsCalendar = earningsInfo?.History;
       const nextEarnings = earningsInfo?.Trend;
-      
+
       let earningsDate: string | undefined;
       let earningsTime: string | undefined;
-      
+
       // Try to get next earnings date from trend data
       if (nextEarnings && Object.keys(nextEarnings).length > 0) {
         const dates = Object.keys(nextEarnings).sort();
-        const futureDate = dates.find(d => new Date(d) > new Date());
+        const futureDate = dates.find((d) => new Date(d) > new Date());
         if (futureDate) {
           earningsDate = futureDate;
-          earningsTime = nextEarnings[futureDate]?.time || 'time-not-supplied';
+          earningsTime = nextEarnings[futureDate]?.time || "time-not-supplied";
         }
       }
-      
+
       // Calculate days to earnings
-      const daysToEarnings = earningsDate 
+      const daysToEarnings = earningsDate
         ? Math.ceil((new Date(earningsDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
         : undefined;
-      
+
       // PHASE 2: Calculate beat rates from historical data
       let epsBeatRate: number | undefined;
       let revenueBeatRate: number | undefined;
-      
+
       if (earningsCalendar && Array.isArray(earningsCalendar)) {
         // Take last 8 quarters
         const recentEarnings = earningsCalendar.slice(0, 8);
-        
+
         let epsBeats = 0;
         let revenueBeats = 0;
         let epsCount = 0;
         let revenueCount = 0;
-        
+
         recentEarnings.forEach((quarter: any) => {
           if (quarter.epsEstimate !== null && quarter.epsActual !== null) {
             epsCount++;
@@ -309,16 +309,16 @@ export class QuantEngine {
             if (quarter.revenueActual >= quarter.revenueEstimate) revenueBeats++;
           }
         });
-        
+
         epsBeatRate = epsCount > 0 ? (epsBeats / epsCount) * 100 : undefined;
         revenueBeatRate = revenueCount > 0 ? (revenueBeats / revenueCount) * 100 : undefined;
       }
-      
+
       // PHASE 1: Apply earnings-based adjustments
       const warnings: string[] = [];
       let adjustedConviction = signal.conviction;
       let suggestedExpiry = signal.exitDate;
-      
+
       if (daysToEarnings !== undefined) {
         if (daysToEarnings < 0) {
           // Earnings already passed
@@ -326,27 +326,28 @@ export class QuantEngine {
           // CRITICAL: Very close to earnings
           warnings.push(`⚠️ Earnings in ${daysToEarnings}d - High IV crush risk`);
           adjustedConviction = Math.max(50, adjustedConviction - 15);
-          
         } else if (daysToEarnings <= 21) {
           // Earnings window - potential catalyst
-          const earningsTiming = earningsTime === 'bmo' ? 'before market' : 
-                                earningsTime === 'amc' ? 'after market' : '';
-          warnings.push(`📊 Earnings in ${daysToEarnings}d ${earningsTiming ? `(${earningsTiming})` : ''}`);
-          
+          const earningsTiming =
+            earningsTime === "bmo" ? "before market" : earningsTime === "amc" ? "after market" : "";
+          warnings.push(`📊 Earnings in ${daysToEarnings}d ${earningsTiming ? `(${earningsTiming})` : ""}`);
+
           // PHASE 2: Boost conviction if beat rate is high
           if (epsBeatRate && epsBeatRate >= 75) {
             warnings.push(`📈 Strong beat history (${Math.round(epsBeatRate)}% EPS beats)`);
             adjustedConviction = Math.min(95, adjustedConviction + 5);
           }
-          
+
           // Suggest expiry 7-10 days after earnings to capture move
           suggestedExpiry = new Date(earningsDate!);
           suggestedExpiry.setDate(suggestedExpiry.getDate() + 7);
-          
-          warnings.push(`💡 Consider ${suggestedExpiry.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} expiry`);
+
+          warnings.push(
+            `💡 Consider ${suggestedExpiry.toLocaleDateString("en-US", { month: "short", day: "numeric" })} expiry`,
+          );
         }
       }
-      
+
       // PHASE 2: Boost conviction for consistent beaters (regardless of earnings timing)
       if (epsBeatRate && epsBeatRate >= 87.5) {
         // 7/8 or 8/8 beats = very consistent
@@ -355,7 +356,7 @@ export class QuantEngine {
         // 6/8 beats = solid
         adjustedConviction = Math.min(95, adjustedConviction + 5);
       }
-      
+
       return {
         ...signal,
         conviction: Math.round(adjustedConviction),
@@ -365,11 +366,9 @@ export class QuantEngine {
         epsBeatRate: epsBeatRate ? Math.round(epsBeatRate) : undefined,
         revenueBeatRate: revenueBeatRate ? Math.round(revenueBeatRate) : undefined,
         earningsWarnings: warnings.length > 0 ? warnings : undefined,
-        suggestedExpiry: daysToEarnings !== undefined && daysToEarnings > 0 && daysToEarnings <= 21 
-          ? suggestedExpiry 
-          : undefined
+        suggestedExpiry:
+          daysToEarnings !== undefined && daysToEarnings > 0 && daysToEarnings <= 21 ? suggestedExpiry : undefined,
       };
-      
     } catch (error) {
       console.error(`Error enriching ${signal.ticker} with earnings:`, error);
       return signal;
@@ -669,55 +668,59 @@ export class QuantEngine {
     let reasoning = "";
 
     if (strategy === "Z_SCORE_REVERSION") {
-      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toFixed(1) + "x avg) confirms conviction." : ""}`;
+      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toFixed(1) + "x avg) confirms reversal setup. " : ""}Strike: $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targeting ~${Math.round(estimatedOptionReturn)}% option return.${cappedTarget ? " Target capped at reasonable limit." : ""}`;
     } else if (strategy === "MOMENTUM_REGIME") {
-      reasoning = `${ticker} shows ${direction === "CALL" ? "bullish" : "bearish"} momentum in trending regime (range: ${(avgRange * 100).toFixed(1)}%). Relative strength vs SPY: ${relStrength}/100. ${institutionalActivity ? "Volume surge (" + vol.toFixed(1) + "x) validates setup." : ""} ${direction === "CALL" ? "Uptrend" : "Downtrend"} continuation expected.`;
+      reasoning = `${ticker} shows strong ${direction === "CALL" ? "bullish" : "bearish"} regime (momentum: ${momentum}) with ${relStrength > 50 ? "relative outperformance" : "relative underperformance"} vs SPY (RS: ${relStrength}). Trending environment (${(avgRange * 100).toFixed(1)}% 20d range) supports continuation. ${institutionalActivity ? "Institutional accumulation detected (" + vol.toFixed(1) + "x vol). " : ""}${timeframe}-day window targets ${targetMultiple.toFixed(1)}x ATR move. $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targets ~${Math.round(estimatedOptionReturn)}% option return.`;
     } else if (strategy === "RELATIVE_STRENGTH") {
-      reasoning = `${ticker} ${direction === "CALL" ? "outperforming" : "underperforming"} SPY with RS score of ${relStrength}. Momentum: ${momentum}/100, RSI: ${rsi}. ${vol > 1.5 ? "Strong volume (" + vol.toFixed(1) + "x avg) supports divergence." : "Divergence detected."} Setup targets directional continuation.`;
-    }
-
-    const companyName = COMPANY_NAMES[ticker] || ticker;
-    
-    // Determine regime
-    let regime: "CHOPPY" | "TRENDING" | "NEUTRAL";
-    if (isChopping) {
-      regime = "CHOPPY";
-    } else if (isTrending) {
-      regime = "TRENDING";
-    } else {
-      regime = "NEUTRAL";
+      reasoning = `${ticker} displays ${relStrength > 50 ? "superior" : "inferior"} relative strength (${relStrength}) vs market while maintaining healthy RSI (${rsi}). This divergence suggests ${direction === "CALL" ? "institutional accumulation" : "distribution"} not yet reflected in momentum. ${vol > 1.2 ? "Volume confirmation (" + vol.toFixed(1) + "x) validates. " : ""}Target: ${targetMultiple.toFixed(1)}x ATR = $${targetPrice.toFixed(2)}. $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targets ~${Math.round(estimatedOptionReturn)}% option return.`;
     }
 
     return {
       ticker,
-      company: companyName,
+      company: COMPANY_NAMES[ticker] || ticker,
       direction,
       strategy,
       conviction: Math.round(conviction),
       entry: price,
-      strike,
-      estimatedDelta,
       target: targetPrice,
       stop: stopPrice,
       rr,
-      estimatedOptionReturn,
+      strike,
       exitDate,
       days: timeframe,
-      daysToExpiration: timeframe,
-      position: parseFloat(position52.toFixed(1)),
-      rsi,
+      position: Math.round(position52),
+      rsi: Math.round(rsi),
       momentum,
       vol,
       zScore: zScore.toFixed(2),
       zScore20: zScore20.toFixed(2),
       relStrength,
       atr: atr.toFixed(2),
-      atrPercent,
-      regime,
+      atrPercent: parseFloat(atrPercent.toFixed(2)),
+      regime: isChopping ? "CHOPPY" : isTrending ? "TRENDING" : "NEUTRAL",
+      qualifier,
+      reasoning,
+      estimatedOptionReturn: Math.round(estimatedOptionReturn),
+      estimatedDelta: parseFloat(estimatedDelta.toFixed(2)),
       extremeZScore,
       riskTier,
-      reasoning,
-      qualifier,
+      daysToExpiration: timeframe,
     };
+  }
+
+  /**
+   * Batch process multiple tickers
+   */
+  static batchCalculate(tickersData: EODHDData[], spyData: EODHDData): StockMetrics[] {
+    return tickersData
+      .map((tickerData) => {
+        try {
+          return this.calculateMetrics(tickerData, spyData);
+        } catch (error) {
+          console.error(`Error processing ${tickerData.ticker}:`, error);
+          return null;
+        }
+      })
+      .filter((m): m is StockMetrics => m !== null);
   }
 }
