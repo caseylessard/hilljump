@@ -125,21 +125,20 @@ export function useScanner() {
         const topSignals = signals.slice(0, config.maxSignals);
 
         // ============================================
-        // ⭐ PHASE 1 + 2: ENRICH WITH EARNINGS DATA
+        // ⭐ BATCH EARNINGS ENRICHMENT (1 API call!)
         // ============================================
         toast({
           title: "Enriching with earnings data...",
-          description: "Adding earnings dates and beat history",
+          description: "Fetching all earnings in one optimized call",
         });
 
         let enrichedSignals = topSignals;
 
         try {
-          console.log(`📊 Enriching ${topSignals.length} signals...`);
+          console.log(`📊 Batch enriching ${topSignals.length} signals...`);
 
-          enrichedSignals = await Promise.all(
-            topSignals.map((signal) => QuantEngine.enrichWithEarnings(signal, supabase)),
-          );
+          // ONE function call for ALL signals
+          enrichedSignals = await QuantEngine.batchEnrichWithEarnings(topSignals, supabase);
 
           console.log("✅ Successfully enriched signals with earnings data");
 
@@ -154,7 +153,6 @@ export function useScanner() {
             description: "Using signals without earnings data",
             variant: "destructive",
           });
-          // Fall back to non-enriched signals if enrichment fails
           enrichedSignals = topSignals;
         }
 
