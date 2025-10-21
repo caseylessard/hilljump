@@ -101,6 +101,7 @@ export default function OptionsScanner() {
             qualifiedSignals={result.qualifiedSignals}
             avgConviction={result.avgConviction}
             avgRR={result.avgRR}
+            analyzedTickers={result.analyzedTickers}
           />
         )}
 

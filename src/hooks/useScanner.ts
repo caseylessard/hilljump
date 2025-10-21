@@ -174,6 +174,7 @@ export function useScanner() {
             enrichedSignals.length > 0
               ? Number((enrichedSignals.reduce((sum, s) => sum + s.rr, 0) / enrichedSignals.length).toFixed(1))
               : 0,
+          analyzedTickers: tickersToScan,
         };
 
         setResult(scanResult);

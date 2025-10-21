@@ -100,6 +100,7 @@ export interface ScanResult {
   qualifiedSignals: number;
   avgConviction: number;
   avgRR: number;
+  analyzedTickers: string[];
 }
 
 export interface CachedSignal {
