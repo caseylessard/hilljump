@@ -3,12 +3,15 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+import type { TradingSignal } from '@/types/scanner';
+
 interface ScannerStatsProps {
   totalAnalyzed: number;
   qualifiedSignals: number;
   avgConviction: number;
   avgRR: number;
   analyzedTickers?: string[];
+  signals?: TradingSignal[];
 }
 
 export function ScannerStats({
@@ -17,9 +20,21 @@ export function ScannerStats({
   avgConviction,
   avgRR,
   analyzedTickers = [],
+  signals = [],
 }: ScannerStatsProps) {
   const [isUniverseOpen, setIsUniverseOpen] = useState(false);
   const sortedTickers = [...analyzedTickers].sort();
+  
+  // Create earnings map for tickers with upcoming earnings (within 14 days)
+  const earningsMap = new Map<string, { date: string; days: number }>();
+  signals.forEach(signal => {
+    if (signal.earningsDate && signal.daysToEarnings !== undefined && signal.daysToEarnings <= 14) {
+      earningsMap.set(signal.ticker, {
+        date: signal.earningsDate,
+        days: signal.daysToEarnings
+      });
+    }
+  });
   const stats = [
     {
       label: 'Analyzed',
@@ -77,15 +92,23 @@ export function ScannerStats({
                   <DialogTitle>Analyzed Universe ({totalAnalyzed} stocks)</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="h-[500px] pr-4">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                    {sortedTickers.map((ticker) => (
-                      <div
-                        key={ticker}
-                        className="px-3 py-2 bg-card border border-border rounded text-center text-sm font-medium hover:border-primary/50 transition-colors"
-                      >
-                        {ticker}
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {sortedTickers.map((ticker) => {
+                      const earnings = earningsMap.get(ticker);
+                      return (
+                        <div
+                          key={ticker}
+                          className="px-3 py-2 bg-card border border-border rounded text-sm font-medium hover:border-primary/50 transition-colors"
+                        >
+                          <div className="font-semibold text-center">{ticker}</div>
+                          {earnings && (
+                            <div className="text-xs text-muted-foreground text-center mt-1">
+                              📊 {earnings.days}d
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </DialogContent>

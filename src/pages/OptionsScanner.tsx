@@ -102,6 +102,7 @@ export default function OptionsScanner() {
             avgConviction={result.avgConviction}
             avgRR={result.avgRR}
             analyzedTickers={result.analyzedTickers}
+            signals={result.signals}
           />
         )}
 
