@@ -111,7 +111,7 @@ export const TEST_TICKERS = ['RACE', 'AMD', 'NVDA', 'GOOGL', 'BA'];
 
 export const DEFAULT_CONFIG = {
   minConviction: 60,
-  maxSignals: 5,
+  maxSignals: 9999,
   cacheDuration: 14400, // 4 hours in seconds
 };
 

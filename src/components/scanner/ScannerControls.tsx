@@ -30,19 +30,18 @@ export function ScannerControls({
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6 mb-6 space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Min Conviction */}
-        <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Min Conviction
-          </Label>
+    <div className="bg-card border border-border rounded-lg p-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center gap-3">
+        {/* Compact Controls - One line on desktop */}
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <span className="text-xs text-muted-foreground hidden md:inline">Conv:</span>
+          <span className="text-xs text-muted-foreground md:hidden">Min Conv:</span>
           <Select
             value={config.minConviction.toString()}
             onValueChange={(value) => updateConfig('minConviction', parseInt(value))}
             disabled={isScanning}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-8 w-20">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -52,19 +51,15 @@ export function ScannerControls({
               <SelectItem value="75">75%+</SelectItem>
             </SelectContent>
           </Select>
-        </div>
 
-        {/* Max Signals */}
-        <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Max Signals
-          </Label>
+          <span className="text-xs text-muted-foreground hidden md:inline ml-2">Signals:</span>
+          <span className="text-xs text-muted-foreground md:hidden ml-2">Max:</span>
           <Select
             value={config.maxSignals.toString()}
             onValueChange={(value) => updateConfig('maxSignals', parseInt(value))}
             disabled={isScanning}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-8 w-20">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -75,19 +70,14 @@ export function ScannerControls({
               <SelectItem value="9999">All</SelectItem>
             </SelectContent>
           </Select>
-        </div>
 
-        {/* Cache Duration */}
-        <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Cache
-          </Label>
+          <span className="text-xs text-muted-foreground ml-2">Cache:</span>
           <Select
             value={config.cacheDuration.toString()}
             onValueChange={(value) => updateConfig('cacheDuration', parseInt(value))}
             disabled={isScanning}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-8 w-20">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -98,35 +88,37 @@ export function ScannerControls({
             </SelectContent>
           </Select>
         </div>
-      </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 pt-2">
-        <Button
-          onClick={() => onScan(true)}
-          disabled={isScanning}
-          variant="secondary"
-          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-        >
-          🧪 Test ({TEST_TICKERS.length})
-        </Button>
-        
-        <Button
-          onClick={() => onScan(false)}
-          disabled={isScanning}
-          className="bg-gradient-to-r from-primary to-primary/80"
-        >
-          🚀 Full Scan ({UNIVERSE.length})
-        </Button>
-        
-        <Button
-          onClick={onClearCache}
-          disabled={isScanning}
-          variant="destructive"
-          className="ml-auto"
-        >
-          🗑️ Clear Cache
-        </Button>
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => onScan(true)}
+            disabled={isScanning}
+            variant="secondary"
+            size="sm"
+            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+          >
+            🧪 Test ({TEST_TICKERS.length})
+          </Button>
+          
+          <Button
+            onClick={() => onScan(false)}
+            disabled={isScanning}
+            size="sm"
+            className="bg-gradient-to-r from-primary to-primary/80"
+          >
+            🚀 Full Scan ({UNIVERSE.length})
+          </Button>
+          
+          <Button
+            onClick={onClearCache}
+            disabled={isScanning}
+            variant="destructive"
+            size="sm"
+          >
+            🗑️ Clear Cache
+          </Button>
+        </div>
       </div>
     </div>
   );
