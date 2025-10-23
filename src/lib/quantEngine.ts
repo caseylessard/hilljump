@@ -1,6 +1,37 @@
 import type { EODHDData, StockMetrics, TradingSignal, EarningsHistory } from "@/types/scanner";
 import { COMPANY_NAMES } from "./constants";
 
+/**
+ * OPTIONS PLAY TYPE DICTIONARY
+ * User-friendly labels explaining the risk/reward profile
+ */
+const PLAY_TYPES = {
+  HIGH_PROBABILITY: {
+    label: "🎯 High Probability Play",
+    description: "Conservative, high win rate (~70-75%). ITM options for steady gains.",
+    winRate: "70-75%",
+    profile: "Conservative Income"
+  },
+  BALANCED: {
+    label: "⚖️ Balanced Play",
+    description: "Moderate risk/reward. ATM options for consistent performance.",
+    winRate: "60-65%",
+    profile: "Balanced Growth"
+  },
+  LOTTERY_TICKET: {
+    label: "🎰 Lottery Ticket",
+    description: "Aggressive, low probability. OTM options for explosive gains when right.",
+    winRate: "40-50%",
+    profile: "High Risk/High Reward"
+  },
+  HOME_RUN: {
+    label: "⚾ Home Run Swing",
+    description: "Directional bet with leverage. OTM options targeting big moves.",
+    winRate: "45-55%",
+    profile: "Swing for the Fences"
+  }
+};
+
 export class QuantEngine {
   /**
    * Calculate all metrics from raw EODHD data
