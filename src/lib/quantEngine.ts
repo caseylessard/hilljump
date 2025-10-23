@@ -631,13 +631,37 @@ export class QuantEngine {
     const extremeZScore = Math.abs(zScore) > 3 || Math.abs(zScore20) > 3;
 
     let reasoning = "";
+    let playType = "";
 
+    // Determine play type based on strategy and delta
     if (strategy === "Z_SCORE_REVERSION") {
-      reasoning = `${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toFixed(1) + "x avg) confirms reversal setup. " : ""}Strike: $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targeting ~${Math.round(estimatedOptionReturn)}% option return.${cappedTarget ? " Target capped at reasonable limit." : ""}`;
+      playType = PLAY_TYPES.HIGH_PROBABILITY.label;
+      
+      reasoning = `**${playType}** (${PLAY_TYPES.HIGH_PROBABILITY.winRate} win rate, ${PLAY_TYPES.HIGH_PROBABILITY.profile})\n\n${ticker} is ${Math.abs(zScore).toFixed(1)}σ ${zScore < 0 ? "below" : "above"} its 50-day mean ($${mean50.toFixed(2)}). ${zScoreAccelerating ? "20-day z-score (" + zScore20.toFixed(1) + "σ) shows acceleration, confirming setup strength." : "20-day alignment validates signal."} Statistical mean reversion targets return to $${mean50.toFixed(2)} within ${timeframe} days. ${institutionalActivity ? "Institutional volume spike (" + vol.toFixed(1) + "x avg) confirms reversal setup. " : ""}\n\nUsing ITM $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) for higher probability of success. Target: ~${Math.round(estimatedOptionReturn)}% option return.${cappedTarget ? " Target capped at reasonable limit." : ""}`;
+
     } else if (strategy === "MOMENTUM_REGIME") {
-      reasoning = `${ticker} shows strong ${direction === "CALL" ? "bullish" : "bearish"} regime (momentum: ${momentum}) with ${relStrength > 50 ? "relative outperformance" : "relative underperformance"} vs SPY (RS: ${relStrength}). Trending environment (${(avgRange * 100).toFixed(1)}% 20d range) supports continuation. ${institutionalActivity ? "Institutional accumulation detected (" + vol.toFixed(1) + "x vol). " : ""}${timeframe}-day window targets ${targetMultiple.toFixed(1)}x ATR move. $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targets ~${Math.round(estimatedOptionReturn)}% option return.`;
+      // Determine if it's a lottery ticket or home run based on expected move and delta
+      if (estimatedDelta <= 0.45) {
+        playType = PLAY_TYPES.LOTTERY_TICKET.label;
+      } else {
+        playType = PLAY_TYPES.HOME_RUN.label;
+      }
+      
+      const playInfo = estimatedDelta <= 0.45 ? PLAY_TYPES.LOTTERY_TICKET : PLAY_TYPES.HOME_RUN;
+      
+      reasoning = `**${playType}** (${playInfo.winRate} win rate, ${playInfo.profile})\n\n${ticker} shows strong ${direction === "CALL" ? "bullish" : "bearish"} regime (momentum: ${momentum}) with ${relStrength > 50 ? "relative outperformance" : "relative underperformance"} vs SPY (RS: ${relStrength}). Trending environment (${(avgRange * 100).toFixed(1)}% 20d range) supports continuation. ${institutionalActivity ? "Institutional accumulation detected (" + vol.toFixed(1) + "x vol). " : ""}\n\n${timeframe}-day window targets ${targetMultiple.toFixed(1)}x ATR move. Using ${estimatedDelta <= 0.45 ? "OTM" : "ATM"} $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) for ${estimatedDelta <= 0.45 ? "maximum leverage" : "balanced exposure"}. Target: ~${Math.round(estimatedOptionReturn)}% option return.`;
+
     } else if (strategy === "RELATIVE_STRENGTH") {
-      reasoning = `${ticker} displays ${relStrength > 50 ? "superior" : "inferior"} relative strength (${relStrength}) vs market while maintaining healthy RSI (${rsi}). This divergence suggests ${direction === "CALL" ? "institutional accumulation" : "distribution"} not yet reflected in momentum. ${vol > 1.2 ? "Volume confirmation (" + vol.toFixed(1) + "x) validates. " : ""}Target: ${targetMultiple.toFixed(1)}x ATR = $${targetPrice.toFixed(2)}. $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) targets ~${Math.round(estimatedOptionReturn)}% option return.`;
+      // RS plays are typically balanced or home runs
+      if (estimatedDelta >= 0.60) {
+        playType = PLAY_TYPES.BALANCED.label;
+      } else {
+        playType = PLAY_TYPES.HOME_RUN.label;
+      }
+      
+      const playInfo = estimatedDelta >= 0.60 ? PLAY_TYPES.BALANCED : PLAY_TYPES.HOME_RUN;
+      
+      reasoning = `**${playType}** (${playInfo.winRate} win rate, ${playInfo.profile})\n\n${ticker} displays ${relStrength > 50 ? "superior" : "inferior"} relative strength (${relStrength}) vs market while maintaining healthy RSI (${rsi}). This divergence suggests ${direction === "CALL" ? "institutional accumulation" : "distribution"} not yet reflected in momentum. ${vol > 1.2 ? "Volume confirmation (" + vol.toFixed(1) + "x) validates. " : ""}\n\nTarget: ${targetMultiple.toFixed(1)}x ATR = $${targetPrice.toFixed(2)}. Using ${estimatedDelta >= 0.60 ? "ATM" : "OTM"} $${strike} ${direction} (δ≈${estimatedDelta.toFixed(2)}) for ${estimatedDelta >= 0.60 ? "consistent execution" : "leveraged exposure"}. Target: ~${Math.round(estimatedOptionReturn)}% option return.`;
     }
 
     return {
